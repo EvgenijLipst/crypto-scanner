@@ -4,36 +4,30 @@ const { Telegraf } = require('telegraf');
 const { SMA, EMA, RSI } = require('technicalindicators');
 
 // --- КОНФИГУРАЦИЯ ---
-// Значения берутся из переменных окружения на Railway
 const DATABASE_URL = process.env.DATABASE_URL;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID; // Например: '@your_public_channel_name'
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY;
 
-// Проверка наличия всех переменных окружения
 if (!DATABASE_URL || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.error("Ошибка: Не заданы все необходимые переменные окружения (DATABASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)");
     process.exit(1);
 }
 
-// Сети для парсинга (согласно категориям CoinGecko)
 const NETWORKS = {
     'Ethereum': 'ethereum-ecosystem',
     'BSC': 'binance-smart-chain',
     'Solana': 'solana-ecosystem'
 };
 
-// Параметры для анализа
-const PRICE_INCREASE_THRESHOLD = 3.0;  // в процентах
-const VOLUME_INCREASE_THRESHOLD = 15.0; // в процентах
+const PRICE_INCREASE_THRESHOLD = 3.0;
+const VOLUME_INCREASE_THRESHOLD = 15.0;
 const RSI_MIN = 40;
 const RSI_MAX = 70;
-const HISTORICAL_DAYS = 90; // Дней для расчета тех. индикаторов
+const HISTORICAL_DAYS = 90;
 
-// --- ИНИЦИАЛИЗАЦИЯ ---
 const dbPool = new Pool({ connectionString: DATABASE_URL });
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
-
-// --- БАЗА ДАННЫХ ---
 
 async function setupDatabase() {
     const client = await dbPool.connect();
@@ -95,8 +89,6 @@ async function cleanupOldData() {
     }
 }
 
-// --- API COINGECKO И ТЕХНИЧЕСКИЙ АНАЛИЗ ---
-
 async function getTopCoinsData(category) {
     const url = "https://api.coingecko.com/api/v3/coins/markets";
     const params = {
@@ -105,7 +97,8 @@ async function getTopCoinsData(category) {
         order: 'market_cap_desc',
         per_page: 250,
         page: 1,
-        sparkline: 'false'
+        sparkline: 'false',
+        x_cg_demo_api_key: COINGECKO_API_KEY
     };
     try {
         const response = await axios.get(url, { params });
@@ -118,12 +111,12 @@ async function getTopCoinsData(category) {
 
 async function getTechnicalIndicators(coinId) {
     const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart`;
-    const params = { vs_currency: 'usd', days: HISTORICAL_DAYS, interval: 'daily' };
+    const params = { vs_currency: 'usd', days: HISTORICAL_DAYS, interval: 'daily', x_cg_demo_api_key: COINGECKO_API_KEY };
     try {
         const response = await axios.get(url, { params });
-        const prices = response.data.prices.map(p => p[1]); // Получаем только цены
+        const prices = response.data.prices.map(p => p[1]);
 
-        if (prices.length < 50) return null; // Недостаточно данных для SMA(50)
+        if (prices.length < 50) return null;
 
         const sma50 = SMA.calculate({ period: 50, values: prices }).pop();
         const ema20 = EMA.calculate({ period: 20, values: prices }).pop();
@@ -135,8 +128,6 @@ async function getTechnicalIndicators(coinId) {
         return null;
     }
 }
-
-// --- УВЕДОМЛЕНИЕ В TELEGRAM ---
 
 function escapeMarkdown(text) {
     const chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'];
@@ -154,8 +145,6 @@ async function sendTelegramMessage(message) {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// --- ОСНОВНАЯ ЛОГИКА ---
-
 async function main() {
     console.log(`[${new Date().toISOString()}] Запуск скрипта...`);
     
@@ -164,7 +153,13 @@ async function main() {
     for (const [networkName, category] of Object.entries(NETWORKS)) {
         console.log(`\n--- Обработка сети: ${networkName} ---`);
         const coinsData = await getTopCoinsData(category);
-        if (!coinsData || coinsData.length === 0) continue;
+        
+        console.log(`Получено ${coinsData.length} монет для сети ${networkName}.`);
+
+        if (!coinsData || coinsData.length === 0) {
+            console.log(`Пропускаем сеть ${networkName}, так как не получено данных.`);
+            continue;
+        };
 
         for (const coin of coinsData) {
             const { id: coinId, symbol, current_price: currentPrice, total_volume: currentVolume } = coin;
@@ -209,15 +204,14 @@ async function main() {
             }
             await insertData(coinId, networkName, currentPrice, currentVolume);
         }
-        await sleep(10000); // Пауза 10 секунд между сетями
+        await sleep(10000);
     }
 
     await cleanupOldData();
     console.log(`[${new Date().toISOString()}] Скрипт завершил работу.`);
 }
 
-// Запуск главной функции
 main().catch(err => {
-    console.error("Произошла ошибка в главной функции:", err);
+    console.error("Произошла критическая ошибка в главной функции:", err);
     process.exit(1);
 });
