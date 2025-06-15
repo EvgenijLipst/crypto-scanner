@@ -218,6 +218,6 @@ async function main() {
 
 // Запуск главной функции
 main().catch(err => {
-    console.error("Произошла критическая ошибка в главной функции:", err);
+    console.error("Произошла ошибка в главной функции:", err);
     process.exit(1);
 });
