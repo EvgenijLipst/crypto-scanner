@@ -179,6 +179,11 @@ async function main() {
                     if (priceChange >= PRICE_INCREASE_THRESHOLD && volumeChange >= VOLUME_INCREASE_THRESHOLD) {
                         console.log(`Найдено совпадение для ${coinSymbol}: Рост цены ${priceChange.toFixed(2)}%, Рост объема ${volumeChange.toFixed(2)}%`);
                         
+                        // ===== ИЗМЕНЕНИЕ ЗДЕСЬ =====
+                        console.log('Пауза перед запросом исторических данных...');
+                        await sleep(2000); // Добавляем паузу в 2 секунды
+                        // ===========================
+
                         const indicators = await getTechnicalIndicators(coinId);
                         if (indicators) {
                             const { sma50, ema20, rsi } = indicators;
