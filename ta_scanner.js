@@ -20,6 +20,14 @@ const NETWORKS = {
     'Solana': 'solana-ecosystem'
 };
 
+// --- НОВОЕ: Карта сетей для получения адреса контракта ---
+const PLATFORM_ID_MAP = {
+    'Ethereum': 'ethereum',
+    'BSC': 'binance-smart-chain',
+    'Solana': 'solana'
+};
+// ----------------------------------------------------
+
 const PRICE_INCREASE_THRESHOLD = 3.0;
 const VOLUME_INCREASE_THRESHOLD = 15.0;
 const RSI_MIN = 40;
@@ -129,6 +137,37 @@ async function getTechnicalIndicators(coinId) {
     }
 }
 
+// --- НОВАЯ ФУНКЦИЯ для получения адреса контракта ---
+async function getContractAddress(coinId, networkName) {
+    const platformId = PLATFORM_ID_MAP[networkName];
+    if (!platformId) {
+        console.log(`Не найдена платформа для сети: ${networkName}`);
+        return null;
+    }
+
+    const url = `https://api.coingecko.com/api/v3/coins/${coinId}`;
+    const params = {
+        localization: 'false',
+        tickers: 'false',
+        market_data: 'false',
+        community_data: 'false',
+        developer_data: 'false',
+        sparkline: 'false',
+        x_cg_demo_api_key: COINGECKO_API_KEY
+    };
+
+    try {
+        const response = await axios.get(url, { params });
+        // Безопасно получаем адрес с помощью optional chaining
+        const contractAddress = response.data?.platforms?.[platformId];
+        return contractAddress || null;
+    } catch (err) {
+        console.error(`Ошибка API CoinGecko при получении контракта для ${coinId}:`, err.message);
+        return null;
+    }
+}
+// ----------------------------------------------------
+
 function escapeMarkdown(text) {
     const chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'];
     return text.replace(new RegExp(`[${chars.join('\\')}]`, 'g'), '\\$&');
@@ -167,6 +206,11 @@ async function main() {
             if (!coinId || !currentPrice || !currentVolume) continue;
             
             const coinSymbol = symbol.toUpperCase();
+
+            // --- НОВОЕ: Логирование каждой монеты ---
+            console.log(`  [${coinSymbol}] Сканирую... Цена: $${currentPrice}, Объем: $${Math.round(currentVolume).toLocaleString('en-US')}`);
+            // ------------------------------------
+            
             const previousData = await getPreviousData(coinId, networkName);
 
             if (previousData) {
@@ -179,11 +223,9 @@ async function main() {
                     if (priceChange >= PRICE_INCREASE_THRESHOLD && volumeChange >= VOLUME_INCREASE_THRESHOLD) {
                         console.log(`Найдено совпадение для ${coinSymbol}: Рост цены ${priceChange.toFixed(2)}%, Рост объема ${volumeChange.toFixed(2)}%`);
                         
-                        // ===== ИЗМЕНЕНИЕ ЗДЕСЬ =====
                         console.log('Пауза перед запросом исторических данных...');
-                        await sleep(2000); // Добавляем паузу в 2 секунды
-                        // ===========================
-
+                        await sleep(2000); 
+                        
                         const indicators = await getTechnicalIndicators(coinId);
                         if (indicators) {
                             const { sma50, ema20, rsi } = indicators;
@@ -192,16 +234,27 @@ async function main() {
                             const rsiInRange = rsi >= RSI_MIN && rsi <= RSI_MAX;
 
                             if ((priceAboveEma20 || priceAboveSma50) && rsiInRange) {
-                                const message = escapeMarkdown(
-                                    `🚀 *Сигнал по монете: ${coinSymbol} (${networkName})*\n\n` +
-                                    `📈 *Рост цены:* ${priceChange.toFixed(2)}%\n` +
-                                    `📊 *Рост объема:* ${volumeChange.toFixed(2)}%\n\n` +
-                                    `🔹 *Текущая цена:* $${currentPrice.toLocaleString('en-US')}\n` +
-                                    `🔹 *Объем (24ч):* $${currentVolume.toLocaleString('en-US', { maximumFractionDigits: 0 })}\n` +
-                                    `🔹 *RSI(14):* ${rsi.toFixed(2)}\n\n` +
-                                    `✅ Цена пробила EMA(20) или SMA(50) вверх.`
-                                );
-                                await sendTelegramMessage(message);
+                                // --- НОВОЕ: Получаем адрес контракта только при сигнале ---
+                                console.log('Пауза перед запросом контракта...');
+                                await sleep(2000); // Еще одна пауза, чтобы не попасть в лимит
+                                const contractAddress = await getContractAddress(coinId, networkName);
+                                // ----------------------------------------------------
+
+                                // --- НОВОЕ: Формируем сообщение с адресом контракта ---
+                                let messageText = `🚀 *Сигнал по монете: ${escapeMarkdown(coinSymbol)} (${escapeMarkdown(networkName)})*\n\n` +
+                                                `📈 *Рост цены:* ${priceChange.toFixed(2)}%\n` +
+                                                `📊 *Рост объема:* ${volumeChange.toFixed(2)}%\n\n` +
+                                                `🔹 *Текущая цена:* $${escapeMarkdown(currentPrice.toLocaleString('en-US'))}\n` +
+                                                `🔹 *Объем (24ч):* $${escapeMarkdown(Math.round(currentVolume).toLocaleString('en-US'))}\n` +
+                                                `🔹 *RSI(14):* ${rsi.toFixed(2)}\n\n` +
+                                                `✅ Цена пробила EMA(20) или SMA(50) вверх.`;
+
+                                if (contractAddress) {
+                                    messageText += `\n\n📝 *Контракт:*\n\`${contractAddress}\``;
+                                }
+                                // ------------------------------------------------------
+                                
+                                await sendTelegramMessage(messageText);
                             }
                         }
                     }
