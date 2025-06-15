@@ -1,210 +1,223 @@
-// ta_scanner.js (ВЕРСИЯ 2.1: ПОДКЛЮЧЕН КЛЮЧ COINGECKO API)
-const axios = require('axios');
 const { Pool } = require('pg');
+const axios = require('axios');
+const { Telegraf } = require('telegraf');
 const { SMA, EMA, RSI } = require('technicalindicators');
 
-const CONFIG = {
-    topCoinsToFetch: 500,
-    priceChangeThreshold: 3,
-    volumeChangeThreshold: 15,
-    smaPeriod: 50,
-    emaPeriod: 20,
-    rsiPeriod: 14,
-    dbCleanupHours: 24,
-    telegram: {
-        botToken: process.env.TELEGRAM_BOT_TOKEN,
-        chatId: process.env.TELEGRAM_CHAT_ID,
-    }
+// --- КОНФИГУРАЦИЯ ---
+// Значения берутся из переменных окружения на Railway
+const DATABASE_URL = process.env.DATABASE_URL;
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID; // Например: '@your_public_channel_name'
+
+// Проверка наличия всех переменных окружения
+if (!DATABASE_URL || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.error("Ошибка: Не заданы все необходимые переменные окружения (DATABASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)");
+    process.exit(1);
+}
+
+// Сети для парсинга (согласно категориям CoinGecko)
+const NETWORKS = {
+    'Ethereum': 'ethereum-ecosystem',
+    'BSC': 'binance-smart-chain',
+    'Solana': 'solana-ecosystem'
 };
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-});
+// Параметры для анализа
+const PRICE_INCREASE_THRESHOLD = 3.0;  // в процентах
+const VOLUME_INCREASE_THRESHOLD = 15.0; // в процентах
+const RSI_MIN = 40;
+const RSI_MAX = 70;
+const HISTORICAL_DAYS = 90; // Дней для расчета тех. индикаторов
 
-const runScanner = async () => {
-    console.log('Запуск сканера...');
-    await setupDatabase();
-    console.log(`1. Получение топ-${CONFIG.topCoinsToFetch} токенов по капитализации...`);
-    const marketData = await getTopMarketData(CONFIG.topCoinsToFetch);
-    
-    if (!marketData || marketData.length === 0) {
-        console.error("Не удалось получить рыночные данные. Завершение работы.");
-        return;
-    }
-    console.log(`Найдено ${marketData.length} токенов для анализа.`);
-    console.log('2. Сохранение данных в базу...');
-    await saveMarketData(marketData);
-    console.log('3. Запуск анализа для каждого токена...');
-    for (const tokenData of marketData) {
-        await analyzeToken(tokenData);
-    }
-    console.log('4. Очистка старых данных...');
-    await cleanupOldData();
-};
+// --- ИНИЦИАЛИЗАЦИЯ ---
+const dbPool = new Pool({ connectionString: DATABASE_URL });
+const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
+
+// --- БАЗА ДАННЫХ ---
 
 async function setupDatabase() {
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS token_market_data (
-            id SERIAL PRIMARY KEY,
-            coingecko_id TEXT NOT NULL,
-            symbol TEXT NOT NULL,
-            price_usd NUMERIC(20, 8),
-            volume_24h_usd NUMERIC(25, 4),
-            timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            UNIQUE(coingecko_id, timestamp)
-        )
-    `);
-}
-
-async function getTopMarketData(limit) {
-    const marketData = [];
-    const perPage = 250;
-    const totalPages = Math.ceil(limit / perPage);
-
-    // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
-    const coingeckoApiKey = process.env.COINGECKO_API_KEY;
-    if (coingeckoApiKey) {
-        console.log('Используется персональный ключ CoinGecko API.');
-    } else {
-        console.log('Персональный ключ CoinGecko API не найден, используются публичные лимиты.');
-    }
-
-    for (let page = 1; page <= totalPages; page++) {
-        try {
-            let url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${perPage}&page=${page}&sparkline=false`;
-            
-            // --- И ИЗМЕНЕНИЕ ЗДЕСЬ ---
-            // Если ключ есть, добавляем его к запросу. Pro-ключи передаются как заголовок.
-            const headers = {};
-            if (coingeckoApiKey) {
-                headers['x-cg-pro-api-key'] = coingeckoApiKey;
-            }
-
-            const { data } = await axios.get(url, { headers });
-            marketData.push(...data);
-
-        } catch (error) {
-            console.error(`Ошибка при получении страницы ${page} рыночных данных:`, error.message);
-        }
-        await new Promise(res => setTimeout(res, 1000));
-    }
-    return marketData;
-}
-
-
-async function saveMarketData(marketData) {
-    let savedCount = 0;
-    for (const token of marketData) {
-        if (token.id && token.current_price !== null && token.total_volume !== null) {
-            try {
-                await pool.query(
-                    `INSERT INTO token_market_data(coingecko_id, symbol, price_usd, volume_24h_usd) VALUES($1, $2, $3, $4)`,
-                    [token.id, token.symbol.toUpperCase(), token.current_price, token.total_volume]
-                );
-                savedCount++;
-            } catch(e) {
-                if (e.code !== '23505') { 
-                    console.error(`Ошибка при сохранении ${token.id}: ${e.message}`);
-                }
-            }
-        }
-    }
-    console.log(`Сохранено ${savedCount} новых записей.`);
-}
-
-async function analyzeToken(currentTokenData) {
+    const client = await dbPool.connect();
     try {
-        const { rows: history } = await pool.query(
-            `SELECT price_usd, volume_24h_usd FROM token_market_data WHERE coingecko_id = $1 ORDER BY timestamp DESC LIMIT 100`,
-            [currentTokenData.id]
-        );
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS coin_data (
+                id SERIAL PRIMARY KEY,
+                coin_id VARCHAR(100) NOT NULL,
+                network VARCHAR(50) NOT NULL,
+                price DOUBLE PRECISION NOT NULL,
+                volume DOUBLE PRECISION NOT NULL,
+                timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+        `);
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_coin_network_time 
+            ON coin_data (coin_id, network, timestamp DESC);
+        `);
+        console.log("Проверка таблицы в БД выполнена.");
+    } catch (err) {
+        console.error("Ошибка при настройке БД:", err);
+    } finally {
+        client.release();
+    }
+}
 
-        if (history.length < 2) {
-            return;
-        }
+async function getPreviousData(coinId, network) {
+    try {
+        const res = await dbPool.query(`
+            SELECT price, volume FROM coin_data
+            WHERE coin_id = $1 AND network = $2
+            ORDER BY timestamp DESC
+            LIMIT 1;
+        `, [coinId, network]);
+        return res.rows[0];
+    } catch (err) {
+        console.error(`Ошибка получения предыдущих данных для ${coinId}:`, err);
+        return null;
+    }
+}
 
-        const currentPrice = parseFloat(history[0].price_usd);
-        const previousPrice = parseFloat(history[1].price_usd);
-        const currentVolume = parseFloat(history[0].volume_24h_usd);
-        const previousVolume = parseFloat(history[1].volume_24h_usd);
-        
-        if (!currentPrice || !previousPrice || !currentVolume || !previousVolume) {
-            return;
-        }
-
-        const priceChange = ((currentPrice - previousPrice) / previousPrice) * 100;
-        const volumeChange = ((currentVolume - previousVolume) / previousVolume) * 100;
-
-        if (priceChange >= CONFIG.priceChangeThreshold && volumeChange >= CONFIG.volumeChangeThreshold) {
-            console.log(`[ПЕРВИЧНЫЙ СИГНАЛ] для ${currentTokenData.symbol.toUpperCase()}: Рост цены ${priceChange.toFixed(2)}%, Рост объема ${volumeChange.toFixed(2)}%`);
-            
-            const prices = history.map(row => parseFloat(row.price_usd)).reverse();
-            if (prices.length < CONFIG.smaPeriod || prices.length < CONFIG.rsiPeriod) {
-                console.log(`[INFO] Недостаточно данных для полного ТА для ${currentTokenData.symbol.toUpperCase()}`);
-                return;
-            }
-
-            const sma50 = SMA.calculate({ period: CONFIG.smaPeriod, values: prices });
-            const ema20 = EMA.calculate({ period: CONFIG.emaPeriod, values: prices });
-            const rsi = RSI.calculate({ period: CONFIG.rsiPeriod, values: prices });
-            
-            const lastSma50 = sma50[sma50.length - 1];
-            const lastEma20 = ema20[ema20.length - 1];
-            const lastRsi = rsi[rsi.length - 1];
-
-            console.log(`[TA-ДАННЫЕ] для ${currentTokenData.symbol.toUpperCase()}: Цена=${currentPrice.toFixed(4)}, SMA50=${lastSma50.toFixed(4)}, EMA20=${lastEma20.toFixed(4)}, RSI=${lastRsi.toFixed(2)}`);
-
-            const smaCrossover = currentPrice > lastSma50;
-            const emaCrossover = currentPrice > lastEma20;
-            const rsiInRange = lastRsi > 40 && lastRsi < 70;
-
-            if ((smaCrossover || emaCrossover) && rsiInRange) {
-                console.log(`[!!!] ПОЛНЫЙ СИГНАЛ для ${currentTokenData.symbol.toUpperCase()}. Отправка в Telegram...`);
-                const message = `
-                📈 **Сигнал по токену: ${currentTokenData.symbol.toUpperCase()}**
-                -----------------------------------
-                **Цена:** $${currentPrice.toFixed(4)}
-                **Рост цены (15 мин):** ${priceChange.toFixed(2)}%
-                **Рост объема (15 мин):** ${volumeChange.toFixed(2)}%
-                -----------------------------------
-                **SMA50:** ${lastSma50.toFixed(4)} (пробит: ${smaCrossover})
-                **EMA20:** ${lastEma20.toFixed(4)} (пробит: ${emaCrossover})
-                **RSI:** ${lastRsi.toFixed(2)} (в норме: ${rsiInRange})
-                `;
-                await sendTelegramMessage(message);
-            } else {
-                console.log(`[INFO] Первичный триггер для ${currentTokenData.symbol.toUpperCase()} сработал, но ТА не подтвержден.`);
-            }
-        }
-    } catch (error) {
-        console.error(`Ошибка при анализе токена ${currentTokenData.symbol}:`, error.message);
+async function insertData(coinId, network, price, volume) {
+    try {
+        await dbPool.query(`
+            INSERT INTO coin_data (coin_id, network, price, volume)
+            VALUES ($1, $2, $3, $4);
+        `, [coinId, network, price, volume]);
+    } catch (err) {
+        console.error(`Ошибка вставки данных для ${coinId}:`, err);
     }
 }
 
 async function cleanupOldData() {
-    const {rowCount} = await pool.query(`DELETE FROM token_market_data WHERE timestamp < NOW() - INTERVAL '${CONFIG.dbCleanupHours} hours'`);
-    console.log(`Очистка старых рыночных данных завершена. Удалено ${rowCount} записей.`);
-}
-
-async function sendTelegramMessage(text) {
-    const { botToken, chatId } = CONFIG.telegram;
-    if (!botToken || !chatId) {
-        console.warn('Переменные для Telegram не настроены.');
-        return;
-    }
-    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
     try {
-        await axios.post(url, { chat_id: chatId, text, parse_mode: 'Markdown' });
-    } catch (error) {
-        console.error('Ошибка отправки сообщения в Telegram:', error.message);
+        const res = await dbPool.query("DELETE FROM coin_data WHERE timestamp < NOW() - INTERVAL '24 hours';");
+        console.log(`Очищено ${res.rowCount} старых записей.`);
+    } catch (err) {
+        console.error("Ошибка очистки старых данных:", err);
     }
 }
 
-runScanner()
-    .then(() => console.log('Сканирование завершено.'))
-    .catch(e => console.error('Критическая ошибка сканера:', e))
-    .finally(() => {
-        pool.end();
-        console.log('Соединение с базой данных закрыто.');
-    });
+// --- API COINGECKO И ТЕХНИЧЕСКИЙ АНАЛИЗ ---
+
+async function getTopCoinsData(category) {
+    const url = "https://api.coingecko.com/api/v3/coins/markets";
+    const params = {
+        vs_currency: 'usd',
+        category: category,
+        order: 'market_cap_desc',
+        per_page: 250,
+        page: 1,
+        sparkline: 'false'
+    };
+    try {
+        const response = await axios.get(url, { params });
+        return response.data;
+    } catch (err) {
+        console.error(`Ошибка API CoinGecko при получении списка монет для ${category}:`, err.message);
+        return [];
+    }
+}
+
+async function getTechnicalIndicators(coinId) {
+    const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart`;
+    const params = { vs_currency: 'usd', days: HISTORICAL_DAYS, interval: 'daily' };
+    try {
+        const response = await axios.get(url, { params });
+        const prices = response.data.prices.map(p => p[1]); // Получаем только цены
+
+        if (prices.length < 50) return null; // Недостаточно данных для SMA(50)
+
+        const sma50 = SMA.calculate({ period: 50, values: prices }).pop();
+        const ema20 = EMA.calculate({ period: 20, values: prices }).pop();
+        const rsi14 = RSI.calculate({ period: 14, values: prices }).pop();
+
+        return { sma50, ema20, rsi: rsi14 };
+    } catch (err) {
+        console.error(`Ошибка API CoinGecko при получении исторических данных для ${coinId}:`, err.message);
+        return null;
+    }
+}
+
+// --- УВЕДОМЛЕНИЕ В TELEGRAM ---
+
+function escapeMarkdown(text) {
+    const chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'];
+    return text.replace(new RegExp(`[${chars.join('\\')}]`, 'g'), '\\$&');
+}
+
+async function sendTelegramMessage(message) {
+    try {
+        await bot.telegram.sendMessage(TELEGRAM_CHAT_ID, message, { parse_mode: 'MarkdownV2' });
+        console.log("Сообщение успешно отправлено в Telegram.");
+    } catch (err) {
+        console.error("Ошибка отправки сообщения в Telegram:", err);
+    }
+}
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// --- ОСНОВНАЯ ЛОГИКА ---
+
+async function main() {
+    console.log(`[${new Date().toISOString()}] Запуск скрипта...`);
+    
+    await setupDatabase();
+
+    for (const [networkName, category] of Object.entries(NETWORKS)) {
+        console.log(`\n--- Обработка сети: ${networkName} ---`);
+        const coinsData = await getTopCoinsData(category);
+        if (!coinsData || coinsData.length === 0) continue;
+
+        for (const coin of coinsData) {
+            const { id: coinId, symbol, current_price: currentPrice, total_volume: currentVolume } = coin;
+
+            if (!coinId || !currentPrice || !currentVolume) continue;
+            
+            const coinSymbol = symbol.toUpperCase();
+            const previousData = await getPreviousData(coinId, networkName);
+
+            if (previousData) {
+                const { price: prevPrice, volume: prevVolume } = previousData;
+
+                if (prevPrice > 0 && prevVolume > 0) {
+                    const priceChange = ((currentPrice - prevPrice) / prevPrice) * 100;
+                    const volumeChange = ((currentVolume - prevVolume) / prevVolume) * 100;
+
+                    if (priceChange >= PRICE_INCREASE_THRESHOLD && volumeChange >= VOLUME_INCREASE_THRESHOLD) {
+                        console.log(`Найдено совпадение для ${coinSymbol}: Рост цены ${priceChange.toFixed(2)}%, Рост объема ${volumeChange.toFixed(2)}%`);
+                        
+                        const indicators = await getTechnicalIndicators(coinId);
+                        if (indicators) {
+                            const { sma50, ema20, rsi } = indicators;
+                            const priceAboveEma20 = currentPrice > ema20;
+                            const priceAboveSma50 = currentPrice > sma50;
+                            const rsiInRange = rsi >= RSI_MIN && rsi <= RSI_MAX;
+
+                            if ((priceAboveEma20 || priceAboveSma50) && rsiInRange) {
+                                const message = escapeMarkdown(
+                                    `🚀 *Сигнал по монете: ${coinSymbol} (${networkName})*\n\n` +
+                                    `📈 *Рост цены:* ${priceChange.toFixed(2)}%\n` +
+                                    `📊 *Рост объема:* ${volumeChange.toFixed(2)}%\n\n` +
+                                    `🔹 *Текущая цена:* $${currentPrice.toLocaleString('en-US')}\n` +
+                                    `🔹 *Объем (24ч):* $${currentVolume.toLocaleString('en-US', { maximumFractionDigits: 0 })}\n` +
+                                    `🔹 *RSI(14):* ${rsi.toFixed(2)}\n\n` +
+                                    `✅ Цена пробила EMA(20) или SMA(50) вверх.`
+                                );
+                                await sendTelegramMessage(message);
+                            }
+                        }
+                    }
+                }
+            }
+            await insertData(coinId, networkName, currentPrice, currentVolume);
+        }
+        await sleep(10000); // Пауза 10 секунд между сетями
+    }
+
+    await cleanupOldData();
+    console.log(`[${new Date().toISOString()}] Скрипт завершил работу.`);
+}
+
+// Запуск главной функции
+main().catch(err => {
+    console.error("Произошла критическая ошибка в главной функции:", err);
+    process.exit(1);
+});
