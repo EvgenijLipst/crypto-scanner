@@ -169,7 +169,6 @@ async function getContractAddress(coinId, networkName) {
 }
 
 function escapeMarkdown(text) {
-    // Эта функция по-прежнему нужна для данных, приходящих извне
     const chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'];
     return String(text).replace(new RegExp(`[${chars.join('\\')}]`, 'g'), '\\$&');
 }
@@ -179,7 +178,8 @@ async function sendTelegramMessage(message) {
         await bot.telegram.sendMessage(TELEGRAM_CHAT_ID, message, { parse_mode: 'MarkdownV2' });
         console.log("Сообщение успешно отправлено в Telegram.");
     } catch (err) {
-        console.error("Ошибка отправки сообщения в Telegram:", err);
+        // Выводим более подробную ошибку для отладки
+        console.error("Ошибка отправки сообщения в Telegram:", err.response ? JSON.stringify(err.response, null, 2) : err);
     }
 }
 
@@ -223,7 +223,7 @@ async function main() {
                         console.log(`Найдено совпадение для ${coinSymbol}: Рост цены ${priceChange.toFixed(2)}%, Рост объема ${volumeChange.toFixed(2)}%`);
                         
                         console.log('Пауза перед запросом исторических данных...');
-                        await sleep(2000); 
+                        await sleep(7000); 
                         
                         const indicators = await getTechnicalIndicators(coinId);
                         if (indicators) {
@@ -234,21 +234,22 @@ async function main() {
 
                             if ((priceAboveEma20 || priceAboveSma50) && rsiInRange) {
                                 console.log('Пауза перед запросом контракта...');
-                                await sleep(2000);
+                                await sleep(7000);
                                 const contractAddress = await getContractAddress(coinId, networkName);
 
                                 // ===== ИЗМЕНЕНИЕ ЗДЕСЬ =====
-                                // Мы вручную экранируем скобки `(` и `)` с помощью `\`
+                                // Теперь мы оборачиваем КАЖДУЮ переменную, которая может содержать точку, в escapeMarkdown
                                 let messageText = `🚀 *Сигнал по монете: ${escapeMarkdown(coinSymbol)} \\(${escapeMarkdown(networkName)}\\)*\n\n` +
-                                                `📈 *Рост цены:* ${priceChange.toFixed(2)}%\n` +
-                                                `📊 *Рост объема:* ${volumeChange.toFixed(2)}%\n\n` +
+                                                `📈 *Рост цены:* ${escapeMarkdown(priceChange.toFixed(2))}%\n` +
+                                                `📊 *Рост объема:* ${escapeMarkdown(volumeChange.toFixed(2))}%\n\n` +
                                                 `🔹 *Текущая цена:* $${escapeMarkdown(currentPrice.toLocaleString('en-US'))}\n` +
                                                 `🔹 *Объем \\(24ч\\):* $${escapeMarkdown(Math.round(currentVolume).toLocaleString('en-US'))}\n` +
-                                                `🔹 *RSI\\(14\\):* ${rsi.toFixed(2)}\n\n` +
+                                                `🔹 *RSI\\(14\\):* ${escapeMarkdown(rsi.toFixed(2))}\n\n` +
                                                 `✅ Цена пробила EMA\\(20\\) или SMA\\(50\\) вверх\\.`;
                                 // ============================
 
                                 if (contractAddress) {
+                                    // Адрес контракта не нужно экранировать, т.к. он в блоке кода `...`
                                     messageText += `\n\n📝 *Контракт:*\n\`${contractAddress}\``;
                                 }
                                 
@@ -260,7 +261,7 @@ async function main() {
             }
             await insertData(coinId, networkName, currentPrice, currentVolume);
         }
-        await sleep(10000);
+        await sleep(15000);
     }
 
     await cleanupOldData();
