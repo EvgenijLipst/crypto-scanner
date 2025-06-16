@@ -1,8 +1,9 @@
 const { Pool } = require('pg');
 const axios = require('axios');
+const rateLimit = require('axios-rate-limit');
 const { Telegraf } = require('telegraf');
 
-// --- УПРОЩЕННАЯ КОНФИГУРАЦИЯ ---
+// --- КОНФИГУРАЦИЯ ---
 const DATABASE_URL = process.env.DATABASE_URL;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -12,7 +13,10 @@ if (!DATABASE_URL || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     process.exit(1);
 }
 
-// ===== ИЗМЕНЕНИЕ ЗДЕСЬ: Обновленный список сетей =====
+// --- Автоматический контроль лимитов API ---
+// Не более 5 запросов в 60 секунд (1 минута) для анонимного доступа
+const http = rateLimit(axios.create(), { maxRequests: 5, perMilliseconds: 60000 });
+
 const NETWORKS = {
     'BSC': 'binance-smart-chain',
     'Solana': 'solana-ecosystem',
@@ -28,7 +32,6 @@ const PLATFORM_ID_MAP = {
     'Optimism': 'optimistic-ethereum',
     'Arbitrum One': 'arbitrum-one'
 };
-// ========================================================
 
 const PRICE_INCREASE_THRESHOLD = 3.0;
 
@@ -79,7 +82,7 @@ async function getTopCoinsData(category) {
     const url = "https://api.coingecko.com/api/v3/coins/markets";
     const params = { vs_currency: 'usd', category: category, order: 'market_cap_desc', per_page: 250, page: 1, sparkline: 'false' };
     try {
-        const response = await axios.get(url, { params });
+        const response = await http.get(url, { params });
         return response.data;
     } catch (err) {
         console.error(`Ошибка API CoinGecko при получении списка монет для ${category}:`, err.message);
@@ -94,7 +97,7 @@ async function getContractAddress(coinId, networkName) {
     const url = `https://api.coingecko.com/api/v3/coins/${coinId}`;
     const params = { localization: 'false', tickers: 'false', market_data: 'false', community_data: 'false', developer_data: 'false', sparkline: 'false' };
     try {
-        const response = await axios.get(url, { params });
+        const response = await http.get(url, { params });
         const contractAddress = response.data?.platforms?.[platformId];
         return contractAddress || null;
     } catch (err) {
@@ -124,6 +127,7 @@ async function main() {
     for (const [networkName, category] of Object.entries(NETWORKS)) {
         console.log(`\n--- Обработка сети: ${networkName} ---`);
         const coinsData = await getTopCoinsData(category);
+        console.log(`Получено ${coinsData.length} монет для сети ${networkName}.`);
         
         if (!coinsData || coinsData.length === 0) {
             console.log(`Пропускаем сеть ${networkName}, так как не получено данных.`);
@@ -135,6 +139,9 @@ async function main() {
             if (!coinId || !currentPrice || !currentVolume) continue;
             
             const coinSymbol = symbol.toUpperCase();
+            // ВОЗВРАЩЕНО ЛОГИРОВАНИЕ КАЖДОЙ МОНЕТЫ
+            console.log(`  [${coinSymbol}] Сканирую... Цена: $${currentPrice}, Объем: $${Math.round(currentVolume).toLocaleString('en-US')}`);
+            
             const previousData = await getPreviousData(coinId, networkName);
 
             if (previousData) {
@@ -143,7 +150,7 @@ async function main() {
                     const priceChange = ((currentPrice - prevPrice) / prevPrice) * 100;
                     
                     if (priceChange >= PRICE_INCREASE_THRESHOLD) {
-                        const volumeChange = ((currentVolume - prevVolume) / prevVolume) * 100;
+                        const volumeChange = prevVolume > 0 ? ((currentVolume - prevVolume) / prevVolume) * 100 : 0;
                         
                         console.log(`Найдено совпадение для ${coinSymbol}: Рост цены ${priceChange.toFixed(2)}%`);
                         
