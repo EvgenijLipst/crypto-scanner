@@ -1,54 +1,39 @@
 const { Pool } = require('pg');
 const axios = require('axios');
-const rateLimit = require('axios-rate-limit');
 const { Telegraf } = require('telegraf');
-const { SMA, EMA, RSI } = require('technicalindicators');
 
-// --- КОНФИГУРАЦИЯ ---
+// --- УПРОЩЕННАЯ КОНФИГУРАЦИЯ ---
 const DATABASE_URL = process.env.DATABASE_URL;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY;
 
-// --- ИЗМЕНЕНИЕ: Добавлена проверка на ключ API ---
-if (!DATABASE_URL || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID || !COINGECKO_API_KEY) {
-    console.error("Ошибка: Не заданы все необходимые переменные окружения (DATABASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, COINGECKO_API_KEY)");
+if (!DATABASE_URL || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.error("Ошибка: Не заданы все необходимые переменные окружения (DATABASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)");
     process.exit(1);
 }
 
-// --- ИЗМЕНЕНИЕ: Снижен лимит запросов для надежности ---
-// Не более 5 запросов в 60 секунд (1 минута)
-const http = rateLimit(axios.create({
-    headers: { 'x-cg-demo-api-key': COINGECKO_API_KEY }
-}), { maxRequests: 5, perMilliseconds: 60000 });
-
-
+// ===== ИЗМЕНЕНИЕ ЗДЕСЬ: Обновленный список сетей =====
 const NETWORKS = {
-    'Ethereum': 'ethereum-ecosystem',
     'BSC': 'binance-smart-chain',
-    'Solana': 'solana-ecosystem'
+    'Solana': 'solana-ecosystem',
+    'Avalanche': 'avalanche-ecosystem',
+    'Optimism': 'optimism-ecosystem',
+    'Arbitrum One': 'arbitrum-ecosystem'
 };
 
 const PLATFORM_ID_MAP = {
-    'Ethereum': 'ethereum',
     'BSC': 'binance-smart-chain',
-    'Solana': 'solana'
+    'Solana': 'solana',
+    'Avalanche': 'avalanche',
+    'Optimism': 'optimistic-ethereum',
+    'Arbitrum One': 'arbitrum-one'
 };
+// ========================================================
 
 const PRICE_INCREASE_THRESHOLD = 3.0;
-const VOLUME_INCREASE_THRESHOLD = 15.0;
-const RSI_MIN = 40;
-const RSI_MAX = 70;
-const HISTORICAL_DAYS = 90;
 
 const dbPool = new Pool({ connectionString: DATABASE_URL });
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
-
-// ... (остальной код остается БЕЗ ИЗМЕНЕНИЙ) ...
-// Функции setupDatabase, getPreviousData, insertData, cleanupOldData, 
-// getTopCoinsData, getTechnicalIndicators, getContractAddress,
-// escapeMarkdown, sendTelegramMessage и main остаются точно такими же, как в прошлый раз.
-// Просто скопируйте этот файл целиком, чтобы заменить старый.
 
 async function setupDatabase() {
     const client = await dbPool.connect();
@@ -94,32 +79,11 @@ async function getTopCoinsData(category) {
     const url = "https://api.coingecko.com/api/v3/coins/markets";
     const params = { vs_currency: 'usd', category: category, order: 'market_cap_desc', per_page: 250, page: 1, sparkline: 'false' };
     try {
-        const response = await http.get(url, { params });
+        const response = await axios.get(url, { params });
         return response.data;
     } catch (err) {
         console.error(`Ошибка API CoinGecko при получении списка монет для ${category}:`, err.message);
         return [];
-    }
-}
-
-async function getTechnicalIndicators(coinId) {
-    const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart`;
-    const params = { vs_currency: 'usd', days: HISTORICAL_DAYS, interval: 'daily' };
-    try {
-        const response = await http.get(url, { params });
-        const prices = response.data.prices.map(p => p[1]);
-        console.log(`  -> Для ${coinId} получено ${prices.length} исторических точек для анализа.`);
-        if (prices.length < 50) {
-            console.log(`  -> Недостаточно данных для расчета SMA 50. Пропускаем теханализ.`);
-            return null;
-        }
-        const sma50 = SMA.calculate({ period: 50, values: prices }).pop();
-        const ema20 = EMA.calculate({ period: 20, values: prices }).pop();
-        const rsi14 = RSI.calculate({ period: 14, values: prices }).pop();
-        return { sma50, ema20, rsi: rsi14 };
-    } catch (err) {
-        console.error(`Ошибка API CoinGecko при получении исторических данных для ${coinId}:`, err.message);
-        return null;
     }
 }
 
@@ -130,7 +94,7 @@ async function getContractAddress(coinId, networkName) {
     const url = `https://api.coingecko.com/api/v3/coins/${coinId}`;
     const params = { localization: 'false', tickers: 'false', market_data: 'false', community_data: 'false', developer_data: 'false', sparkline: 'false' };
     try {
-        const response = await http.get(url, { params });
+        const response = await axios.get(url, { params });
         const contractAddress = response.data?.platforms?.[platformId];
         return contractAddress || null;
     } catch (err) {
@@ -160,7 +124,7 @@ async function main() {
     for (const [networkName, category] of Object.entries(NETWORKS)) {
         console.log(`\n--- Обработка сети: ${networkName} ---`);
         const coinsData = await getTopCoinsData(category);
-        console.log(`Получено ${coinsData.length} монет для сети ${networkName}.`);
+        
         if (!coinsData || coinsData.length === 0) {
             console.log(`Пропускаем сеть ${networkName}, так как не получено данных.`);
             continue;
@@ -171,42 +135,32 @@ async function main() {
             if (!coinId || !currentPrice || !currentVolume) continue;
             
             const coinSymbol = symbol.toUpperCase();
-            console.log(`  [${coinSymbol}] Сканирую... Цена: $${currentPrice}, Объем: $${Math.round(currentVolume).toLocaleString('en-US')}`);
-            
             const previousData = await getPreviousData(coinId, networkName);
 
             if (previousData) {
                 const { price: prevPrice, volume: prevVolume } = previousData;
-                if (prevPrice > 0 && prevVolume > 0) {
+                if (prevPrice > 0) {
                     const priceChange = ((currentPrice - prevPrice) / prevPrice) * 100;
-                    const volumeChange = ((currentVolume - prevVolume) / prevVolume) * 100;
-
-                    if (priceChange >= PRICE_INCREASE_THRESHOLD) { // Используем ИЛИ, как вы выбрали
-                        console.log(`Найдено совпадение для ${coinSymbol}: Рост цены ${priceChange.toFixed(2)}%, Рост объема ${volumeChange.toFixed(2)}%`);
+                    
+                    if (priceChange >= PRICE_INCREASE_THRESHOLD) {
+                        const volumeChange = ((currentVolume - prevVolume) / prevVolume) * 100;
                         
-                        const indicators = await getTechnicalIndicators(coinId);
-                        if (indicators) {
-                            const { sma50, ema20, rsi } = indicators;
-                            const priceAboveEma20 = currentPrice > ema20;
-                            const priceAboveSma50 = currentPrice > sma50;
-                            const rsiInRange = rsi >= RSI_MIN && rsi <= RSI_MAX;
+                        console.log(`Найдено совпадение для ${coinSymbol}: Рост цены ${priceChange.toFixed(2)}%`);
+                        
+                        const contractAddress = await getContractAddress(coinId, networkName);
+                        
+                        let messageText = `🚀 *Сигнал по монете: ${escapeMarkdown(coinSymbol)} \\(${escapeMarkdown(networkName)}\\)*\n\n` +
+                                        `📈 *Рост цены:* ${escapeMarkdown(priceChange.toFixed(2))}%\n` +
+                                        `📊 *Рост объема:* ${escapeMarkdown(volumeChange.toFixed(2))}%\n\n` +
+                                        `🔹 *Текущая цена:* $${escapeMarkdown(currentPrice.toLocaleString('en-US', {minimumFractionDigits: 3, maximumFractionDigits: 6}))}\n` +
+                                        `🔹 *Предыдущая цена:* $${escapeMarkdown(prevPrice.toLocaleString('en-US', {minimumFractionDigits: 3, maximumFractionDigits: 6}))}\n` +
+                                        `🔹 *Объем \\(24ч\\):* $${escapeMarkdown(Math.round(currentVolume).toLocaleString('en-US'))}`;
 
-                            if ((priceAboveEma20 || priceAboveSma50) && rsiInRange) {
-                                const contractAddress = await getContractAddress(coinId, networkName);
-                                
-                                let messageText = `🚀 *Сигнал по монете: ${escapeMarkdown(coinSymbol)} \\(${escapeMarkdown(networkName)}\\)*\n\n` +
-                                                `📈 *Рост цены:* ${escapeMarkdown(priceChange.toFixed(2))}%\n` +
-                                                `📊 *Рост объема:* ${escapeMarkdown(volumeChange.toFixed(2))}%\n\n` +
-                                                `🔹 *Текущая цена:* $${escapeMarkdown(currentPrice.toLocaleString('en-US'))}\n` +
-                                                `🔹 *Объем \\(24ч\\):* $${escapeMarkdown(Math.round(currentVolume).toLocaleString('en-US'))}\n` +
-                                                `🔹 *RSI\\(14\\):* ${escapeMarkdown(rsi.toFixed(2))}\n\n` +
-                                                `✅ Цена пробила EMA\\(20\\) или SMA\\(50\\) вверх\\.`;
-                                if (contractAddress) {
-                                    messageText += `\n\n📝 *Контракт:*\n\`${contractAddress}\``;
-                                }
-                                await sendTelegramMessage(messageText);
-                            }
+                        if (contractAddress) {
+                            messageText += `\n\n📝 *Контракт:*\n\`${contractAddress}\``;
                         }
+                        
+                        await sendTelegramMessage(messageText);
                     }
                 }
             }
