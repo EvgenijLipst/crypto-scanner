@@ -20,13 +20,11 @@ const NETWORKS = {
     'Solana': 'solana-ecosystem'
 };
 
-// --- НОВОЕ: Карта сетей для получения адреса контракта ---
 const PLATFORM_ID_MAP = {
     'Ethereum': 'ethereum',
     'BSC': 'binance-smart-chain',
     'Solana': 'solana'
 };
-// ----------------------------------------------------
 
 const PRICE_INCREASE_THRESHOLD = 3.0;
 const VOLUME_INCREASE_THRESHOLD = 15.0;
@@ -123,8 +121,13 @@ async function getTechnicalIndicators(coinId) {
     try {
         const response = await axios.get(url, { params });
         const prices = response.data.prices.map(p => p[1]);
+        
+        console.log(`  -> Для ${coinId} получено ${prices.length} исторических точек для анализа.`);
 
-        if (prices.length < 50) return null;
+        if (prices.length < 50) {
+            console.log(`  -> Недостаточно данных для расчета SMA 50. Пропускаем теханализ.`);
+            return null;
+        }
 
         const sma50 = SMA.calculate({ period: 50, values: prices }).pop();
         const ema20 = EMA.calculate({ period: 20, values: prices }).pop();
@@ -137,7 +140,6 @@ async function getTechnicalIndicators(coinId) {
     }
 }
 
-// --- НОВАЯ ФУНКЦИЯ для получения адреса контракта ---
 async function getContractAddress(coinId, networkName) {
     const platformId = PLATFORM_ID_MAP[networkName];
     if (!platformId) {
@@ -158,7 +160,6 @@ async function getContractAddress(coinId, networkName) {
 
     try {
         const response = await axios.get(url, { params });
-        // Безопасно получаем адрес с помощью optional chaining
         const contractAddress = response.data?.platforms?.[platformId];
         return contractAddress || null;
     } catch (err) {
@@ -166,11 +167,11 @@ async function getContractAddress(coinId, networkName) {
         return null;
     }
 }
-// ----------------------------------------------------
 
 function escapeMarkdown(text) {
+    // Эта функция по-прежнему нужна для данных, приходящих извне
     const chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'];
-    return text.replace(new RegExp(`[${chars.join('\\')}]`, 'g'), '\\$&');
+    return String(text).replace(new RegExp(`[${chars.join('\\')}]`, 'g'), '\\$&');
 }
 
 async function sendTelegramMessage(message) {
@@ -206,10 +207,8 @@ async function main() {
             if (!coinId || !currentPrice || !currentVolume) continue;
             
             const coinSymbol = symbol.toUpperCase();
-
-            // --- НОВОЕ: Логирование каждой монеты ---
+            
             console.log(`  [${coinSymbol}] Сканирую... Цена: $${currentPrice}, Объем: $${Math.round(currentVolume).toLocaleString('en-US')}`);
-            // ------------------------------------
             
             const previousData = await getPreviousData(coinId, networkName);
 
@@ -234,25 +233,24 @@ async function main() {
                             const rsiInRange = rsi >= RSI_MIN && rsi <= RSI_MAX;
 
                             if ((priceAboveEma20 || priceAboveSma50) && rsiInRange) {
-                                // --- НОВОЕ: Получаем адрес контракта только при сигнале ---
                                 console.log('Пауза перед запросом контракта...');
-                                await sleep(2000); // Еще одна пауза, чтобы не попасть в лимит
+                                await sleep(2000);
                                 const contractAddress = await getContractAddress(coinId, networkName);
-                                // ----------------------------------------------------
 
-                                // --- НОВОЕ: Формируем сообщение с адресом контракта ---
-                                let messageText = `🚀 *Сигнал по монете: ${escapeMarkdown(coinSymbol)} (${escapeMarkdown(networkName)})*\n\n` +
+                                // ===== ИЗМЕНЕНИЕ ЗДЕСЬ =====
+                                // Мы вручную экранируем скобки `(` и `)` с помощью `\`
+                                let messageText = `🚀 *Сигнал по монете: ${escapeMarkdown(coinSymbol)} \\(${escapeMarkdown(networkName)}\\)*\n\n` +
                                                 `📈 *Рост цены:* ${priceChange.toFixed(2)}%\n` +
                                                 `📊 *Рост объема:* ${volumeChange.toFixed(2)}%\n\n` +
                                                 `🔹 *Текущая цена:* $${escapeMarkdown(currentPrice.toLocaleString('en-US'))}\n` +
-                                                `🔹 *Объем (24ч):* $${escapeMarkdown(Math.round(currentVolume).toLocaleString('en-US'))}\n` +
-                                                `🔹 *RSI(14):* ${rsi.toFixed(2)}\n\n` +
-                                                `✅ Цена пробила EMA(20) или SMA(50) вверх.`;
+                                                `🔹 *Объем \\(24ч\\):* $${escapeMarkdown(Math.round(currentVolume).toLocaleString('en-US'))}\n` +
+                                                `🔹 *RSI\\(14\\):* ${rsi.toFixed(2)}\n\n` +
+                                                `✅ Цена пробила EMA\\(20\\) или SMA\\(50\\) вверх\\.`;
+                                // ============================
 
                                 if (contractAddress) {
                                     messageText += `\n\n📝 *Контракт:*\n\`${contractAddress}\``;
                                 }
-                                // ------------------------------------------------------
                                 
                                 await sendTelegramMessage(messageText);
                             }
