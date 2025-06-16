@@ -10,18 +10,18 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY;
 
-// --- Профессиональная обработка лимитов API ---
-// Создаем экземпляр axios с автоматическим ограничением скорости
-// и передачей API-ключа в заголовках по умолчанию.
-// Не более 8 запросов в 60 секунд (1 минута).
-const http = rateLimit(axios.create({
-    headers: { 'x-cg-demo-api-key': COINGECKO_API_KEY }
-}), { maxRequests: 8, perMilliseconds: 60000 });
-
-if (!DATABASE_URL || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-    console.error("Ошибка: Не заданы все необходимые переменные окружения (DATABASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)");
+// --- ИЗМЕНЕНИЕ: Добавлена проверка на ключ API ---
+if (!DATABASE_URL || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID || !COINGECKO_API_KEY) {
+    console.error("Ошибка: Не заданы все необходимые переменные окружения (DATABASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, COINGECKO_API_KEY)");
     process.exit(1);
 }
+
+// --- ИЗМЕНЕНИЕ: Снижен лимит запросов для надежности ---
+// Не более 5 запросов в 60 секунд (1 минута)
+const http = rateLimit(axios.create({
+    headers: { 'x-cg-demo-api-key': COINGECKO_API_KEY }
+}), { maxRequests: 5, perMilliseconds: 60000 });
+
 
 const NETWORKS = {
     'Ethereum': 'ethereum-ecosystem',
@@ -43,6 +43,12 @@ const HISTORICAL_DAYS = 90;
 
 const dbPool = new Pool({ connectionString: DATABASE_URL });
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
+
+// ... (остальной код остается БЕЗ ИЗМЕНЕНИЙ) ...
+// Функции setupDatabase, getPreviousData, insertData, cleanupOldData, 
+// getTopCoinsData, getTechnicalIndicators, getContractAddress,
+// escapeMarkdown, sendTelegramMessage и main остаются точно такими же, как в прошлый раз.
+// Просто скопируйте этот файл целиком, чтобы заменить старый.
 
 async function setupDatabase() {
     const client = await dbPool.connect();
@@ -175,7 +181,7 @@ async function main() {
                     const priceChange = ((currentPrice - prevPrice) / prevPrice) * 100;
                     const volumeChange = ((currentVolume - prevVolume) / prevVolume) * 100;
 
-                    if (priceChange >= PRICE_INCREASE_THRESHOLD || volumeChange >= VOLUME_INCREASE_THRESHOLD) {
+                    if (priceChange >= PRICE_INCREASE_THRESHOLD || volumeChange >= VOLUME_INCREASE_THRESHOLD) { // Используем ИЛИ, как вы выбрали
                         console.log(`Найдено совпадение для ${coinSymbol}: Рост цены ${priceChange.toFixed(2)}%, Рост объема ${volumeChange.toFixed(2)}%`);
                         
                         const indicators = await getTechnicalIndicators(coinId);
