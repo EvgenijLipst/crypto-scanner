@@ -1,9 +1,8 @@
 const { Pool } = require('pg');
 const axios = require('axios');
-const rateLimit = require('axios-rate-limit');
 const { Telegraf } = require('telegraf');
 
-// --- КОНФИГУРАЦИЯ ---
+// --- УПРОЩЕННАЯ КОНФИГУРАЦИЯ ---
 const DATABASE_URL = process.env.DATABASE_URL;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -13,8 +12,8 @@ if (!DATABASE_URL || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     process.exit(1);
 }
 
-// --- Автоматический контроль лимитов API ---
-// Не более 5 запросов в 60 секунд (1 минута) для анонимного доступа
+// Работаем анонимно, но с ограничением скорости, чтобы избежать ошибок 429
+const rateLimit = require('axios-rate-limit');
 const http = rateLimit(axios.create(), { maxRequests: 5, perMilliseconds: 60000 });
 
 const NETWORKS = {
@@ -122,6 +121,11 @@ async function sendTelegramMessage(message) {
 
 async function main() {
     console.log(`[${new Date().toISOString()}] Запуск скрипта...`);
+    
+    // ===== ИЗМЕНЕНИЕ 1: Создаем "память" для этого запуска =====
+    const sentSymbolsInThisRun = new Set();
+    // ==========================================================
+    
     await setupDatabase();
 
     for (const [networkName, category] of Object.entries(NETWORKS)) {
@@ -139,7 +143,6 @@ async function main() {
             if (!coinId || !currentPrice || !currentVolume) continue;
             
             const coinSymbol = symbol.toUpperCase();
-            // ВОЗВРАЩЕНО ЛОГИРОВАНИЕ КАЖДОЙ МОНЕТЫ
             console.log(`  [${coinSymbol}] Сканирую... Цена: $${currentPrice}, Объем: $${Math.round(currentVolume).toLocaleString('en-US')}`);
             
             const previousData = await getPreviousData(coinId, networkName);
@@ -150,24 +153,34 @@ async function main() {
                     const priceChange = ((currentPrice - prevPrice) / prevPrice) * 100;
                     
                     if (priceChange >= PRICE_INCREASE_THRESHOLD) {
-                        const volumeChange = prevVolume > 0 ? ((currentVolume - prevVolume) / prevVolume) * 100 : 0;
                         
-                        console.log(`Найдено совпадение для ${coinSymbol}: Рост цены ${priceChange.toFixed(2)}%`);
-                        
-                        const contractAddress = await getContractAddress(coinId, networkName);
-                        
-                        let messageText = `🚀 *Сигнал по монете: ${escapeMarkdown(coinSymbol)} \\(${escapeMarkdown(networkName)}\\)*\n\n` +
-                                        `📈 *Рост цены:* ${escapeMarkdown(priceChange.toFixed(2))}%\n` +
-                                        `📊 *Рост объема:* ${escapeMarkdown(volumeChange.toFixed(2))}%\n\n` +
-                                        `🔹 *Текущая цена:* $${escapeMarkdown(currentPrice.toLocaleString('en-US', {minimumFractionDigits: 3, maximumFractionDigits: 6}))}\n` +
-                                        `🔹 *Предыдущая цена:* $${escapeMarkdown(prevPrice.toLocaleString('en-US', {minimumFractionDigits: 3, maximumFractionDigits: 6}))}\n` +
-                                        `🔹 *Объем \\(24ч\\):* $${escapeMarkdown(Math.round(currentVolume).toLocaleString('en-US'))}`;
+                        // ===== ИЗМЕНЕНИЕ 2: Проверяем, не отправляли ли мы уже сигнал по этой монете =====
+                        if (!sentSymbolsInThisRun.has(coinSymbol)) {
+                            const volumeChange = prevVolume > 0 ? ((currentVolume - prevVolume) / prevVolume) * 100 : 0;
+                            
+                            console.log(`Найдено совпадение для ${coinSymbol}: Рост цены ${priceChange.toFixed(2)}%`);
+                            
+                            const contractAddress = await getContractAddress(coinId, networkName);
+                            
+                            let messageText = `🚀 *Сигнал по монете: ${escapeMarkdown(coinSymbol)} \\(${escapeMarkdown(networkName)}\\)*\n\n` +
+                                            `📈 *Рост цены:* ${escapeMarkdown(priceChange.toFixed(2))}%\n` +
+                                            `📊 *Рост объема:* ${escapeMarkdown(volumeChange.toFixed(2))}%\n\n` +
+                                            `🔹 *Текущая цена:* $${escapeMarkdown(currentPrice.toLocaleString('en-US', {minimumFractionDigits: 3, maximumFractionDigits: 6}))}\n` +
+                                            `🔹 *Предыдущая цена:* $${escapeMarkdown(prevPrice.toLocaleString('en-US', {minimumFractionDigits: 3, maximumFractionDigits: 6}))}\n` +
+                                            `🔹 *Объем \\(24ч\\):* $${escapeMarkdown(Math.round(currentVolume).toLocaleString('en-US'))}`;
 
-                        if (contractAddress) {
-                            messageText += `\n\n📝 *Контракт:*\n\`${contractAddress}\``;
+                            if (contractAddress) {
+                                messageText += `\n\n📝 *Контракт:*\n\`${contractAddress}\``;
+                            }
+                            
+                            await sendTelegramMessage(messageText);
+
+                            // ===== ИЗМЕНЕНИЕ 3: Запоминаем, что отправили сигнал по этой монете =====
+                            sentSymbolsInThisRun.add(coinSymbol);
+                            // ======================================================================
+                        } else {
+                            console.log(`  -> Сигнал для ${coinSymbol} уже был отправлен в этой итерации. Пропускаем.`);
                         }
-                        
-                        await sendTelegramMessage(messageText);
                     }
                 }
             }
