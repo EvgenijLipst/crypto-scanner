@@ -219,7 +219,7 @@ async function main() {
                     const priceChange = ((currentPrice - prevPrice) / prevPrice) * 100;
                     const volumeChange = ((currentVolume - prevVolume) / prevVolume) * 100;
 
-                    if (priceChange >= PRICE_INCREASE_THRESHOLD && volumeChange >= VOLUME_INCREASE_THRESHOLD) {
+                    if (priceChange >= PRICE_INCREASE_THRESHOLD || volumeChange >= VOLUME_INCREASE_THRESHOLD) {
                         console.log(`Найдено совпадение для ${coinSymbol}: Рост цены ${priceChange.toFixed(2)}%, Рост объема ${volumeChange.toFixed(2)}%`);
                         
                         console.log('Пауза перед запросом исторических данных...');
