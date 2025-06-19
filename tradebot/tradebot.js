@@ -13,7 +13,7 @@ const {
 const fetch = require("cross-fetch");
 const bs58 = require("bs58");
 const TelegramBot = require("node-telegram-bot-api");
-const { Pool } = require("pg");
+const { Pool } = require("pg"); // ИСПРАВЛЕНО: Используем Pool для надежности
 
 // — Переменные окружения (Railway Variables) —
 const SOLANA_RPC_URL                = process.env.SOLANA_RPC_URL;
@@ -291,7 +291,6 @@ async function processSignal(connection, wallet, signal) {
   
   let buyPricePerToken;
   let tradeId, initialBought, initialSpent;
-
   try {
     console.log("[Purchase] Starting purchase phase");
     const usdcLamports = Math.round(AMOUNT_TO_SWAP_USD * 10 ** USDC_DECIMALS);
@@ -325,7 +324,7 @@ async function processSignal(connection, wallet, signal) {
   } catch (e) {
       console.error("[Purchase] Purchase phase failed:", e);
       await notify(`🚨 **Purchase Failed** for \`${mintAddress}\`:\n\`${e.message}\``);
-      return;
+      return; 
   }
 
   console.log("[Trailing] Starting position monitoring");
