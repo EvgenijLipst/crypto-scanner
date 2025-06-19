@@ -13,7 +13,7 @@ const {
 const fetch = require("cross-fetch");
 const bs58 = require("bs58");
 const TelegramBot = require("node-telegram-bot-api");
-const { Pool } = require("pg"); // ИСПРАВЛЕНО: Используем Pool
+const { Pool } = require("pg"); // ИСПРАВЛЕНО: Используем Pool для надежности
 
 // — Переменные окружения (Railway Variables) —
 const SOLANA_RPC_URL                = process.env.SOLANA_RPC_URL;
@@ -31,7 +31,6 @@ const SLIPPAGE_BPS                  = parseInt(process.env.SLIPPAGE_BPS, 10) || 
 const MAX_HOLDING_TIME_HOURS        = parseFloat(process.env.MAX_HOLDING_TIME_HOURS) || 24;
 const TIMEOUT_SELL_PL_THRESHOLD     = parseFloat(process.env.TIMEOUT_SELL_PL_THRESHOLD) || -0.01;
 
-
 // — Жёстко зашитые константы —
 const USDC_MINT             = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 const USDC_DECIMALS         = 6;
@@ -40,13 +39,12 @@ const COOLDOWN_HOURS        = 1.0;
 
 // — Инициализация —
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: false });
-// ИСПРАВЛЕНО: Инициализируем Pool вместо Client
-const pool  = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
+const pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
 // — Утилита: достать следующий сигнал из таблицы — 
 async function fetchNextSignal() {
   console.log("[Signal] Checking for new signals...");
-  const res = await pool.query( // ИСПРАВЛЕНО: Используем pool
+  const res = await pool.query(
     `SELECT id, token_mint
        FROM signals
       WHERE processed = false
@@ -258,6 +256,7 @@ async function processSignal(connection, wallet, signal) {
   if (usdcBalance < requiredUsdcLamports) {
       console.log(`[Validation] Insufficient USDC balance. Have: ${usdcBalance}, Need: ${requiredUsdcLamports}`);
       await notify(`⚠️ **Insufficient Balance**\nNot enough USDC to perform swap.\nRequired: \`${AMOUNT_TO_SWAP_USD}\` USDC.`);
+      await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
       return;
   }
   
@@ -275,7 +274,7 @@ async function processSignal(connection, wallet, signal) {
 
   const { ok, impactPct } = await runPriceImpactCheck(connection, outputMint, outputDecimals);
   if (!ok) {
-    await notify(`⚠️ **Safety L1 Failed**\nToken: \`${mintAddress}\`\nImpact: \`${impactPct.toFixed(2)}%\``);
+    await notify(`⚠️ **Safety Check L1 Failed**\nToken: \`${mintAddress}\`\nImpact: \`${impactPct.toFixed(2)}%\` > \`${SAFE_PRICE_IMPACT_PERCENT}%\``);
     await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
     return;
   }
@@ -377,7 +376,6 @@ async function processSignal(connection, wallet, signal) {
           console.log(`[Sale] Selling ${pct}% => ${amountSell} lamports`);
           try {
             await approveToken(connection, wallet, outputMint, amountSell);
-
             const sellQuote = await getQuote(outputMint, USDC_MINT, amountSell);
             const { swapTransaction: sellTx, lastValidBlockHeight: sellLVBH } = await getSwapTransaction(
               sellQuote,
@@ -480,7 +478,6 @@ async function setupDatabase() {
 
 (async () => {
   await setupDatabase();
-  // ИСПРАВЛЕНО: убираем лишний db.connect()
   console.log("--- Tradebot worker started ---");
   await notify("🚀 Tradebot worker started!");
 
