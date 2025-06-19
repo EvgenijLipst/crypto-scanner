@@ -16,7 +16,7 @@ if (!DATABASE_URL || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID || !COINGECKO_API_
   process.exit(1);
 }
 
-// Ограничение по запросам к CoinGecko
+// Rate‐limit для CoinGecko
 const http = rateLimit(
   axios.create({ headers: { 'x-cg-demo-api-key': COINGECKO_API_KEY } }),
   { maxRequests: 15, perMilliseconds: 60_000 }
@@ -27,11 +27,11 @@ const NETWORK_NAME    = 'Solana';
 const PLATFORM_ID     = 'solana';
 const PRICE_THRESHOLD = 3.0;                // % порог роста
 
-// Инициализация PostgreSQL и Telegram
+// Инициализация БД и Telegram
 const dbPool = new Pool({ connectionString: DATABASE_URL });
 const bot    = new Telegraf(TELEGRAM_BOT_TOKEN);
 
-// Создание необходимых таблиц
+// Создание таблиц при первом запуске
 async function setupDatabase() {
   const client = await dbPool.connect();
   try {
@@ -47,7 +47,7 @@ async function setupDatabase() {
     `);
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_coin_network_time
-      ON coin_data (coin_id, network, timestamp DESC);
+        ON coin_data (coin_id, network, timestamp DESC);
     `);
     await client.query(`
       CREATE TABLE IF NOT EXISTS signals (
@@ -62,7 +62,7 @@ async function setupDatabase() {
   }
 }
 
-// Получение предыдущей записи по монете
+// Получить последнюю запись по монете
 async function getPreviousData(coinId) {
   const res = await dbPool.query(
     `SELECT price, volume
@@ -75,7 +75,7 @@ async function getPreviousData(coinId) {
   return res.rows[0] || null;
 }
 
-// Вставка текущих данных
+// Вставить текущие данные
 async function insertData(coinId, price, volume) {
   await dbPool.query(
     `INSERT INTO coin_data(coin_id, network, price, volume)
@@ -84,7 +84,7 @@ async function insertData(coinId, price, volume) {
   );
 }
 
-// Удаление старых данных старше 24 часов
+// Удалить старые данные старше 24 часов
 async function cleanupOldData() {
   await dbPool.query(
     `DELETE FROM coin_data
@@ -92,7 +92,7 @@ async function cleanupOldData() {
   );
 }
 
-// Получение топ-250 монет Solana по капитализации
+// Запрос топ-250 монет Solana
 async function getTopCoins() {
   const url = 'https://api.coingecko.com/api/v3/coins/markets';
   const params = {
@@ -107,7 +107,7 @@ async function getTopCoins() {
   return res.data;
 }
 
-// Получение адреса контракта в Solana
+// Получить контрактный адрес в Solana
 async function getContractAddress(coinId) {
   const url = `https://api.coingecko.com/api/v3/coins/${coinId}`;
   const params = {
@@ -122,18 +122,13 @@ async function getContractAddress(coinId) {
   return res.data.platforms[PLATFORM_ID] || null;
 }
 
-// Экранирование Markdown-символов
 function escapeMarkdown(txt) {
   return String(txt).replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
 }
 
-// Отправка сообщения в Telegram
 async function sendTelegram(text) {
-  await bot.telegram.sendMessage(
-    TELEGRAM_CHAT_ID,
-    text,
-    { parse_mode: 'MarkdownV2' }
-  );
+  console.log("[Telegram]", text.replace(/\n/g, " | "));
+  await bot.telegram.sendMessage(TELEGRAM_CHAT_ID, text, { parse_mode: 'MarkdownV2' });
 }
 
 async function main() {
@@ -141,39 +136,49 @@ async function main() {
   await setupDatabase();
 
   const coins = await getTopCoins();
+  console.log(`[${new Date().toISOString()}] Fetched ${coins.length} coins`);
+
   const signaled = new Set();
 
   for (const coin of coins) {
     const { id, symbol, current_price: price, total_volume: volume } = coin;
     if (!id || !price || !volume) continue;
 
+    console.log(`[Scanner] ${symbol.toUpperCase()}: price=$${price} volume=$${Math.round(volume)}`);
+
     const prev = await getPreviousData(id);
-    if (prev) {
-      const change = ((price - prev.price) / prev.price) * 100;
-      if (change >= PRICE_THRESHOLD && !signaled.has(id)) {
-        const contract = await getContractAddress(id);
-        let message =
-          `🚀 *${escapeMarkdown(symbol.toUpperCase())}* on *${NETWORK_NAME}*\n\n` +
-          `📈 Price up: *${escapeMarkdown(change.toFixed(2))}%*\n` +
-          `💰 Current: $${escapeMarkdown(price.toFixed(6))}\n` +
-          `🔄 Prev: $${escapeMarkdown(prev.price.toFixed(6))}\n` +
-          `📊 Volume: $${escapeMarkdown(Math.round(volume).toLocaleString())}`;
-        if (contract) {
-          message += `\n\n📝 Contract:\n\`${contract}\``;
-        }
+    if (!prev) {
+      // первая запись
+      await insertData(id, price, volume);
+      continue;
+    }
 
-        await sendTelegram(message);
+    const change = ((price - prev.price) / prev.price) * 100;
+    console.log(`  Δ price = ${change.toFixed(2)}%`);
 
-        if (contract) {
-          await dbPool.query(
-            `INSERT INTO signals(token_mint) VALUES($1);`,
-            [contract]
-          );
-          console.log(`Signal queued: ${contract}`);
-        }
-
-        signaled.add(id);
+    if (change >= PRICE_THRESHOLD && !signaled.has(id)) {
+      const contract = await getContractAddress(id);
+      let msg =
+        `🚀 *${escapeMarkdown(symbol.toUpperCase())}* on *${NETWORK_NAME}*\n\n` +
+        `📈 Price up: *${escapeMarkdown(change.toFixed(2))}%*\n` +
+        `💰 Current: $${escapeMarkdown(price.toFixed(6))}\n` +
+        `🔄 Prev: $${escapeMarkdown(prev.price.toFixed(6))}\n` +
+        `📊 Volume: $${escapeMarkdown(Math.round(volume).toLocaleString())}`;
+      if (contract) {
+        msg += `\n\n📝 Contract:\n\`${contract}\``;
       }
+      await sendTelegram(msg);
+      console.log(`[Scanner] Signal sent for ${symbol.toUpperCase()}`);
+
+      if (contract) {
+        await dbPool.query(
+          `INSERT INTO signals(token_mint) VALUES($1);`,
+          [contract]
+        );
+        console.log(`[Scanner] Queued signal: ${contract}`);
+      }
+
+      signaled.add(id);
     }
 
     await insertData(id, price, volume);
