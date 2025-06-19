@@ -13,7 +13,7 @@ const {
 const fetch = require("cross-fetch");
 const bs58 = require("bs58");
 const TelegramBot = require("node-telegram-bot-api");
-const { Pool } = require("pg"); // ИСПРАВЛЕНО: Используем Pool для надежности
+const { Pool } = require("pg");
 
 // — Переменные окружения (Railway Variables) —
 const SOLANA_RPC_URL                = process.env.SOLANA_RPC_URL;
@@ -30,6 +30,7 @@ const SIGNAL_CHECK_INTERVAL_MS      = parseInt(process.env.SIGNAL_CHECK_INTERVAL
 const SLIPPAGE_BPS                  = parseInt(process.env.SLIPPAGE_BPS, 10) || 50; 
 const MAX_HOLDING_TIME_HOURS        = parseFloat(process.env.MAX_HOLDING_TIME_HOURS) || 24;
 const TIMEOUT_SELL_PL_THRESHOLD     = parseFloat(process.env.TIMEOUT_SELL_PL_THRESHOLD) || -0.01;
+
 
 // — Жёстко зашитые константы —
 const USDC_MINT             = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
@@ -288,35 +289,44 @@ async function processSignal(connection, wallet, signal) {
   await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
   await notify(`✅ **All safety checks passed for** \`${mintAddress}\`. Starting purchase.`);
   
-  console.log("[Purchase] Starting purchase phase");
-  const usdcLamports = Math.round(AMOUNT_TO_SWAP_USD * 10 ** USDC_DECIMALS);
-  await approveToken(connection, wallet, USDC_MINT, usdcLamports);
-  const buyQuote = await getQuote(USDC_MINT, outputMint, usdcLamports);
-  const { swapTransaction, lastValidBlockHeight } = await getSwapTransaction(
-    buyQuote,
-    wallet.publicKey.toBase58()
-  );
-  const buyTxid = await executeTransaction(connection, swapTransaction, wallet, lastValidBlockHeight);
-  await revokeToken(connection, wallet, USDC_MINT);
+  let buyPricePerToken;
+  let tradeId, initialBought, initialSpent;
 
-  const boughtTokens     = Number(buyQuote.outAmount) / 10 ** outputDecimals;
-  const buyPricePerToken = AMOUNT_TO_SWAP_USD / boughtTokens;
-  console.log(`[Purchase] Bought ${boughtTokens.toFixed(6)} @ ${buyPricePerToken.toFixed(6)} USDC/token, tx=${buyTxid}`);
-  await notify(
-    `✅ **Purchased**\nToken: \`${mintAddress}\`\n` +
-    `Amount: \`${boughtTokens.toFixed(4)}\`\n` +
-    `Price: \`${buyPricePerToken.toFixed(6)}\` USDC\n` +
-    `Spent: \`${AMOUNT_TO_SWAP_USD.toFixed(2)}\` USDC\n` +
-    `[Tx](https://solscan.io/tx/${buyTxid})`
-  );
+  try {
+    console.log("[Purchase] Starting purchase phase");
+    const usdcLamports = Math.round(AMOUNT_TO_SWAP_USD * 10 ** USDC_DECIMALS);
+    await approveToken(connection, wallet, USDC_MINT, usdcLamports);
+    const buyQuote = await getQuote(USDC_MINT, outputMint, usdcLamports);
+    const { swapTransaction, lastValidBlockHeight } = await getSwapTransaction(
+      buyQuote,
+      wallet.publicKey.toBase58()
+    );
+    const buyTxid = await executeTransaction(connection, swapTransaction, wallet, lastValidBlockHeight);
+    await revokeToken(connection, wallet, USDC_MINT);
 
-  const res = await pool.query(
-    `INSERT INTO trades(mint,bought_amount,spent_usdc,buy_tx,created_at)
-     VALUES($1,$2,$3,$4,NOW()) RETURNING id, bought_amount, spent_usdc;`,
-    [mintAddress, boughtTokens, AMOUNT_TO_SWAP_USD, buyTxid]
-  );
-  const { id: tradeId, bought_amount: initialBought, spent_usdc: initialSpent } = res.rows[0];
-  console.log(`[DB] Inserted trade id=${tradeId}`);
+    const boughtTokens = Number(buyQuote.outAmount) / 10 ** outputDecimals;
+    buyPricePerToken = AMOUNT_TO_SWAP_USD / boughtTokens;
+    console.log(`[Purchase] Bought ${boughtTokens.toFixed(6)} @ ${buyPricePerToken.toFixed(6)} USDC/token, tx=${buyTxid}`);
+    await notify(
+      `✅ **Purchased**\nToken: \`${mintAddress}\`\n` +
+      `Amount: \`${boughtTokens.toFixed(4)}\`\n` +
+      `Price: \`${buyPricePerToken.toFixed(6)}\` USDC\n` +
+      `Spent: \`${AMOUNT_TO_SWAP_USD.toFixed(2)}\` USDC\n` +
+      `[Tx](https://solscan.io/tx/${buyTxid})`
+    );
+
+    const res = await pool.query(
+      `INSERT INTO trades(mint,bought_amount,spent_usdc,buy_tx,created_at)
+       VALUES($1,$2,$3,$4,NOW()) RETURNING id, bought_amount, spent_usdc;`,
+      [mintAddress, boughtTokens, AMOUNT_TO_SWAP_USD, buyTxid]
+    );
+    ({ id: tradeId, bought_amount: initialBought, spent_usdc: initialSpent } = res.rows[0]);
+    console.log(`[DB] Inserted trade id=${tradeId}`);
+  } catch (e) {
+      console.error("[Purchase] Purchase phase failed:", e);
+      await notify(`🚨 **Purchase Failed** for \`${mintAddress}\`:\n\`${e.message}\``);
+      return;
+  }
 
   console.log("[Trailing] Starting position monitoring");
   let highestPrice      = buyPricePerToken;
@@ -331,11 +341,11 @@ async function processSignal(connection, wallet, signal) {
     try {
       const priceQuote = await getQuote(outputMint, USDC_MINT, 10 ** outputDecimals);
       const currentPrice  = Number(priceQuote.outAmount) / 10 ** outputDecimals;
-      highest = Math.max(highest, currentPrice);
+      highestPrice = Math.max(highestPrice, currentPrice);
 
       const elapsedHours = (Date.now() - purchaseTimestamp) / (3600 * 1000);
       const currentPL    = (currentPrice - purchasePrice) / purchasePrice;
-      const stopPrice    = highest * (1 - TRAILING_STOP_PERCENTAGE / 100);
+      const stopPrice    = highestPrice * (1 - TRAILING_STOP_PERCENTAGE / 100);
 
       console.log(`[Trailing] price=${currentPrice.toFixed(6)}, P/L=${(currentPL*100).toFixed(2)}%, stop=${stopPrice.toFixed(6)}, time=${elapsedHours.toFixed(1)}h`);
       
@@ -432,6 +442,7 @@ async function processSignal(connection, wallet, signal) {
     } catch(e) {
         console.error("[Trailing] Error in trailing loop", e.message);
         await notify(`Crashed in trailing loop for ${mintAddress}: ${e.message}`);
+        break; 
     }
   }
 }
