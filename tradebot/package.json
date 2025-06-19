@@ -1,13 +1,15 @@
 {
   "name": "tradebot",
   "version": "1.0.0",
+  "description": "Solana trading bot",
   "main": "tradebot.js",
   "scripts": {
-    "start": "node tradebot.js"
+    "start": "node tradebot.js",
+    "revoke": "node scripts/revoke-approvals.js"
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.2",
-    "@solana/spl-token": "^0.3.0",        // ← добавьте эту строку
+    "@solana/spl-token": "^0.3.0",
     "cross-fetch": "^4.1.0",
     "bs58": "^5.0.0"
   }
