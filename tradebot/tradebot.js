@@ -13,7 +13,7 @@ const {
 const fetch = require("cross-fetch");
 const bs58 = require("bs58");
 const TelegramBot = require("node-telegram-bot-api");
-const { Client: PgClient } = require("pg");
+const { Pool } = require("pg"); // ИСПРАВЛЕНО: Используем Pool
 
 // — Переменные окружения (Railway Variables) —
 const SOLANA_RPC_URL                = process.env.SOLANA_RPC_URL;
@@ -28,25 +28,25 @@ const SAFE_PRICE_IMPACT_PERCENT     = parseFloat(process.env.SAFE_PRICE_IMPACT_P
 const PRICE_CHECK_INTERVAL_MS       = parseInt(process.env.PRICE_CHECK_INTERVAL_MS, 10) || 5000;
 const SIGNAL_CHECK_INTERVAL_MS      = parseInt(process.env.SIGNAL_CHECK_INTERVAL_MS, 10) || 5000;
 const SLIPPAGE_BPS                  = parseInt(process.env.SLIPPAGE_BPS, 10) || 50; 
-// НОВЫЕ ПЕРЕМЕННЫЕ
 const MAX_HOLDING_TIME_HOURS        = parseFloat(process.env.MAX_HOLDING_TIME_HOURS) || 24;
 const TIMEOUT_SELL_PL_THRESHOLD     = parseFloat(process.env.TIMEOUT_SELL_PL_THRESHOLD) || -0.01;
 
 
 // — Жёстко зашитые константы —
 const USDC_MINT             = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-
+const USDC_DECIMALS         = 6;
 const SWAP_PROGRAM_ID       = new PublicKey("JUP4Fb2cFoZz7n6RzbA7gHq9jz6yJ3zyZhftyPS87ya");
 const COOLDOWN_HOURS        = 1.0;
 
 // — Инициализация —
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: false });
-const db  = new PgClient({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
+// ИСПРАВЛЕНО: Инициализируем Pool вместо Client
+const pool  = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
 // — Утилита: достать следующий сигнал из таблицы — 
 async function fetchNextSignal() {
   console.log("[Signal] Checking for new signals...");
-  const res = await db.query(
+  const res = await pool.query( // ИСПРАВЛЕНО: Используем pool
     `SELECT id, token_mint
        FROM signals
       WHERE processed = false
@@ -235,20 +235,20 @@ async function processSignal(connection, wallet, signal) {
   const mintAddress = outputMint.toBase58();
   console.log(`\n=== Processing ${mintAddress} ===`);
 
-  const activePositionRes = await db.query(`SELECT id FROM trades WHERE mint = $1 AND closed_at IS NULL LIMIT 1`, [mintAddress]);
+  const activePositionRes = await pool.query(`SELECT id FROM trades WHERE mint = $1 AND closed_at IS NULL LIMIT 1`, [mintAddress]);
   if (activePositionRes.rows.length > 0) {
     console.log(`[Validation] Position for ${mintAddress} is already active (trade id ${activePositionRes.rows[0].id}). Skipping signal.`);
-    await db.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
+    await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
     return;
   }
 
-  const cooldownCheckRes = await db.query(`SELECT closed_at FROM trades WHERE mint = $1 ORDER BY closed_at DESC LIMIT 1`, [mintAddress]);
+  const cooldownCheckRes = await pool.query(`SELECT closed_at FROM trades WHERE mint = $1 ORDER BY closed_at DESC LIMIT 1`, [mintAddress]);
   if (cooldownCheckRes.rows.length > 0) {
       const lastClosed = new Date(cooldownCheckRes.rows[0].closed_at);
       const hoursSinceClose = (new Date() - lastClosed) / 3600000;
       if (hoursSinceClose < COOLDOWN_HOURS) {
           console.log(`[Validation] Cooldown period for ${mintAddress} is active (last sale ${hoursSinceClose.toFixed(2)}h ago). Skipping signal.`);
-          await db.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
+          await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
           return;
       }
   }
@@ -264,28 +264,29 @@ async function processSignal(connection, wallet, signal) {
   let outputDecimals;
   try {
     const tokenInfo = await connection.getParsedAccountInfo(outputMint);
+    if (!tokenInfo || !tokenInfo.value) throw new Error("Could not fetch token info from chain");
     outputDecimals = tokenInfo.value.data.parsed.info.decimals;
     console.log(`[Info] Token decimals for ${mintAddress} is ${outputDecimals}`);
   } catch(e) {
     await notify(`🚨 **Error**\nCould not fetch token info for \`${mintAddress}\`. Skipping.`);
-    await db.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
+    await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
     return;
   }
 
-  const { ok, impactPct } = await runPriceImpactCheck(outputMint);
+  const { ok, impactPct } = await runPriceImpactCheck(connection, outputMint, outputDecimals);
   if (!ok) {
-    await notify(`⚠️ **Safety Check L1 Failed**\nToken: \`${mintAddress}\`\nImpact: \`${impactPct.toFixed(2)}%\``);
-    await db.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
+    await notify(`⚠️ **Safety L1 Failed**\nToken: \`${mintAddress}\`\nImpact: \`${impactPct.toFixed(2)}%\``);
+    await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
     return;
   }
 
   const isNotRugPull = await checkRugPullRisk(outputMint);
   if (!isNotRugPull) {
-    await db.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
+    await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
     return;
   }
   
-  await db.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
+  await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
   await notify(`✅ **All safety checks passed for** \`${mintAddress}\`. Starting purchase.`);
   
   console.log("[Purchase] Starting purchase phase");
@@ -310,7 +311,7 @@ async function processSignal(connection, wallet, signal) {
     `[Tx](https://solscan.io/tx/${buyTxid})`
   );
 
-  const res = await db.query(
+  const res = await pool.query(
     `INSERT INTO trades(mint,bought_amount,spent_usdc,buy_tx,created_at)
      VALUES($1,$2,$3,$4,NOW()) RETURNING id, bought_amount, spent_usdc;`,
     [mintAddress, boughtTokens, AMOUNT_TO_SWAP_USD, buyTxid]
@@ -343,8 +344,8 @@ async function processSignal(connection, wallet, signal) {
       
       const elapsedHoursSinceLastCheck = (Date.now() - lastLiquidityCheckTimestamp) / (3600 * 1000);
       if (elapsedHoursSinceLastCheck >= 1) {
-          console.log(`[Trailing] Hourly liquidity check...`);
-          const { ok } = await runPriceImpactCheck(outputMint);
+          console.log(`[Trailing] Hourly safety check...`);
+          const { ok } = await runPriceImpactCheck(connection, outputMint, outputDecimals);
           if(!ok) {
               console.warn(`[Trailing] HOURLY SAFETY CHECK FAILED! Initiating emergency sale.`);
               sellReason = "Hourly Safety Check Failed";
@@ -366,6 +367,7 @@ async function processSignal(connection, wallet, signal) {
         console.log(`[Sale] Triggered by: ${sellReason}. Starting cascading sell...`);
         await notify(`🔔 **Sale Triggered** for \`${mintAddress}\`\nReason: ${sellReason}`);
         let balance = await findTokenBalance(connection, wallet, outputMint);
+        let soldAmount = 0;
 
         for (const pct of [100, 50, 25]) {
           if (balance === 0) break;
@@ -386,6 +388,7 @@ async function processSignal(connection, wallet, signal) {
 
             const usdcReceived = Number(sellQuote.outAmount) / 10 ** USDC_DECIMALS;
             totalUSDC        += usdcReceived;
+            soldAmount       += Number(sellQuote.route.inAmount) / (10**outputDecimals);
             
             console.log(`[Sale] Sold ${pct}% => received=${usdcReceived.toFixed(6)} USDC, tx=${sellTxid}`);
             await notify(
@@ -393,7 +396,7 @@ async function processSignal(connection, wallet, signal) {
               `Received: \`${usdcReceived.toFixed(4)}\` USDC\n` +
               `[Tx](https://solscan.io/tx/${sellTxid})`
             );
-            await new Promise(r => setTimeout(r, 5000)); // wait for balance update
+            await new Promise(r => setTimeout(r, 5000));
             balance = await findTokenBalance(connection, wallet, outputMint);
           } catch(e) {
             console.error(`[Sale] Sell attempt for ${pct}% failed.`, e.message);
@@ -415,7 +418,7 @@ async function processSignal(connection, wallet, signal) {
           `[Final Tx](https://solscan.io/tx/${lastSellTx})`
         );
 
-        await db.query(
+        await pool.query(
           `UPDATE trades
               SET sold_amount   = $1,
                   received_usdc = $2,
@@ -423,7 +426,7 @@ async function processSignal(connection, wallet, signal) {
                   sell_tx       = $4,
                   closed_at     = NOW()
             WHERE id = $5;`,
-          [initialBought, totalUSDC, pnl, lastSellTx, tradeId]
+          [soldAmount, totalUSDC, pnl, lastSellTx, tradeId]
         );
         console.log(`[DB] Updated trade id=${tradeId} with sale info`);
         break;
@@ -436,7 +439,7 @@ async function processSignal(connection, wallet, signal) {
 }
 
 async function setupDatabase() {
-    const client = await db.connect();
+    const client = await pool.connect();
     try {
         await client.query(`
             CREATE TABLE IF NOT EXISTS trades (
@@ -474,9 +477,10 @@ async function setupDatabase() {
     }
 }
 
+
 (async () => {
   await setupDatabase();
-  await db.connect();
+  // ИСПРАВЛЕНО: убираем лишний db.connect()
   console.log("--- Tradebot worker started ---");
   await notify("🚀 Tradebot worker started!");
 
@@ -502,5 +506,6 @@ async function setupDatabase() {
 })().catch(async err => {
   console.error("Fatal error, exiting:", err);
   await notify(`💀 **FATAL SHUTDOWN**: \`${err.message}\``);
+  await pool.end();
   process.exit(1);
 });
