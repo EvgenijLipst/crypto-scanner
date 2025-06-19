@@ -2,9 +2,9 @@
   "name": "tradebot",
   "version": "1.0.0",
   "description": "Solana trading bot for Railway deployment",
-  "main": "tradebot/tradebot.js",
+  "main": "tradebot.js",
   "scripts": {
-    "start": "node tradebot/tradebot.js"
+    "start": "node tradebot.js"
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.2",
