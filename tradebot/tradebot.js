@@ -13,7 +13,7 @@ const {
 const fetch = require("cross-fetch");
 const bs58 = require("bs58");
 const TelegramBot = require("node-telegram-bot-api");
-const { Pool } = require("pg"); // ИСПРАВЛЕНО: Используем Pool для надежности
+const { Pool } = require("pg");
 
 // — Переменные окружения (Railway Variables) —
 const SOLANA_RPC_URL                = process.env.SOLANA_RPC_URL;
@@ -461,7 +461,8 @@ async function setupDatabase() {
                 received_usdc DOUBLE PRECISION,
                 pnl DOUBLE PRECISION,
                 sell_tx TEXT,
-                closed_at TIMESTAMPTZ
+                closed_at TIMESTAMPTZ,
+                UNIQUE(mint, closed_at)
             );
         `);
         const res = await client.query("SELECT to_regclass('public.signals');");
@@ -493,6 +494,17 @@ async function setupDatabase() {
 
   const wallet     = Keypair.fromSecretKey(bs58.decode(WALLET_PRIVATE_KEY));
   const connection = new Connection(SOLANA_RPC_URL, "confirmed");
+
+  const gracefulShutdown = async (signal) => {
+    console.log(`[Shutdown] Received ${signal}. Shutting down gracefully...`);
+    await notify(`🤖 Bot shutting down due to ${signal}...`);
+    await pool.end();
+    console.log("[Shutdown] Database pool closed.");
+    process.exit(0);
+  };
+  
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
   while (true) {
     try {
