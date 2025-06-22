@@ -278,9 +278,10 @@ async function checkRugPullRisk(outputMint) {
         console.log(`[Safety L2] OK`);
         return true;
     } catch (error) {
-        console.warn(`[Safety L2] Warning: Could not perform rug pull check. Proceeding with caution. Error: ${error.message}`);
-        await notify(`🟡 **Safety L2 Warning**\nCould not perform rug pull check for \`${outputMint.toBase58()}\`. Proceeding with caution.`);
-        return true;
+        // --- ИЗМЕНЕНИЯ ЗДЕСЬ ---
+        console.error(`[Safety L2] CRITICAL: Could not perform rug pull check. SKIPPING TOKEN. Error: ${error.message}`);
+        await notify(`🚨 **Safety L2 CRITICAL**\nCould not perform rug pull check for \`${outputMint.toBase58()}\`. **Skipping token as a precaution.**`);
+        return false; // <-- "fail-closed"
     }
 }
 
