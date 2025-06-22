@@ -37,6 +37,7 @@ const SIGNAL_CHECK_INTERVAL_MS      = parseInt(process.env.SIGNAL_CHECK_INTERVAL
 const SLIPPAGE_BPS                  = parseInt(process.env.SLIPPAGE_BPS, 10) || 50; 
 const MAX_HOLDING_TIME_HOURS        = parseFloat(process.env.MAX_HOLDING_TIME_HOURS) || 24;
 const TIMEOUT_SELL_PL_THRESHOLD     = parseFloat(process.env.TIMEOUT_SELL_PL_THRESHOLD) || -0.01;
+const TSL_CONFIRMATIONS             = parseInt(process.env.TSL_CONFIRMATIONS, 10) || 3;
 
 
 // — Жёстко зашитые константы —
@@ -430,6 +431,7 @@ async function notify(text, botInstanceId = 'global') {
     // === НАЧАЛО ЦИКЛА МОНИТОРИНГА (ФИНАЛЬНАЯ ВЕРСИЯ) ===
     console.log("[Trailing] Starting position monitoring");
     let highestPrice = buyPricePerToken;
+    let stopLossTriggerCount = 0;
     const purchasePrice = buyPricePerToken;
     const purchaseTimestamp = Date.now();
     let lastLiquidityCheckTimestamp = Date.now();
@@ -460,9 +462,25 @@ async function notify(text, botInstanceId = 'global') {
                 lastLiquidityCheckTimestamp = Date.now();
             }
   
-            if (!sellReason && currentPrice <= stopPrice) {
-                sellReason = "Trailing Stop-Loss";
-            } else if (!sellReason && elapsedHours >= MAX_HOLDING_TIME_HOURS) {
+            // --- НАЧАЛО НОВОЙ ЛОГИКИ ЗАЩИТЫ ОТ "СКВИЗОВ" ---
+            if (!sellReason) { // Проверяем TSL, только если еще нет другой причины для продажи
+              if (currentPrice <= stopPrice) {
+                  stopLossTriggerCount++;
+                  console.log(`[TSL] Stop-loss breached. Confirmation count: ${stopLossTriggerCount}/${TSL_CONFIRMATIONS}`);
+              } else {
+                  if (stopLossTriggerCount > 0) {
+                      console.log('[TSL] Price recovered above stop-loss. Resetting TSL confirmation counter.');
+                  }
+                  stopLossTriggerCount = 0; // Если цена восстановилась, сбрасываем счетчик
+              }
+  
+              if (stopLossTriggerCount >= TSL_CONFIRMATIONS) {
+                  sellReason = `Trailing Stop-Loss (${TSL_CONFIRMATIONS} confirmations)`;
+              }
+            }
+            // --- КОНЕЦ НОВОЙ ЛОГИКИ ЗАЩИТЫ ОТ "СКВИЗОВ" ---
+  
+            if (!sellReason && elapsedHours >= MAX_HOLDING_TIME_HOURS) {
                 if (currentPL <= TIMEOUT_SELL_PL_THRESHOLD) {
                     sellReason = `Max Holding Time (${MAX_HOLDING_TIME_HOURS}h) with Loss`;
                 } else {
@@ -471,79 +489,83 @@ async function notify(text, botInstanceId = 'global') {
             }
   
             if (sellReason) {
-              console.log(`[Sale] Triggered by: ${sellReason}. Starting cascading sell...`);
-              await notify(`🔔 **Sale Triggered** for \`${mintAddress}\`\nReason: ${sellReason}`, botInstanceId);
-              
-              let balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
-              let soldAmount = 0;
-              let totalUSDC = 0;
-              let lastSellTx = null;
-              let wasAnySaleSuccessful = false;
+                // Вся логика продажи (if (sellReason) { ... }) остается без изменений
+                // Просто скопируйте ее из вашего файла или из моего предыдущего ответа
+                // ...
+                // Это тот самый большой блок с каскадной продажей, который мы уже исправляли
+                // ...
+                // В конце этого блока должен быть 'break;'
+                console.log(`[Sale] Triggered by: ${sellReason}. Starting cascading sell...`);
+                await notify(`🔔 **Sale Triggered** for \`${mintAddress}\`\nReason: ${sellReason}`, botInstanceId);
+                
+                let balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
+                let soldAmount = 0;
+                let wasAnySaleSuccessful = false; 
   
-              for (const pct of [100, 50, 25]) {
-                  if (balance === 0) break;
-                  const amountSell = Math.floor(balance * pct / 100);
-                  if (amountSell === 0) continue;
+                for (const pct of [100, 50, 25]) {
+                    if (balance === 0) break;
+                    const amountSell = Math.floor(balance * pct / 100);
+                    if (amountSell === 0) continue;
   
-                  console.log(`[Sale] Selling ${pct}% => ${amountSell} lamports`);
-                  try {
-                      await approveToken(connection, wallet, outputMint, amountSell);
-                      const sellQuote = await getQuote(outputMint, USDC_MINT, amountSell);
-                      const { swapTransaction: sellTx, lastValidBlockHeight: sellLVBH } = await getSwapTransaction(sellQuote, wallet.publicKey.toBase58());
-                      const sellTxid = await executeTransaction(connection, sellTx, wallet, sellLVBH);
-                      lastSellTx = sellTxid;
+                    console.log(`[Sale] Selling ${pct}% => ${amountSell} lamports`);
+                    try {
+                        await approveToken(connection, wallet, outputMint, amountSell);
+                        const sellQuote = await getQuote(outputMint, USDC_MINT, amountSell);
+                        const { swapTransaction: sellTx, lastValidBlockHeight: sellLVBH } = await getSwapTransaction(sellQuote, wallet.publicKey.toBase58());
+                        const sellTxid = await executeTransaction(connection, sellTx, wallet, sellLVBH);
+                        lastSellTx = sellTxid;
   
-                      const usdcReceived = Number(sellQuote.outAmount) / 10 ** USDC_DECIMALS;
-                      totalUSDC += usdcReceived;
-                      const tokensSoldInChunk = Number(sellQuote.inAmount) / (10 ** outputDecimals);
-                      soldAmount += tokensSoldInChunk;
-                      const sellPrice = usdcReceived / tokensSoldInChunk;
-                      
-                      wasAnySaleSuccessful = true;
+                        const usdcReceived = Number(sellQuote.outAmount) / 10 ** USDC_DECIMALS;
+                        totalUSDC += usdcReceived;
+                        const tokensSoldInChunk = Number(sellQuote.inAmount) / (10 ** outputDecimals);
+                        soldAmount += tokensSoldInChunk;
+                        const sellPrice = usdcReceived / tokensSoldInChunk;
+                        
+                        wasAnySaleSuccessful = true;
   
-                      console.log(`[Sale] Sold ${pct}% => received=${usdcReceived.toFixed(6)} USDC, tx=${sellTxid}`);
-                      await notify(
-                          `🔻 **Sold ${pct}%** of \`${mintAddress}\`\n` +
-                          `Price: \`${sellPrice.toFixed(6)}\` USDC\n` + 
-                          `Received: \`${usdcReceived.toFixed(4)}\` USDC\n` +
-                          `[Tx](https://solscan.io/tx/${sellTxid})`,
-                          botInstanceId
-                      );
-                      await new Promise(r => setTimeout(r, 5000));
-                      balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
-                  } catch (e) {
-                      console.error(`[Sale] Sell attempt for ${pct}% failed.`, e.message);
-                      await notify(`🚨 **Sale Error (${pct}%)** for \`${mintAddress}\`:\n\`${e.message}\``, botInstanceId);
-                  }
-              }
-              
-              if (!wasAnySaleSuccessful) {
-                  throw new Error("SELL_EXECUTION_FAILED");
-              }
+                        console.log(`[Sale] Sold ${pct}% => received=${usdcReceived.toFixed(6)} USDC, tx=${sellTxid}`);
+                        await notify(
+                            `🔻 **Sold ${pct}%** of \`${mintAddress}\`\n` +
+                            `Price: \`${sellPrice.toFixed(6)}\` USDC\n` + 
+                            `Received: \`${usdcReceived.toFixed(4)}\` USDC\n` +
+                            `[Tx](https://solscan.io/tx/${sellTxid})`,
+                            botInstanceId
+                        );
+                        await new Promise(r => setTimeout(r, 5000));
+                        balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
+                    } catch (e) {
+                        console.error(`[Sale] Sell attempt for ${pct}% failed.`, e.message);
+                        await notify(`🚨 **Sale Error (${pct}%)** for \`${mintAddress}\`:\n\`${e.message}\``, botInstanceId);
+                    }
+                }
+                
+                if (!wasAnySaleSuccessful) {
+                    throw new Error("SELL_EXECUTION_FAILED");
+                }
   
-              if (await findTokenBalance(connection, wallet, outputMint, botInstanceId) > 0) {
-                  console.log("[Sale] Final revoke for remaining balance");
-                  await revokeToken(connection, wallet, outputMint);
-              }
+                if (await findTokenBalance(connection, wallet, outputMint, botInstanceId) > 0) {
+                    console.log("[Sale] Final revoke for remaining balance");
+                    await revokeToken(connection, wallet, outputMint);
+                }
   
-              const pnl = totalUSDC - initialSpent;
-              console.log(`[PNL] spent=${initialSpent.toFixed(2)}, received=${totalUSDC.toFixed(2)}, pnl=${pnl.toFixed(2)}`);
-              await notify(
-                  `💰 **Trade Complete** for \`${mintAddress}\`\n` +
-                  `Bought for: \`${initialSpent.toFixed(2)}\` USDC\n` +
-                  `Sold for: \`${totalUSDC.toFixed(2)}\` USDC\n` +
-                  `**PnL: \`${pnl.toFixed(2)}\` USDC**\n` +
-                  `[Final Tx](https://solscan.io/tx/${lastSellTx})`, 
-                  botInstanceId
-              );
+                const pnl = totalUSDC - initialSpent;
+                console.log(`[PNL] spent=${initialSpent.toFixed(2)}, received=${totalUSDC.toFixed(2)}, pnl=${pnl.toFixed(2)}`);
+                await notify(
+                    `💰 **Trade Complete** for \`${mintAddress}\`\n` +
+                    `Bought for: \`${initialSpent.toFixed(2)}\` USDC\n` +
+                    `Sold for: \`${totalUSDC.toFixed(2)}\` USDC\n` +
+                    `**PnL: \`${pnl.toFixed(2)}\` USDC**\n` +
+                    `[Final Tx](https://solscan.io/tx/${lastSellTx})`, 
+                    botInstanceId
+                );
   
-              await pool.query(
-                  `UPDATE trades SET sold_amount=$1, received_usdc=$2, pnl=$3, sell_tx=$4, closed_at=NOW() WHERE id=$5;`,
-                  [soldAmount, totalUSDC, pnl, lastSellTx, tradeId]
-              );
-              console.log(`[DB] Updated trade id=${tradeId} with sale info`);
-              break; 
-          }
+                await pool.query(
+                    `UPDATE trades SET sold_amount=$1, received_usdc=$2, pnl=$3, sell_tx=$4, closed_at=NOW() WHERE id=$5;`,
+                    [soldAmount, totalUSDC, pnl, lastSellTx, tradeId]
+                );
+                console.log(`[DB] Updated trade id=${tradeId} with sale info`);
+                break; 
+            }
         } catch (e) {
             console.error(`[Trailing] Error in trailing loop for ${mintAddress}:`, e.message);
   
