@@ -226,18 +226,30 @@ async function revokeToken(connection, wallet, mint) {
 }
 
 async function findTokenBalance(connection, wallet, mint) {
-  try {
-    const resp = await connection.getParsedTokenAccountsByOwner(wallet.publicKey, { mint }, "finalized");
-    // ЭТА СТРОКА ДЛЯ ДИАГНОСТИКИ
-    console.log('[RAW RPC RESPONSE for findTokenBalance]:', JSON.stringify(resp, null, 2));
-    const bal = resp.value.length > 0 ? parseInt(resp.value[0].account.data.parsed.info.tokenAmount.amount, 10) : 0;
-    console.log(`[Balance] ${mint.toBase58()} balance = ${bal}`);
-    return bal;
-  } catch (e) {
-    console.error("Failed to find token balance", e);
-    return 0;
+    const MAX_RETRIES = 3; // Количество попыток
+    const RETRY_DELAY_MS = 2000; // Пауза между попытками в миллисекундах (2 секунды)
+  
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const resp = await connection.getParsedTokenAccountsByOwner(wallet.publicKey, { mint }, "finalized");
+        // Убираем или комментируем детальный лог, он нам больше не нужен для постоянной работы
+        // console.log('[RAW RPC RESPONSE for findTokenBalance]:', JSON.stringify(resp, null, 2));
+        const bal = resp.value.length > 0 ? parseInt(resp.value[0].account.data.parsed.info.tokenAmount.amount, 10) : 0;
+        console.log(`[Balance] ${mint.toBase58()} balance = ${bal} (Attempt ${attempt}/${MAX_RETRIES})`);
+        return bal; // Успех! Возвращаем баланс и выходим из цикла.
+      } catch (e) {
+        console.error(`[Balance] Failed to find token balance on attempt ${attempt}/${MAX_RETRIES}:`, e.message);
+        if (attempt === MAX_RETRIES) {
+          // Если это была последняя попытка, сообщаем о полном провале
+          await notify(`🚨 **CRITICAL RPC ERROR**\nFailed to get wallet balance after ${MAX_RETRIES} attempts. Skipping signal.`);
+          return 0; // Сдаемся и возвращаем 0
+        }
+        // Ждем перед следующей попыткой
+        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+      }
+    }
+    return 0; // На всякий случай, если цикл не сработает
   }
-}
 
 async function runPriceImpactCheck(connection, outputMint, outputDecimals) {
     console.log(`[Safety L1] Running Price Impact Check for ${outputMint.toBase58()}`);
