@@ -15,6 +15,9 @@ const bs58 = require("bs58");
 const { Telegraf } = require("telegraf");
 const { Pool } = require("pg");
 
+// Генерируем уникальный ID для этого запуска бота
+const botInstanceId = Math.random().toString(36).substring(2, 8);
+
 // — Переменные окружения (Railway Variables) —
 const SOLANA_RPC_URL                = process.env.SOLANA_RPC_URL;
 const WALLET_PRIVATE_KEY            = process.env.WALLET_PRIVATE_KEY;
@@ -282,14 +285,15 @@ async function checkRugPullRisk(outputMint) {
 }
 
 
-async function notify(text) {
-  try {
-    console.log("[Notify] " + text.replace(/\n/g, " | "));
-    await bot.telegram.sendMessage(TELEGRAM_CHAT_ID, text, { parse_mode: 'Markdown' });
-  } catch (e) {
-    console.error("Telegram notification failed:", e.message);
+async function notify(text, botInstanceId = 'global') {
+    try {
+      const message = `[${botInstanceId}] ${text}`; // Формируем сообщение с ID
+      console.log("[Notify] " + message.replace(/\n/g, " | "));
+      await bot.telegram.sendMessage(TELEGRAM_CHAT_ID, message, { parse_mode: 'Markdown' });
+    } catch (e) {
+      console.error("Telegram notification failed:", e.message);
+    }
   }
-}
 
 async function processSignal(connection, wallet, signal) {
   const { id: signalId, mint: outputMint } = signal;
@@ -599,16 +603,15 @@ function startHealthCheckServer() {
 
 
 (async () => {
-    await setupDatabase();
-    
-    // ЗАПУСКАЕМ СЕРВЕР ПРОВЕРКИ ЗДОРОВЬЯ В ФОНЕ
-    startHealthCheckServer(); 
+    const botInstanceId = Math.random().toString(36).substring(2, 8); // <--- ВОТ ЭТА СТРОКА ДОБАВЛЕНА
   
+    await setupDatabase();
     console.log("--- Tradebot worker started ---");
-  await notify("🚀 Tradebot worker started!");
-
-  const wallet     = Keypair.fromSecretKey(bs58.decode(WALLET_PRIVATE_KEY));
-  const connection = new Connection(SOLANA_RPC_URL, "confirmed");
+    // И сразу начинаем использовать ID в уведомлениях
+    await notify("🚀 Tradebot worker started!", botInstanceId); 
+  
+    const wallet     = Keypair.fromSecretKey(bs58.decode(WALLET_PRIVATE_KEY));
+    const connection = new Connection(SOLANA_RPC_URL, "confirmed");
 
   const gracefulShutdown = async (signal) => {
     console.log(`[Shutdown] Received ${signal}. Shutting down gracefully...`);
