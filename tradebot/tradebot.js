@@ -327,11 +327,16 @@ async function notify(text, botInstanceId = 'global') {
   const usdcBalance = await findTokenBalance(connection, wallet, USDC_MINT);
   const requiredUsdcLamports = Math.round(AMOUNT_TO_SWAP_USD * 10 ** USDC_DECIMALS);
   if (usdcBalance < requiredUsdcLamports) {
-      console.log(`[Validation] Insufficient USDC balance. Have: ${usdcBalance}, Need: ${requiredUsdcLamports}`);
-      await notify(`⚠️ **Insufficient Balance**\nNot enough USDC to perform swap.\nRequired: \`${AMOUNT_TO_SWAP_USD}\` USDC.`);
-      await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
-      return;
-  }
+    console.log(`[Validation] Insufficient USDC balance for ${mintAddress}. Have: ${usdcBalance}, Need: ${requiredUsdcLamports}`);
+    // Формируем новое, более информативное сообщение
+    const notifyMessage = `⚠️ **Insufficient Balance**\n` + 
+                          `Token: \`${mintAddress}\`\n` +
+                          `Not enough USDC to perform swap.\n` +
+                          `Required: \`${AMOUNT_TO_SWAP_USD}\` USDC.`;
+    await notify(notifyMessage, botInstanceId); // <-- Передаем ID
+    await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
+    return;
+}
   
   let outputDecimals;
   try {
