@@ -398,11 +398,11 @@ async function notify(text, botInstanceId = 'global') {
     );
     ({ id: tradeId, bought_amount: initialBought, spent_usdc: initialSpent } = res.rows[0]);
     console.log(`[DB] Inserted trade id=${tradeId}`);
-  } catch (e) {
-      console.error("[Purchase] Purchase phase failed:", e);
-      await notify(`🚨 **Purchase Failed** for \`${mintAddress}\`:\n\`${e.message}\``);
-      return; 
-  }
+} catch (e) {
+    console.error("[Purchase] Purchase phase failed:", e);
+    await notify(`🚨 **Purchase Failed** for \`${mintAddress}\`:\n\`${e.message}\``, botInstanceId);
+    return; 
+}
 
   // === НАЧАЛО ЦИКЛА МОНИТОРИНГА ===
   console.log("[Trailing] Starting position monitoring");
