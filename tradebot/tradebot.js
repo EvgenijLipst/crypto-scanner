@@ -227,7 +227,9 @@ async function revokeToken(connection, wallet, mint) {
 
 async function findTokenBalance(connection, wallet, mint) {
   try {
-    const resp = await connection.getParsedTokenAccountsByOwner(wallet.publicKey, { mint }, "confirmed");
+    const resp = await connection.getParsedTokenAccountsByOwner(wallet.publicKey, { mint }, "finalized");
+    // ЭТА СТРОКА ДЛЯ ДИАГНОСТИКИ
+    console.log('[RAW RPC RESPONSE for findTokenBalance]:', JSON.stringify(resp, null, 2));
     const bal = resp.value.length > 0 ? parseInt(resp.value[0].account.data.parsed.info.tokenAmount.amount, 10) : 0;
     console.log(`[Balance] ${mint.toBase58()} balance = ${bal}`);
     return bal;
