@@ -578,10 +578,33 @@ async function setupDatabase() {
     }
 }
 
+function startHealthCheckServer() {
+    // Используем встроенный модуль http, чтобы не добавлять лишних зависимостей
+    const http = require('http');
+    
+    // Railway предоставляет порт в переменной окружения PORT
+    const PORT = process.env.PORT || 8080; // Используем порт от Railway или 8080 по умолчанию
+
+    const server = http.createServer((req, res) => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok', timestamp: new Date() }));
+    });
+
+    server.listen(PORT, () => {
+        console.log(`[HealthCheck] Server listening on port ${PORT}`);
+        // Это уведомление только для вас, чтобы вы знали, что все работает
+        notify(`✅ Health check server started on port ${PORT}.`);
+    });
+}
+
 
 (async () => {
-  await setupDatabase();
-  console.log("--- Tradebot worker started ---");
+    await setupDatabase();
+    
+    // ЗАПУСКАЕМ СЕРВЕР ПРОВЕРКИ ЗДОРОВЬЯ В ФОНЕ
+    startHealthCheckServer(); 
+  
+    console.log("--- Tradebot worker started ---");
   await notify("🚀 Tradebot worker started!");
 
   const wallet     = Keypair.fromSecretKey(bs58.decode(WALLET_PRIVATE_KEY));
