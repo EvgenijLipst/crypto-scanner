@@ -458,7 +458,7 @@ async function notify(text, botInstanceId = 'global') {
 
           if (sellReason) {
             console.log(`[Sale] Triggered by: ${sellReason}. Starting cascading sell...`);
-            await notify(`🔔 **Sale Triggered** for \`${mintAddress}\`\nReason: ${sellReason}`);
+            await notify(`🔔 **Sale Triggered** for \`${mintAddress}\`\nReason: ${sellReason}`, botInstanceId);
             
             let balance = await findTokenBalance(connection, wallet, outputMint);
             let soldAmount = 0;
@@ -486,9 +486,13 @@ async function notify(text, botInstanceId = 'global') {
                     
                     wasAnySaleSuccessful = true; // <-- ОТМЕЧАЕМ УСПЕХ
 
+                    const tokensSoldInChunk = Number(sellQuote.inAmount) / (10 ** outputDecimals);
+                    const sellPrice = usdcReceived / tokensSoldInChunk;
+
                     console.log(`[Sale] Sold ${pct}% => received=${usdcReceived.toFixed(6)} USDC, tx=${sellTxid}`);
                     await notify(
                         `🔻 **Sold ${pct}%** of \`${mintAddress}\`\n` +
+                        `Price: \`${sellPrice.toFixed(6)}\` USDC\n` + 
                         `Received: \`${usdcReceived.toFixed(4)}\` USDC\n` +
                         `[Tx](https://solscan.io/tx/${sellTxid})`
                     );
@@ -496,7 +500,7 @@ async function notify(text, botInstanceId = 'global') {
                     balance = await findTokenBalance(connection, wallet, outputMint);
                 } catch (e) {
                     console.error(`[Sale] Sell attempt for ${pct}% failed.`, e.message);
-                    await notify(`🚨 **Sale Error (${pct}%)** for \`${mintAddress}\`:\n\`${e.message}\``)
+                    await notify(`🚨 **Sale Error (${pct}%)** for \`${mintAddress}\`:\n\`${e.message}\``, botInstanceId)
                 }
             }
             
@@ -519,7 +523,7 @@ async function notify(text, botInstanceId = 'global') {
                 `Bought for: \`${initialSpent.toFixed(2)}\` USDC\n` +
                 `Sold for: \`${totalUSDC.toFixed(2)}\` USDC\n` +
                 `**PnL: \`${pnl.toFixed(2)}\` USDC**\n` +
-                `[Final Tx](https://solscan.io/tx/${lastSellTx})`
+                `[Final Tx](https://solscan.io/tx/${lastSellTx}, botInstanceId)`
             );
 
             await pool.query(
@@ -538,7 +542,7 @@ async function notify(text, botInstanceId = 'global') {
       } catch (e) {
           // === НАЧАЛО НОВОГО БЛОКА ВОССТАНОВЛЕНИЯ ===
           console.error(`[Trailing] Error in trailing loop for ${mintAddress}:`, e.message);
-          await notify(`🟡 **TSL Paused** for \`${mintAddress}\`\nAn error occurred: \`${e.message}\`\nVerifying position status...`);
+          await notify(`🟡 **TSL Paused** for \`${mintAddress}\`\nAn error occurred: \`${e.message}\`\nVerifying position status...`, botInstanceId);
           
           console.log("[Recovery] Verifying token balance to decide next action...");
           const balance = await findTokenBalance(connection, wallet, outputMint);
