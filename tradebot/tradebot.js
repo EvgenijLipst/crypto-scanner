@@ -42,6 +42,7 @@ const TSL_CONFIRMATIONS             = parseInt(process.env.TSL_CONFIRMATIONS, 10
 const MANUAL_SELL_CONFIRMATIONS     = parseInt(process.env.MANUAL_SELL_CONFIRMATIONS, 10) || 3;
 
 
+
 // — Жёстко зашитые константы —
 const USDC_MINT             = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 const USDC_DECIMALS         = 6;
@@ -465,21 +466,25 @@ async function notify(text, botInstanceId = 'global') {
             }
   
             // --- НАЧАЛО НОВОЙ ЛОГИКИ ЗАЩИТЫ ОТ "СКВИЗОВ" ---
-            if (!sellReason) { // Проверяем TSL, только если еще нет другой причины для продажи
-              if (currentPrice <= stopPrice) {
-                  stopLossTriggerCount++;
-                  console.log(`[TSL] Stop-loss breached. Confirmation count: ${stopLossTriggerCount}/${TSL_CONFIRMATIONS}`);
-              } else {
-                  if (stopLossTriggerCount > 0) {
-                      console.log('[TSL] Price recovered above stop-loss. Resetting TSL confirmation counter.');
-                  }
-                  stopLossTriggerCount = 0; // Если цена восстановилась, сбрасываем счетчик
-              }
-  
-              if (stopLossTriggerCount >= TSL_CONFIRMATIONS) {
-                  sellReason = `Trailing Stop-Loss (${TSL_CONFIRMATIONS} confirmations)`;
-              }
+            const GRACE_PERIOD_SECONDS = 90; // Льготный период в 90 секунд.
+            const secondsSincePurchase = (Date.now() - purchaseTimestamp) / 1000;
+
+          // Проверяем TSL, только если еще нет причины для продажи И прошел льготный период
+          if (!sellReason && secondsSincePurchase > GRACE_PERIOD_SECONDS) { 
+            if (currentPrice <= stopPrice) {
+                stopLossTriggerCount++;
+                console.log(`[TSL] Stop-loss breached. Confirmation count: ${stopLossTriggerCount}/${TSL_CONFIRMATIONS}`);
+            } else {
+                if (stopLossTriggerCount > 0) {
+                    console.log('[TSL] Price recovered above stop-loss. Resetting TSL confirmation counter.');
+                }
+                stopLossTriggerCount = 0;
             }
+
+            if (stopLossTriggerCount >= TSL_CONFIRMATIONS) {
+                sellReason = `Trailing Stop-Loss (${TSL_CONFIRMATIONS} confirmations)`;
+            }
+          }
             // --- КОНЕЦ НОВОЙ ЛОГИКИ ЗАЩИТЫ ОТ "СКВИЗОВ" ---
   
             if (!sellReason && elapsedHours >= MAX_HOLDING_TIME_HOURS) {
