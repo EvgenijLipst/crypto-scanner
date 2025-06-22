@@ -439,72 +439,84 @@ async function processSignal(connection, wallet, signal) {
           }
 
           if (sellReason) {
-              console.log(`[Sale] Triggered by: ${sellReason}. Starting cascading sell...`);
-              await notify(`🔔 **Sale Triggered** for \`${mintAddress}\`\nReason: ${sellReason}`);
-              let balance = await findTokenBalance(connection, wallet, outputMint);
-              let soldAmount = 0;
+            console.log(`[Sale] Triggered by: ${sellReason}. Starting cascading sell...`);
+            await notify(`🔔 **Sale Triggered** for \`${mintAddress}\`\nReason: ${sellReason}`);
+            
+            let balance = await findTokenBalance(connection, wallet, outputMint);
+            let soldAmount = 0;
+            let wasAnySaleSuccessful = false; // <-- НАШ НОВЫЙ ФЛАГ
 
-              for (const pct of [100, 50, 25]) {
-                  if (balance === 0) break;
-                  const amountSell = Math.floor(balance * pct / 100);
-                  if (amountSell === 0) continue;
+            for (const pct of [100, 50, 25]) {
+                if (balance === 0) break;
+                const amountSell = Math.floor(balance * pct / 100);
+                if (amountSell === 0) continue;
 
-                  console.log(`[Sale] Selling ${pct}% => ${amountSell} lamports`);
-                  try {
-                      await approveToken(connection, wallet, outputMint, amountSell);
-                      const sellQuote = await getQuote(outputMint, USDC_MINT, amountSell);
-                      const { swapTransaction: sellTx, lastValidBlockHeight: sellLVBH } = await getSwapTransaction(
-                          sellQuote,
-                          wallet.publicKey.toBase58()
-                      );
-                      const sellTxid = await executeTransaction(connection, sellTx, wallet, sellLVBH);
-                      lastSellTx = sellTxid;
+                console.log(`[Sale] Selling ${pct}% => ${amountSell} lamports`);
+                try {
+                    await approveToken(connection, wallet, outputMint, amountSell);
+                    const sellQuote = await getQuote(outputMint, USDC_MINT, amountSell);
+                    const { swapTransaction: sellTx, lastValidBlockHeight: sellLVBH } = await getSwapTransaction(
+                        sellQuote,
+                        wallet.publicKey.toBase58()
+                    );
+                    const sellTxid = await executeTransaction(connection, sellTx, wallet, sellLVBH);
+                    lastSellTx = sellTxid;
 
-                      const usdcReceived = Number(sellQuote.outAmount) / 10 ** USDC_DECIMALS;
-                      totalUSDC += usdcReceived;
-                      soldAmount += Number(sellQuote.route.inAmount) / (10 ** outputDecimals);
+                    const usdcReceived = Number(sellQuote.outAmount) / 10 ** USDC_DECIMALS;
+                    totalUSDC += usdcReceived;
+                    soldAmount += Number(sellQuote.route.inAmount) / (10 ** outputDecimals);
+                    
+                    wasAnySaleSuccessful = true; // <-- ОТМЕЧАЕМ УСПЕХ
 
-                      console.log(`[Sale] Sold ${pct}% => received=${usdcReceived.toFixed(6)} USDC, tx=${sellTxid}`);
-                      await notify(
-                          `🔻 **Sold ${pct}%** of \`${mintAddress}\`\n` +
-                          `Received: \`${usdcReceived.toFixed(4)}\` USDC\n` +
-                          `[Tx](https://solscan.io/tx/${sellTxid})`
-                      );
-                      await new Promise(r => setTimeout(r, 5000));
-                      balance = await findTokenBalance(connection, wallet, outputMint);
-                  } catch (e) {
-                      console.error(`[Sale] Sell attempt for ${pct}% failed.`, e.message);
-                  }
-              }
+                    console.log(`[Sale] Sold ${pct}% => received=${usdcReceived.toFixed(6)} USDC, tx=${sellTxid}`);
+                    await notify(
+                        `🔻 **Sold ${pct}%** of \`${mintAddress}\`\n` +
+                        `Received: \`${usdcReceived.toFixed(4)}\` USDC\n` +
+                        `[Tx](https://solscan.io/tx/${sellTxid})`
+                    );
+                    await new Promise(r => setTimeout(r, 5000));
+                    balance = await findTokenBalance(connection, wallet, outputMint);
+                } catch (e) {
+                    console.error(`[Sale] Sell attempt for ${pct}% failed.`, e.message);
+                    await notify(`🚨 **Sale Error (${pct}%)** for \`${mintAddress}\`:\n\`${e.message}\``)
+                }
+            }
+            
+            // <-- НАША НОВАЯ ПРОВЕРКА
+            if (!wasAnySaleSuccessful) {
+                // Если ни одна попытка продажи не удалась, вызываем ошибку,
+                // чтобы сработал внешний блок catch с логикой восстановления.
+                throw new Error("All cascade sell attempts failed.");
+            }
 
-              if (await findTokenBalance(connection, wallet, outputMint) > 0) {
-                  console.log("[Sale] Final revoke for remaining balance");
-                  await revokeToken(connection, wallet, outputMint);
-              }
+            if (await findTokenBalance(connection, wallet, outputMint) > 0) {
+                console.log("[Sale] Final revoke for remaining balance");
+                await revokeToken(connection, wallet, outputMint);
+            }
 
-              const pnl = totalUSDC - initialSpent;
-              console.log(`[PNL] spent=${initialSpent.toFixed(2)}, received=${totalUSDC.toFixed(2)}, pnl=${pnl.toFixed(2)}`);
-              await notify(
-                  `💰 **Trade Complete** for \`${mintAddress}\`\n` +
-                  `Bought for: \`${initialSpent.toFixed(2)}\` USDC\n` +
-                  `Sold for: \`${totalUSDC.toFixed(2)}\` USDC\n` +
-                  `**PnL: \`${pnl.toFixed(2)}\` USDC**\n` +
-                  `[Final Tx](https://solscan.io/tx/${lastSellTx})`
-              );
+            const pnl = totalUSDC - initialSpent;
+            console.log(`[PNL] spent=${initialSpent.toFixed(2)}, received=${totalUSDC.toFixed(2)}, pnl=${pnl.toFixed(2)}`);
+            await notify(
+                `💰 **Trade Complete** for \`${mintAddress}\`\n` +
+                `Bought for: \`${initialSpent.toFixed(2)}\` USDC\n` +
+                `Sold for: \`${totalUSDC.toFixed(2)}\` USDC\n` +
+                `**PnL: \`${pnl.toFixed(2)}\` USDC**\n` +
+                `[Final Tx](https://solscan.io/tx/${lastSellTx})`
+            );
 
-              await pool.query(
-                  `UPDATE trades 
-                      SET sold_amount   = $1, 
-                          received_usdc = $2, 
-                          pnl           = $3, 
-                          sell_tx       = $4, 
-                          closed_at     = NOW() 
-                  WHERE id = $5;`,
-                  [soldAmount, totalUSDC, pnl, lastSellTx, tradeId]
-              );
-              console.log(`[DB] Updated trade id=${tradeId} with sale info`);
-              break; // Выход из цикла while после продажи
-          }
+            await pool.query(
+                `UPDATE trades 
+                    SET sold_amount   = $1, 
+                        received_usdc = $2, 
+                        pnl           = $3, 
+                        sell_tx       = $4, 
+                        closed_at     = NOW() 
+                WHERE id = $5;`,
+                [soldAmount, totalUSDC, pnl, lastSellTx, tradeId]
+            );
+            console.log(`[DB] Updated trade id=${tradeId} with sale info`);
+            break; 
+        }
       } catch (e) {
           // === НАЧАЛО НОВОГО БЛОКА ВОССТАНОВЛЕНИЯ ===
           console.error(`[Trailing] Error in trailing loop for ${mintAddress}:`, e.message);
