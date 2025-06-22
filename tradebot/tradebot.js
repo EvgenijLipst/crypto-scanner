@@ -240,16 +240,21 @@ async function findTokenBalance(connection, wallet, mint) {
 async function runPriceImpactCheck(connection, outputMint, outputDecimals) {
     console.log(`[Safety L1] Running Price Impact Check for ${outputMint.toBase58()}`);
     try {
-        const amountForPriceCheck = 10 * (10 ** USDC_DECIMALS);
-        const priceQuote = await getQuote(USDC_MINT, outputMint, amountForPriceCheck);
-        const amountOfTokensFor10USD = parseInt(priceQuote.outAmount);
-        if (amountOfTokensFor10USD === 0) throw new Error("Token not tradable, outAmount is zero.");
         
-        const amountToSimulateSell = amountOfTokensFor10USD * 5; 
-        const sellQuote = await getQuote(outputMint, USDC_MINT, amountToSimulateSell);
+        // Используем реальную сумму сделки для более точной проверки
+        const amountForBuyCheckLamports = Math.round(AMOUNT_TO_SWAP_USD * (10 ** USDC_DECIMALS));
+
+        console.log(`[Safety L1] Simulating buy for ${AMOUNT_TO_SWAP_USD} USDC...`);
+        const buyQuote = await getQuote(USDC_MINT, outputMint, amountForBuyCheckLamports);
+        const amountOfTokensToGet = parseInt(buyQuote.outAmount);
+        if (amountOfTokensToGet === 0) throw new Error("Token not tradable for the given amount, outAmount is zero.");
+        
+        // Теперь симулируем немедленную продажу полученных токенов
+        console.log(`[Safety L1] Simulating immediate sell of ${amountOfTokensToGet} lamports...`);
+        const sellQuote = await getQuote(outputMint, USDC_MINT, amountOfTokensToGet);
         const impactPct = parseFloat(sellQuote.priceImpactPct) * 100;
 
-        console.log(`[Safety L1] Sell simulation impact: ${impactPct.toFixed(4)}%`);
+        console.log(`[Safety L1] Full-cycle price impact: ${impactPct.toFixed(4)}%`);
         if (impactPct > SAFE_PRICE_IMPACT_PERCENT) {
             return { ok: false, impactPct };
         }
