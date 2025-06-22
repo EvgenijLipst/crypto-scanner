@@ -34,7 +34,6 @@ const TIMEOUT_SELL_PL_THRESHOLD     = parseFloat(process.env.TIMEOUT_SELL_PL_THR
 
 // — Жёстко зашитые константы —
 const USDC_MINT             = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-const USDC_DECIMALS         = 6;
 const SWAP_PROGRAM_ID       = new PublicKey("JUP4Fb2cFoZz7n6RzbA7gHq9jz6yJ3zyZhftyPS87ya");
 const COOLDOWN_HOURS        = 1.0;
 
@@ -87,7 +86,7 @@ async function getSwapTransaction(quoteResponse, userPubKey) {
       userPublicKey: userPubKey,
       wrapAndUnwrapSol: true,
       asLegacyTransaction: false,
-      computeUnitPriceMicroLamports: "auto"
+      computeUnitPriceMicroLamports: "high"
     })
   });
   if (!res.ok) throw new Error("Swap tx error: " + await res.text());
@@ -100,25 +99,54 @@ async function getSwapTransaction(quoteResponse, userPubKey) {
 }
 
 async function executeTransaction(connection, rawTx, wallet, lastValidBlockHeight) {
-  console.log("[Execute] Sending transaction to network");
-  const buf = Buffer.from(rawTx, "base64");
-  const tx  = VersionedTransaction.deserialize(buf);
-  tx.sign([wallet]);
-  const txid = await connection.sendRawTransaction(tx.serialize(), {
-    skipPreflight: true,
-    maxRetries: 5
-  });
-  console.log(`[Execute] tx sent: ${txid}, awaiting confirmation until block ${lastValidBlockHeight}`);
-  
-  const confirmation = await connection.confirmTransaction({
-      signature: txid,
-      blockhash: tx.message.recentBlockhash,
-      lastValidBlockHeight: lastValidBlockHeight
-  }, "confirmed");
+    console.log("[Execute] Sending transaction to network");
+    const buf = Buffer.from(rawTx, "base64");
+    const tx = VersionedTransaction.deserialize(buf);
+    tx.sign([wallet]);
+    const txid = await connection.sendRawTransaction(tx.serialize(), {
+        skipPreflight: true,
+        maxRetries: 5
+    });
+    console.log(`[Execute] tx sent: ${txid}, awaiting confirmation until block ${lastValidBlockHeight}`);
 
-  if (confirmation.value.err) throw new Error("TX failed: " + JSON.stringify(confirmation.value.err));
-  console.log(`[Execute] tx confirmed: ${txid}`);
-  return txid;
+    try {
+        // Пытаемся подтвердить как обычно
+        const confirmation = await connection.confirmTransaction({
+            signature: txid,
+            blockhash: tx.message.recentBlockhash,
+            lastValidBlockHeight: lastValidBlockHeight
+        }, "confirmed");
+
+        if (confirmation.value.err) {
+            // Если есть ошибка, но это не тайм-аут, бросаем ее дальше
+            throw new Error(JSON.stringify(confirmation.value.err));
+        }
+
+    } catch (e) {
+        // Ловим ошибку, скорее всего это тайм-аут
+        console.warn(`[Confirm V1] Primary confirmation failed for ${txid}: ${e.message}`);
+
+        if (e.message.includes("block height exceeded")) {
+            // Начинаем резервную проверку
+            console.log(`[Confirm V2] Starting fallback confirmation check for ${txid}...`);
+            await new Promise(resolve => setTimeout(resolve, 15000)); // Ждем 15 секунд
+
+            const txInfo = await connection.getTransaction(txid, { maxSupportedTransactionVersion: 0 });
+
+            if (txInfo) {
+                console.log(`[Confirm V2] Fallback check successful! Transaction ${txid} is confirmed.`);
+            } else {
+                // Если даже после паузы транзакции нет - она действительно провалилась
+                throw new Error(`[Confirm V2] Fallback check failed. Transaction ${txid} not found.`);
+            }
+        } else {
+            // Если ошибка была не связана с тайм-аутом, просто пробрасываем ее
+            throw e;
+        }
+    }
+
+    console.log(`[Execute] tx confirmed: ${txid}`);
+    return txid;
 }
 
 async function executeSimpleTransaction(connection, instructions, wallet) {
@@ -128,19 +156,38 @@ async function executeSimpleTransaction(connection, instructions, wallet) {
         recentBlockhash: blockhash,
         instructions,
     }).compileToV0Message();
-    
+     
     const tx = new VersionedTransaction(messageV0);
     tx.sign([wallet]);
     const txid = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true });
-    
-    const confirmation = await connection.confirmTransaction({
-        signature: txid,
-        blockhash: blockhash,
-        lastValidBlockHeight: lastValidBlockHeight
-    }, 'confirmed');
+     
+    try {
+        const confirmation = await connection.confirmTransaction({
+            signature: txid,
+            blockhash: blockhash,
+            lastValidBlockHeight: lastValidBlockHeight
+        }, 'confirmed');
 
-    if (confirmation.value.err) {
-      throw new Error("Simple TX failed: " + JSON.stringify(confirmation.value.err));
+        if (confirmation.value.err) {
+            throw new Error(JSON.stringify(confirmation.value.err));
+        }
+    } catch (e) {
+        console.warn(`[Confirm V1 Simple] Primary confirmation failed for ${txid}: ${e.message}`);
+
+        if (e.message.includes("block height exceeded")) {
+            console.log(`[Confirm V2 Simple] Starting fallback confirmation check for ${txid}...`);
+            await new Promise(resolve => setTimeout(resolve, 15000)); // Ждем 15 секунд
+
+            const txInfo = await connection.getTransaction(txid, { maxSupportedTransactionVersion: 0 });
+
+            if (txInfo) {
+                console.log(`[Confirm V2 Simple] Fallback check successful! Transaction ${txid} is confirmed.`);
+            } else {
+                throw new Error(`[Confirm V2 Simple] Fallback check failed. Transaction ${txid} not found.`);
+            }
+        } else {
+            throw e;
+        }
     }
 }
 
