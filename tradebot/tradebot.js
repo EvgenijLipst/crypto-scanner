@@ -631,13 +631,13 @@ function startHealthCheckServer() {
     const wallet     = Keypair.fromSecretKey(bs58.decode(WALLET_PRIVATE_KEY));
     const connection = new Connection(SOLANA_RPC_URL, "confirmed");
 
-  const gracefulShutdown = async (signal) => {
-    console.log(`[Shutdown] Received ${signal}. Shutting down gracefully...`);
-    await notify(`🤖 Bot shutting down due to ${signal}...`);
-    await pool.end();
-    console.log("[Shutdown] Database pool closed.");
-    process.exit(0);
-  };
+    const gracefulShutdown = async (signal) => {
+        console.log(`[Shutdown] Received ${signal}. Shutting down gracefully...`);
+        await notify(`🤖 Bot shutting down due to ${signal}...`, botInstanceId); // <-- Теперь ID передается!
+        await pool.end();
+        console.log("[Shutdown] Database pool closed.");
+        process.exit(0);
+      };
   
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
