@@ -21,6 +21,7 @@ const botInstanceId = Math.random().toString(36).substring(2, 8);
 let isHalted = false;
 let haltedMintAddress = null;
 let haltedTradeId = null;
+let manualSellConfirmations = 0;
 
 // — Переменные окружения (Railway Variables) —
 const SOLANA_RPC_URL                = process.env.SOLANA_RPC_URL;
@@ -38,6 +39,7 @@ const SLIPPAGE_BPS                  = parseInt(process.env.SLIPPAGE_BPS, 10) || 
 const MAX_HOLDING_TIME_HOURS        = parseFloat(process.env.MAX_HOLDING_TIME_HOURS) || 24;
 const TIMEOUT_SELL_PL_THRESHOLD     = parseFloat(process.env.TIMEOUT_SELL_PL_THRESHOLD) || -0.01;
 const TSL_CONFIRMATIONS             = parseInt(process.env.TSL_CONFIRMATIONS, 10) || 3;
+const MANUAL_SELL_CONFIRMATIONS     = parseInt(process.env.MANUAL_SELL_CONFIRMATIONS, 10) || 3;
 
 
 // — Жёстко зашитые константы —
@@ -692,34 +694,41 @@ function startHealthCheckServer() {
 
   while (true) {
     try {
-      // --- НАЧАЛО НОВОЙ ЛОГИКИ ГЛАВНОГО ЦИКЛА ---
       if (isHalted) {
-        // Если бот в аварийном режиме, не ищем новые сигналы
+        // --- НАЧАЛО НОВОЙ ЛОГИКИ ПРОВЕРКИ В АВАРИЙНОМ РЕЖИМЕ ---
         console.log(`[Halted] Bot is halted. Checking balance for stuck token: ${haltedMintAddress}`);
         
         const balance = await findTokenBalance(connection, wallet, new PublicKey(haltedMintAddress), botInstanceId);
 
         if (balance === 0) {
-          // Баланс 0 - пользователь продал токен вручную! Возобновляем работу.
-          console.log(`[Halted] Stuck token has been sold. Resuming normal operations.`);
+          manualSellConfirmations++;
+          console.log(`[Halted] Zero balance detected. Confirmation count: ${manualSellConfirmations}/${MANUAL_SELL_CONFIRMATIONS}`);
+        } else {
+          // Если баланс снова виден, сбрасываем счетчик
+          if (manualSellConfirmations > 0) {
+            console.log(`[Halted] Token balance is visible again. Resetting manual sell confirmation counter.`);
+          }
+          manualSellConfirmations = 0;
+        }
+
+        if (manualSellConfirmations >= MANUAL_SELL_CONFIRMATIONS) {
+          console.log(`[Halted] Stuck token has been sold (confirmed ${MANUAL_SELL_CONFIRMATIONS} times). Resuming normal operations.`);
           await notify(`✅ **Operation Resumed!**\nManual sale of \`${haltedMintAddress}\` detected. The bot is now returning to normal operation.`, botInstanceId);
           
-          // Помечаем старую сделку в БД как закрытую вручную
           await pool.query(
               `UPDATE trades SET sell_tx = 'MANUAL_SELL_AFTER_FAIL', closed_at = NOW() WHERE id = $1;`,
               [haltedTradeId]
           );
 
-          // Сбрасываем флаги аварийной остановки
           isHalted = false;
           haltedMintAddress = null;
           haltedTradeId = null;
-
+          manualSellConfirmations = 0; // Сбрасываем счетчик
         } else {
-          // Токен все еще на кошельке, ждем дальше
-          console.log(`[Halted] Awaiting manual sale. Checking again in 1 minute.`);
-          await new Promise(r => setTimeout(r, 60000)); // Проверяем раз в минуту
+            console.log(`[Halted] Awaiting manual sale. Checking again in 1 minute.`);
+            await new Promise(r => setTimeout(r, 60000));
         }
+        // --- КОНЕЦ НОВОЙ ЛОГИКИ ПРОВЕРКИ В АВАРИЙНОМ РЕЖИМЕ ---
       } else {
         // --- Штатный режим работы (если бот не остановлен) ---
         const signal = await fetchNextSignal();
@@ -731,7 +740,6 @@ function startHealthCheckServer() {
           await new Promise(r => setTimeout(r, SIGNAL_CHECK_INTERVAL_MS));
         }
       }
-      // --- КОНЕЦ НОВОЙ ЛОГИКИ ГЛАВНОГО ЦИКЛА ---
     } catch (err) {
       console.error("[Main] Error in main loop:", err.message);
       await notify(`🚨 **FATAL ERROR** in main loop: \`${err.message}\``, botInstanceId);
