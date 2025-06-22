@@ -301,7 +301,7 @@ async function notify(text, botInstanceId = 'global') {
     }
   }
 
-async function processSignal(connection, wallet, signal) {
+  async function processSignal(connection, wallet, signal, botInstanceId) {
   const { id: signalId, mint: outputMint } = signal;
   const mintAddress = outputMint.toBase58();
   console.log(`\n=== Processing ${mintAddress} ===`);
@@ -359,7 +359,12 @@ async function processSignal(connection, wallet, signal) {
   }
   
   await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
-  await notify(`✅ **All safety checks passed for** \`${mintAddress}\`. Starting purchase.`);
+  await notify(
+    `✅ **All safety checks passed for** \`${mintAddress}\`\n` +
+    `Impact: \`${impactPct.toFixed(2)}%\` < \`${SAFE_PRICE_IMPACT_PERCENT}%\`\n` +
+    `Starting purchase.`,
+    botInstanceId
+  );
   
   let buyPricePerToken;
   let tradeId, initialBought, initialSpent;
@@ -647,7 +652,7 @@ function startHealthCheckServer() {
       const signal = await fetchNextSignal();
       if (signal) {
         console.log(`[Main] Received signal for ${signal.mint.toBase58()}`);
-        await processSignal(connection, wallet, signal);
+        await processSignal(connection, wallet, signal, botInstanceId);
         console.log(`[Main] Finished processing ${signal.mint.toBase58()}, looking for next signal.`);
       } else {
         await new Promise(r => setTimeout(r, SIGNAL_CHECK_INTERVAL_MS));
