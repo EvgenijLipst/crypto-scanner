@@ -12,7 +12,7 @@ const {
 } = require("@solana/spl-token");
 const fetch = require("cross-fetch");
 const bs58 = require("bs58");
-const TelegramBot = require("node-telegram-bot-api");
+const { Telegraf } = require("telegraf");
 const { Pool } = require("pg");
 
 // — Переменные окружения (Railway Variables) —
@@ -39,7 +39,7 @@ const SWAP_PROGRAM_ID       = new PublicKey("JUP4Fb2cFoZz7n6RzbA7gHq9jz6yJ3zyZhf
 const COOLDOWN_HOURS        = 1.0;
 
 // — Инициализация —
-const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: false });
+const bot = new Telegraf(TELEGRAM_TOKEN);
 const pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
 // — Утилита: достать следующий сигнал из таблицы — 
@@ -285,7 +285,7 @@ async function checkRugPullRisk(outputMint) {
 async function notify(text) {
   try {
     console.log("[Notify] " + text.replace(/\n/g, " | "));
-    await bot.sendMessage(TELEGRAM_CHAT_ID, text, { parse_mode: 'Markdown' });
+    await bot.telegram.sendMessage(TELEGRAM_CHAT_ID, text, { parse_mode: 'Markdown' });
   } catch (e) {
     console.error("Telegram notification failed:", e.message);
   }
