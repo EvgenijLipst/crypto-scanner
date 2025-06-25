@@ -767,6 +767,9 @@ function startHealthCheckServer() {
 
   while (true) {
     try {
+
+        console.log(`[Main] Polling signals table at ${new Date().toISOString()}`);
+
         // Очистка сигналов раз в 10 минут
     if (Date.now() - lastCleanup > 10 * 60 * 1000) { // 10 минут
       await cleanupOldSignals();
