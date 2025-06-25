@@ -1,31 +1,3 @@
-async function addErrorReasonColumnIfNotExists() {
-    try {
-        await pool.query(`
-            DO $$
-            BEGIN
-                IF NOT EXISTS (
-                    SELECT 1
-                    FROM information_schema.columns
-                    WHERE table_name='signals' AND column_name='error_reason'
-                ) THEN
-                    ALTER TABLE signals ADD COLUMN error_reason TEXT;
-                END IF;
-            END $$;
-        `);
-        console.log("[DB] Checked/added column error_reason in signals");
-    } catch (e) {
-        // Если DO/BEGIN не поддерживается — выдаст ошибку, но это не критично
-        if (!e.message.includes('duplicate column')) {
-            console.error("[DB] Could not ensure error_reason column exists:", e.message);
-        }
-    }
-}
-
-// ДО первого использования signals
-await addErrorReasonColumnIfNotExists();
-
-
-
 const {
     Connection,
     Keypair,
