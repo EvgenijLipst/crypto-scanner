@@ -14,9 +14,10 @@ const fetch = require("cross-fetch");
 const bs58 = require("bs58");
 const { Telegraf } = require("telegraf");
 const { Pool } = require("pg");
+const botInstanceId = Math.random().toString(36).substring(2, 8);
 
 // Генерируем уникальный ID для этого запуска бота
-const botInstanceId = Math.random().toString(36).substring(2, 8);
+
 
 let isHalted = false;
 let haltedMintAddress = null;
@@ -74,55 +75,66 @@ async function fetchNextSignal() {
 
 // — Основные вспомогательные функции —
 
-async function getQuote(inputMint, outputMint, amount) {
-    // Добавляем AbortController для создания тайм-аута
+async function getQuote(inputMint, outputMint, amount, maxRetries = 3) {
+    const url = `https://quote-api.jup.ag/v6/quote?inputMint=${inputMint.toBase58()}&outputMint=${outputMint.toBase58()}&amount=${amount}&slippageBps=${SLIPPAGE_BPS}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 секунд тайм-аут
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    console.log(`[Quote] Requesting quote: ${inputMint.toBase58()}→${outputMint.toBase58()}, amount=${amount}, slippageBps=${SLIPPAGE_BPS}`);
-    const url = `https://quote-api.jup.ag/v6/quote`
-        + `?inputMint=${inputMint.toBase58()}`
-        + `&outputMint=${outputMint.toBase58()}`
-        + `&amount=${amount}`
-        + `&slippageBps=${SLIPPAGE_BPS}`;
-    
-    try {
-        const res = await fetch(url, {
-            // Привязываем контроллер к запросу
-            signal: controller.signal
-        });
-
-        if (!res.ok) throw new Error("Quote error: " + await res.text());
-        const data = await res.json();
-        console.log(`[Quote] Received outAmount=${data.outAmount}, priceImpactPct=${data.priceImpactPct}`);
-        return data;
-    } finally {
-        // Важно! Очищаем таймер после выполнения запроса, чтобы избежать утечек памяти
-        clearTimeout(timeoutId);
+    let lastErr;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`[Quote] Attempt ${attempt}/${maxRetries}`);
+            const res = await fetch(url, { signal: controller.signal });
+            if (!res.ok) throw new Error("Quote error: " + await res.text());
+            const data = await res.json();
+            return data;
+        } catch (e) {
+            lastErr = e;
+            console.warn(`[Quote] Failed attempt ${attempt}/${maxRetries}: ${e.message}`);
+            await new Promise(r => setTimeout(r, 2000));
+            if (attempt === maxRetries) {
+                throw lastErr;
+            }
+        } finally {
+            clearTimeout(timeoutId);
+        }
     }
 }
 
-async function getSwapTransaction(quoteResponse, userPubKey) {
-  console.log("[SwapTx] Creating swap transaction via Jupiter API");
-  const res = await fetch("https://quote-api.jup.ag/v6/swap", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      quoteResponse,
-      userPublicKey: userPubKey,
-      wrapAndUnwrapSol: true,
-      asLegacyTransaction: false,
-      computeUnitPriceMicroLamports: "auto"
-    })
-  });
-  if (!res.ok) throw new Error("Swap tx error: " + await res.text());
-  const data = await res.json();
-  console.log(`[SwapTx] Received swap transaction valid until block ${data.lastValidBlockHeight}`);
-  return { 
-      swapTransaction: data.swapTransaction, 
-      lastValidBlockHeight: data.lastValidBlockHeight 
-  };
-}
+
+
+
+async function getSwapTransaction(quoteResponse, userPubKey, maxRetries = 3) {
+    let lastErr;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[SwapTx] Attempt ${attempt}/${maxRetries}`);
+        const res = await fetch("https://quote-api.jup.ag/v6/swap", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            quoteResponse,
+            userPublicKey: userPubKey,
+            wrapAndUnwrapSol: true,
+            asLegacyTransaction: false,
+            computeUnitPriceMicroLamports: "auto"
+          })
+        });
+        if (!res.ok) throw new Error("Swap tx error: " + await res.text());
+        const data = await res.json();
+        return { 
+          swapTransaction: data.swapTransaction, 
+          lastValidBlockHeight: data.lastValidBlockHeight 
+        };
+      } catch (e) {
+        lastErr = e;
+        console.warn(`[SwapTx] Failed attempt ${attempt}/${maxRetries}: ${e.message}`);
+        await new Promise(r => setTimeout(r, 2000));
+        if (attempt === maxRetries) throw lastErr;
+      }
+    }
+  }
+  
 
 async function executeTransaction(connection, rawTx, wallet, lastValidBlockHeight) {
     console.log("[Execute] Sending transaction to network");
@@ -142,34 +154,36 @@ async function executeTransaction(connection, rawTx, wallet, lastValidBlockHeigh
             blockhash: tx.message.recentBlockhash,
             lastValidBlockHeight: lastValidBlockHeight
         }, "confirmed");
-
+    
         if (confirmation.value.err) {
-            // Если есть ошибка, но это не тайм-аут, бросаем ее дальше
             throw new Error(JSON.stringify(confirmation.value.err));
         }
-
+    
     } catch (e) {
-        // Ловим ошибку, скорее всего это тайм-аут
         console.warn(`[Confirm V1] Primary confirmation failed for ${txid}: ${e.message}`);
-
+    
         if (e.message.includes("block height exceeded")) {
-            // Начинаем резервную проверку
             console.log(`[Confirm V2] Starting fallback confirmation check for ${txid}...`);
-            await new Promise(resolve => setTimeout(resolve, 15000)); // Ждем 15 секунд
-
-            const txInfo = await connection.getTransaction(txid, { maxSupportedTransactionVersion: 0 });
-
-            if (txInfo) {
-                console.log(`[Confirm V2] Fallback check successful! Transaction ${txid} is confirmed.`);
-            } else {
-                // Если даже после паузы транзакции нет - она действительно провалилась
-                throw new Error(`[Confirm V2] Fallback check failed. Transaction ${txid} not found.`);
+            let found = false;
+            for (let attempt = 1; attempt <= 5; attempt++) {
+                const delayMs = attempt * 10000; // 10s, 20s, 30s, 40s, 50s
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+                const txInfo = await connection.getTransaction(txid, { maxSupportedTransactionVersion: 0 });
+                if (txInfo) {
+                    console.log(`[Confirm V2] Fallback check successful on attempt ${attempt}! Transaction ${txid} is confirmed.`);
+                    found = true;
+                    break;
+                }
+                console.log(`[Confirm V2] Retry ${attempt}: Transaction ${txid} still not found. Retrying...`);
+            }
+            if (!found) {
+                throw new Error(`[Confirm V2] Fallback check failed after 5 attempts. Transaction ${txid} not found.`);
             }
         } else {
-            // Если ошибка была не связана с тайм-аутом, просто пробрасываем ее
             throw e;
         }
     }
+    
 
     console.log(`[Execute] tx confirmed: ${txid}`);
     return txid;
@@ -331,7 +345,8 @@ async function notify(text, botInstanceId = 'global') {
     const activePositionRes = await pool.query(`SELECT id FROM trades WHERE mint = $1 AND closed_at IS NULL LIMIT 1`, [mintAddress]);
     if (activePositionRes.rows.length > 0) {
       console.log(`[Validation] Position for ${mintAddress} is already active (trade id ${activePositionRes.rows[0].id}). Skipping signal.`);
-      await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
+      await pool.query(`UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
+  [signalId, "ACTIVE_POSITION"]);
       return;
     }
   
@@ -341,7 +356,8 @@ async function notify(text, botInstanceId = 'global') {
         const hoursSinceClose = (new Date() - lastClosed) / 3600000;
         if (hoursSinceClose < COOLDOWN_HOURS) {
             console.log(`[Validation] Cooldown period for ${mintAddress} is active (last sale ${hoursSinceClose.toFixed(2)}h ago). Skipping signal.`);
-            await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
+            await pool.query(`UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
+  [signalId, "COOLDOWN_ACTIVE"]);
             return;
         }
     }
@@ -355,7 +371,10 @@ async function notify(text, botInstanceId = 'global') {
                             `Not enough USDC to perform swap.\n` +
                             `Required: \`${AMOUNT_TO_SWAP_USD}\` USDC.`;
       await notify(notifyMessage, botInstanceId);
-      await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
+      await pool.query(
+        `UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
+        [signalId, "NO_BALANCE"]
+      );
       return;
     }
     
@@ -367,24 +386,30 @@ async function notify(text, botInstanceId = 'global') {
       console.log(`[Info] Token decimals for ${mintAddress} is ${outputDecimals}`);
     } catch(e) {
       await notify(`🚨 **Error**\nCould not fetch token info for \`${mintAddress}\`. Skipping.`, botInstanceId);
-      await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
+await pool.query(
+  `UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
+  [signalId, "TOKEN_INFO_FETCH_FAIL"]);
       return;
     }
   
     const { ok, impactPct } = await runPriceImpactCheck(connection, outputMint, outputDecimals);
     if (!ok) {
-      await notify(`⚠️ **Safety Check L1 Failed**\nToken: \`${mintAddress}\`\nImpact: \`${impactPct.toFixed(2)}%\` > \`${SAFE_PRICE_IMPACT_PERCENT}%\``, botInstanceId);
-      await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
-      return;
+        await notify(`⚠️ **Safety Check L1 Failed**\nToken: \`${mintAddress}\`\nImpact: \`${impactPct.toFixed(2)}%\` > \`${SAFE_PRICE_IMPACT_PERCENT}%\``, botInstanceId);
+        await pool.query(
+          `UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
+          [signalId, "HIGH_PRICE_IMPACT"]
+        );
+        return;
     }
   
     const isNotRugPull = await checkRugPullRisk(outputMint);
     if (!isNotRugPull) {
-      await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
+      await pool.query(`UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
+  [signalId, "RUGCHECK_FAIL"]);
       return;
     }
     
-    await pool.query(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
+    
     await notify(
       `✅ **All safety checks passed for** \`${mintAddress}\`\n` +
       `Impact: \`${impactPct.toFixed(2)}%\` < \`${SAFE_PRICE_IMPACT_PERCENT}%\`\n` +
@@ -508,6 +533,8 @@ async function notify(text, botInstanceId = 'global') {
                 let balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
                 let soldAmount = 0;
                 let wasAnySaleSuccessful = false; 
+                let totalUSDC = 0;
+                let lastSellTx = null;
   
                 for (const pct of [100, 50, 25]) {
                     if (balance === 0) break;
@@ -679,6 +706,7 @@ function startHealthCheckServer() {
     const botInstanceId = Math.random().toString(36).substring(2, 8); // <--- ВОТ ЭТА СТРОКА ДОБАВЛЕНА
   
     await setupDatabase();
+    startHealthCheckServer();
     console.log("--- Tradebot worker started ---");
     // И сразу начинаем использовать ID в уведомлениях
     await notify("🚀 Tradebot worker started!", botInstanceId); 
@@ -752,8 +780,8 @@ function startHealthCheckServer() {
     }
   }
 })().catch(async err => {
-  console.error("Fatal error, exiting:", err);
-  await notify(`💀 **FATAL SHUTDOWN**: \`${err.message}\``);
-  await pool.end();
-  process.exit(1);
+    console.error("Fatal error, exiting:", err);
+    await notify(`💀 **FATAL SHUTDOWN**: \`${err.message}\``);
+    await pool.end();
+    process.exit(1);
 });
