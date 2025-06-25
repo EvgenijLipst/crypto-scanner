@@ -54,11 +54,18 @@ const COOLDOWN_HOURS        = 1.0;
 const bot = new Telegraf(TELEGRAM_TOKEN);
 const pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
+let isPoolActive = true;
+
+async function safeQuery(...args) {
+    if (!isPoolActive) throw new Error("Attempted query after pool closed");
+    return pool.query(...args);
+}
+
 // — Утилита: достать следующий сигнал из таблицы — 
 async function fetchNextSignal() {
     // Сигналы только младше 1 минуты
     const ONE_MINUTE_AGO = new Date(Date.now() - 60 * 1000).toISOString();
-    const res = await pool.query(
+    const res = await safeQuery(
       `SELECT id, token_mint
          FROM signals
         WHERE processed = false
@@ -78,7 +85,7 @@ async function fetchNextSignal() {
 async function cleanupOldSignals() {
     // Удаляем сигналы старше 1 часа (processed=true или false — неважно)
     const ONE_HOUR_AGO = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const res = await pool.query(
+    const res = await safeQuery(
       `DELETE FROM signals WHERE created_at < $1 RETURNING id;`,
       [ONE_HOUR_AGO]
     );
@@ -354,21 +361,21 @@ async function notify(text, botInstanceId = 'global') {
     const mintAddress = outputMint.toBase58();
     console.log(`\n=== Processing ${mintAddress} ===`);
   
-    const activePositionRes = await pool.query(`SELECT id FROM trades WHERE mint = $1 AND closed_at IS NULL LIMIT 1`, [mintAddress]);
+    const activePositionRes = await safeQuery(`SELECT id FROM trades WHERE mint = $1 AND closed_at IS NULL LIMIT 1`, [mintAddress]);
     if (activePositionRes.rows.length > 0) {
       console.log(`[Validation] Position for ${mintAddress} is already active (trade id ${activePositionRes.rows[0].id}). Skipping signal.`);
-      await pool.query(`UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
+      await safeQuery(`UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
   [signalId, "ACTIVE_POSITION"]);
       return;
     }
   
-    const cooldownCheckRes = await pool.query(`SELECT closed_at FROM trades WHERE mint = $1 ORDER BY closed_at DESC LIMIT 1`, [mintAddress]);
+    const cooldownCheckRes = await safeQuery(`SELECT closed_at FROM trades WHERE mint = $1 ORDER BY closed_at DESC LIMIT 1`, [mintAddress]);
     if (cooldownCheckRes.rows.length > 0) {
         const lastClosed = new Date(cooldownCheckRes.rows[0].closed_at);
         const hoursSinceClose = (new Date() - lastClosed) / 3600000;
         if (hoursSinceClose < COOLDOWN_HOURS) {
             console.log(`[Validation] Cooldown period for ${mintAddress} is active (last sale ${hoursSinceClose.toFixed(2)}h ago). Skipping signal.`);
-            await pool.query(`UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
+            await safeQuery(`UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
   [signalId, "COOLDOWN_ACTIVE"]);
             return;
         }
@@ -383,7 +390,7 @@ async function notify(text, botInstanceId = 'global') {
                             `Not enough USDC to perform swap.\n` +
                             `Required: \`${AMOUNT_TO_SWAP_USD}\` USDC.`;
       await notify(notifyMessage, botInstanceId);
-      await pool.query(
+      await safeQuery(
         `UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
         [signalId, "NO_BALANCE"]
       );
@@ -398,7 +405,7 @@ async function notify(text, botInstanceId = 'global') {
       console.log(`[Info] Token decimals for ${mintAddress} is ${outputDecimals}`);
     } catch(e) {
       await notify(`🚨 **Error**\nCould not fetch token info for \`${mintAddress}\`. Skipping.`, botInstanceId);
-await pool.query(
+await safeQuery(
   `UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
   [signalId, "TOKEN_INFO_FETCH_FAIL"]);
       return;
@@ -407,7 +414,7 @@ await pool.query(
     const { ok, impactPct } = await runPriceImpactCheck(connection, outputMint, outputDecimals);
     if (!ok) {
         await notify(`⚠️ **Safety Check L1 Failed**\nToken: \`${mintAddress}\`\nImpact: \`${impactPct.toFixed(2)}%\` > \`${SAFE_PRICE_IMPACT_PERCENT}%\``, botInstanceId);
-        await pool.query(
+        await safeQuery(
           `UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
           [signalId, "HIGH_PRICE_IMPACT"]
         );
@@ -416,7 +423,7 @@ await pool.query(
   
     const isNotRugPull = await checkRugPullRisk(outputMint);
     if (!isNotRugPull) {
-      await pool.query(`UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
+      await safeQuery(`UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
   [signalId, "RUGCHECK_FAIL"]);
       return;
     }
@@ -455,7 +462,7 @@ await pool.query(
         botInstanceId
       );
   
-      const res = await pool.query(
+      const res = await safeQuery(
         `INSERT INTO trades(mint,bought_amount,spent_usdc,buy_tx,created_at)
          VALUES($1,$2,$3,$4,NOW()) RETURNING id, spent_usdc;`,
         [mintAddress, boughtTokens, AMOUNT_TO_SWAP_USD, buyTxid]
@@ -605,7 +612,7 @@ await pool.query(
                     botInstanceId
                 );
   
-                await pool.query(
+                await safeQuery(
                     `UPDATE trades SET sold_amount=$1, received_usdc=$2, pnl=$3, sell_tx=$4, closed_at=NOW() WHERE id=$5;`,
                     [soldAmount, totalUSDC, pnl, lastSellTx, tradeId]
                 );
@@ -643,7 +650,7 @@ await pool.query(
                 console.log(`[Recovery] Token ${mintAddress} balance is zero. Assuming manual sell. Closing trade.`);
                 await notify(`🔵 **Position Closed Manually** for \`${mintAddress}\`. The token is no longer in the wallet. Stopping monitoring.`, botInstanceId);
                 
-                await pool.query(
+                await safeQuery(
                     `UPDATE trades SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL', closed_at = NOW() WHERE id = $1;`,
                     [tradeId]
                 );
@@ -696,7 +703,7 @@ async function setupDatabase() {
 
 async function addErrorReasonColumnIfNotExists() {
     try {
-        await pool.query(`
+        await safeQuery(`
             DO $$
             BEGIN
                 IF NOT EXISTS (
@@ -757,6 +764,7 @@ function startHealthCheckServer() {
         await notify(`🤖 Bot shutting down due to ${signal}...`, botInstanceId); // <-- Теперь ID передается!
         await pool.end();
         console.log("[Shutdown] Database pool closed.");
+        isPoolActive = false;
         process.exit(0);
       };
   
@@ -797,7 +805,7 @@ function startHealthCheckServer() {
           console.log(`[Halted] Stuck token has been sold (confirmed ${MANUAL_SELL_CONFIRMATIONS} times). Resuming normal operations.`);
           await notify(`✅ **Operation Resumed!**\nManual sale of \`${haltedMintAddress}\` detected. The bot is now returning to normal operation.`, botInstanceId);
           
-          await pool.query(
+          await safeQuery(
               `UPDATE trades SET sell_tx = 'MANUAL_SELL_AFTER_FAIL', closed_at = NOW() WHERE id = $1;`,
               [haltedTradeId]
           );
@@ -831,6 +839,7 @@ function startHealthCheckServer() {
 })().catch(async err => {
     console.error("Fatal error, exiting:", err);
     await notify(`💀 **FATAL SHUTDOWN**: \`${err.message}\``);
-    await pool.end();
-    process.exit(1);
+    try { await pool.end(); } catch (e) {}
+    isPoolActive = false;
+    process.exit(1); // <-- Гарантируем завершение процесса, чтобы не было повторных обращений к pool
 });
