@@ -710,6 +710,30 @@ async function setupDatabase() {
     }
 }
 
+async function addErrorReasonColumnIfNotExists() {
+    try {
+        await pool.query(`
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name='signals'
+                    AND column_name='error_reason'
+                ) THEN
+                    ALTER TABLE signals ADD COLUMN error_reason TEXT;
+                END IF;
+            END
+            $$;
+        `);
+        console.log("[DB] Checked/added column error_reason in signals");
+    } catch (e) {
+        if (!e.message.includes('duplicate column')) {
+            console.error("[DB] Could not ensure error_reason column exists:", e.message);
+        }
+    }
+}
+
 function startHealthCheckServer() {
     // Используем встроенный модуль http, чтобы не добавлять лишних зависимостей
     const http = require('http');
@@ -732,6 +756,8 @@ function startHealthCheckServer() {
 
 (async () => {
     const botInstanceId = Math.random().toString(36).substring(2, 8); // <--- ВОТ ЭТА СТРОКА ДОБАВЛЕНА
+
+    await addErrorReasonColumnIfNotExists();
   
     await setupDatabase();
     startHealthCheckServer();
