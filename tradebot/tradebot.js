@@ -49,6 +49,7 @@ const USDC_MINT             = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGG
 const USDC_DECIMALS         = 6;
 const SWAP_PROGRAM_ID       = new PublicKey("JUP4Fb2cFoZz7n6RzbA7gHq9jz6yJ3zyZhftyPS87ya");
 const COOLDOWN_HOURS        = 1.0;
+const MIN_QUOTE_USDC_FOR_MONITOR = 10;
 
 // — Инициализация —
 const bot = new Telegraf(TELEGRAM_TOKEN);
@@ -486,8 +487,17 @@ await safeQuery(
     while (true) {
         await new Promise(r => setTimeout(r, PRICE_CHECK_INTERVAL_MS));
         try {
-            const priceQuote = await getQuote(outputMint, USDC_MINT, 10 ** outputDecimals);
-            const currentPrice = Number(priceQuote.outAmount) / 10 ** outputDecimals;
+            const MIN_QUOTE_USDC_FOR_MONITOR = 10;
+        const monitorAmountLamports = Math.max(
+            Math.round(MIN_QUOTE_USDC_FOR_MONITOR * Math.pow(10, outputDecimals) / buyPricePerToken),
+            1
+        );
+        const priceQuote = await getQuote(outputMint, USDC_MINT, monitorAmountLamports);
+        if (!priceQuote.outAmount || Number(priceQuote.outAmount) === 0) {
+            console.warn("[Trailing] Quote unavailable for monitoring, skipping cycle");
+            continue; // Не сбрасываем high/low!
+        }
+        const currentPrice = Number(priceQuote.outAmount) / (monitorAmountLamports / Math.pow(10, outputDecimals));
             highestPrice = Math.max(highestPrice, currentPrice);
   
             const elapsedHours = (Date.now() - purchaseTimestamp) / (3600 * 1000);
