@@ -56,24 +56,36 @@ const pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorize
 
 // — Утилита: достать следующий сигнал из таблицы — 
 async function fetchNextSignal() {
-  console.log("[Signal] Checking for new signals...");
-  const res = await pool.query(
-    `SELECT id, token_mint
-       FROM signals
-      WHERE processed = false
-      ORDER BY created_at
-      LIMIT 1;`
-  );
-  if (res.rows.length === 0) {
-    console.log("[Signal] No new signals found.");
-    return null;
+    // Сигналы только младше 1 минуты
+    const ONE_MINUTE_AGO = new Date(Date.now() - 60 * 1000).toISOString();
+    const res = await pool.query(
+      `SELECT id, token_mint
+         FROM signals
+        WHERE processed = false
+          AND created_at > $1
+        ORDER BY created_at
+        LIMIT 1;`,
+      [ONE_MINUTE_AGO]
+    );
+    if (res.rows.length === 0) return null;
+    const { id, token_mint } = res.rows[0];
+    return { id, mint: new PublicKey(token_mint) };
   }
-  const { id, token_mint } = res.rows[0];
-  console.log(`[Signal] Found signal id=${id}, mint=${token_mint}`);
-  return { id, mint: new PublicKey(token_mint) };
-}
+  
 
 // — Основные вспомогательные функции —
+
+async function cleanupOldSignals() {
+    // Удаляем сигналы старше 1 часа (processed=true или false — неважно)
+    const ONE_HOUR_AGO = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const res = await pool.query(
+      `DELETE FROM signals WHERE created_at < $1 RETURNING id;`,
+      [ONE_HOUR_AGO]
+    );
+    if (res.rowCount > 0) {
+      console.log(`[Cleanup] Deleted ${res.rowCount} old signals`);
+    }
+  }
 
 async function getQuote(inputMint, outputMint, amount, maxRetries = 3) {
     const url = `https://quote-api.jup.ag/v6/quote?inputMint=${inputMint.toBase58()}&outputMint=${outputMint.toBase58()}&amount=${amount}&slippageBps=${SLIPPAGE_BPS}`;
@@ -751,8 +763,16 @@ function startHealthCheckServer() {
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
+  let lastCleanup = Date.now();
+
   while (true) {
     try {
+        // Очистка сигналов раз в 10 минут
+    if (Date.now() - lastCleanup > 10 * 60 * 1000) { // 10 минут
+      await cleanupOldSignals();
+      lastCleanup = Date.now();
+    }
+
       if (isHalted) {
         // --- НАЧАЛО НОВОЙ ЛОГИКИ ПРОВЕРКИ В АВАРИЙНОМ РЕЖИМЕ ---
         console.log(`[Halted] Bot is halted. Checking balance for stuck token: ${haltedMintAddress}`);
