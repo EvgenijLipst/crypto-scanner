@@ -137,7 +137,7 @@ async function getSwapTransaction(quoteResponse, userPubKey, maxRetries = 3) {
             userPublicKey: userPubKey,
             wrapAndUnwrapSol: true,
             asLegacyTransaction: false,
-            computeUnitPriceMicroLamports: process.env.COMPUTE_UNIT_PRICE || 600000
+            computeUnitPriceMicroLamports: process.env.COMPUTE_UNIT_PRICE || "auto"
           })
         });
         if (!res.ok) throw new Error("Swap tx error: " + await res.text());
