@@ -355,13 +355,14 @@ async function notify(text, botInstanceId = 'global') {
   }
 
   async function monitorOpenPosition(connection, wallet, trade, botInstanceId) {
-    // Примерная структура: mint, bought_amount, spent_usdc, buy_tx, id
+    // Получаем параметры из trade
     const mint = new PublicKey(trade.mint);
     const mintAddress = trade.mint;
     const tradeId = trade.id;
     const initialSpent = trade.spent_usdc;
-    // Подтянуть decimals
-    let outputDecimals = 9; // по умолчанию, если не найдете точно
+    const boughtAmount = trade.bought_amount;
+    let outputDecimals = 9; // по умолчанию
+
     try {
         const tokenInfo = await connection.getParsedAccountInfo(mint);
         if (tokenInfo.value) {
@@ -371,9 +372,210 @@ async function notify(text, botInstanceId = 'global') {
         await notify(`🚨 **monitorOpenPosition: Не удалось получить decimals** для ${mintAddress}`, botInstanceId);
     }
 
-    // Используйте trailing-логику из processSignal здесь.
-    // ... (сюда копируете цикл trailing из processSignal, только без части покупки)
-    // Везде используйте tradeId, initialSpent, mint, outputDecimals, и т.д.
+    // Основные переменные мониторинга
+    const purchasePrice = initialSpent / boughtAmount;
+    let highestPrice = purchasePrice;
+    let stopLossTriggerCount = 0;
+    let lastLiquidityCheckTimestamp = Date.now();
+
+    // Дата покупки из trade.created_at (UTC!), переводим в миллисекунды
+    const purchaseTimestamp = new Date(trade.created_at).getTime();
+
+    while (true) {
+        await new Promise(r => setTimeout(r, PRICE_CHECK_INTERVAL_MS));
+        try {
+            const monitorAmountLamports = Math.max(
+                Math.round(MIN_QUOTE_USDC_FOR_MONITOR * Math.pow(10, outputDecimals) / purchasePrice),
+                1
+            );
+            const priceQuote = await getQuote(mint, USDC_MINT, monitorAmountLamports);
+            if (!priceQuote.outAmount || Number(priceQuote.outAmount) === 0) {
+                console.warn("[Trailing] Quote unavailable for monitoring, skipping cycle");
+                continue;
+            }
+            const currentPrice = Number(priceQuote.outAmount) / (monitorAmountLamports / Math.pow(10, outputDecimals));
+            highestPrice = Math.max(highestPrice, currentPrice);
+
+            const elapsedHours = (Date.now() - purchaseTimestamp) / (3600 * 1000);
+            const currentPL = (currentPrice - purchasePrice) / purchasePrice;
+            const stopPrice = highestPrice * (1 - TRAILING_STOP_PERCENTAGE / 100);
+
+            console.log(`[Trailing] price=${currentPrice.toFixed(6)}, P/L=${(currentPL * 100).toFixed(2)}%, stop=${stopPrice.toFixed(6)}, time=${elapsedHours.toFixed(1)}h`);
+
+            let sellReason = null;
+
+            // Часовая проверка ликвидности/цены
+            const elapsedHoursSinceLastCheck = (Date.now() - lastLiquidityCheckTimestamp) / (3600 * 1000);
+            if (elapsedHoursSinceLastCheck >= 1) {
+                console.log(`[Trailing] Hourly safety check...`);
+                const { ok } = await runPriceImpactCheck(connection, mint, outputDecimals);
+                if (!ok) {
+                    console.warn(`[Trailing] HOURLY SAFETY CHECK FAILED! Initiating emergency sale.`);
+                    sellReason = "Hourly Safety Check Failed";
+                }
+                lastLiquidityCheckTimestamp = Date.now();
+            }
+
+            // Trailing stop-loss после grace периода
+            const GRACE_PERIOD_SECONDS = 90;
+            const secondsSincePurchase = (Date.now() - purchaseTimestamp) / 1000;
+            if (!sellReason && secondsSincePurchase > GRACE_PERIOD_SECONDS) { 
+                if (currentPrice <= stopPrice) {
+                    stopLossTriggerCount++;
+                    console.log(`[TSL] Stop-loss breached. Confirmation count: ${stopLossTriggerCount}/${TSL_CONFIRMATIONS}`);
+                } else {
+                    if (stopLossTriggerCount > 0) {
+                        console.log('[TSL] Price recovered above stop-loss. Resetting TSL confirmation counter.');
+                    }
+                    stopLossTriggerCount = 0;
+                }
+                if (stopLossTriggerCount >= TSL_CONFIRMATIONS) {
+                    sellReason = `Trailing Stop-Loss (${TSL_CONFIRMATIONS} confirmations)`;
+                }
+            }
+
+            // Принудительная продажа по истечении MAX_HOLDING_TIME_HOURS с убытком
+            if (!sellReason && elapsedHours >= MAX_HOLDING_TIME_HOURS) {
+                if (currentPL <= TIMEOUT_SELL_PL_THRESHOLD) {
+                    sellReason = `Max Holding Time (${MAX_HOLDING_TIME_HOURS}h) with Loss`;
+                } else {
+                    console.log(`[Trailing] Max holding time reached, but position is profitable. TSL remains active.`);
+                }
+            }
+
+            if (sellReason) {
+                console.log(`[Sale] Triggered by: ${sellReason}. Starting cascading sell...`);
+                await notify(`🔔 **Sale Triggered** for \`${mintAddress}\`\nReason: ${sellReason}`, botInstanceId);
+
+                let balance = await findTokenBalance(connection, wallet, mint, botInstanceId);
+                let soldAmount = 0;
+                let wasAnySaleSuccessful = false;
+                let totalUSDC = 0;
+                let lastSellTx = null;
+                let errorLog = [];
+                let saleAttempts = 0;
+                const PERCENTS = [100, 50, 25];
+
+                while (balance > 0) {
+                    let thisAttemptSuccess = false;
+                    for (const pct of PERCENTS) {
+                        if (balance === 0) break;
+                        const amountSell = Math.floor(balance * pct / 100);
+                        if (amountSell === 0) continue;
+                        for (let sellTry = 1; sellTry <= 3; sellTry++) {
+                            try {
+                                await approveToken(connection, wallet, mint, amountSell);
+                                const sellQuote = await getQuote(mint, USDC_MINT, amountSell);
+                                const { swapTransaction: sellTx, lastValidBlockHeight: sellLVBH } = await getSwapTransaction(sellQuote, wallet.publicKey.toBase58());
+                                const sellTxid = await executeTransaction(connection, sellTx, wallet, sellLVBH);
+                                lastSellTx = sellTxid;
+
+                                const usdcReceived = Number(sellQuote.outAmount) / 10 ** USDC_DECIMALS;
+                                totalUSDC += usdcReceived;
+                                const tokensSoldInChunk = Number(sellQuote.inAmount) / (10 ** outputDecimals);
+                                soldAmount += tokensSoldInChunk;
+                                const sellPrice = usdcReceived / tokensSoldInChunk;
+
+                                wasAnySaleSuccessful = true;
+                                thisAttemptSuccess = true;
+
+                                await notify(
+                                    `🔻 **Sold ${pct}%** of \`${mintAddress}\`\n` +
+                                    `Price: \`${sellPrice.toFixed(6)}\` USDC\n` + 
+                                    `Received: \`${usdcReceived.toFixed(4)}\` USDC\n` +
+                                    `[Tx](https://solscan.io/tx/${sellTxid})`,
+                                    botInstanceId
+                                );
+                                await new Promise(r => setTimeout(r, 5000));
+                                balance = await findTokenBalance(connection, wallet, mint, botInstanceId);
+                                break;
+                            } catch (e) {
+                                errorLog.push(`[${new Date().toISOString()}] Sell attempt ${sellTry}/3 for ${pct}% failed: ${e.message}`);
+                                await notify(`🚨 **Sale Error (${pct}%, try ${sellTry}/3)** for \`${mintAddress}\`:\n\`${e.message}\``, botInstanceId);
+                                if (sellTry < 3) await new Promise(r => setTimeout(r, 3000));
+                            }
+                        }
+                    }
+
+                    if (!thisAttemptSuccess) {
+                        saleAttempts++;
+                        if (saleAttempts >= 3) {
+                            await notify(`🚨 **Критическая ошибка продажи**\n\nТокен \`${mintAddress}\` не удалось продать автоматически после 3 каскадных попыток. Пожалуйста, выполните ручную продажу через кошелек. Бот будет продолжать попытки автоматической продажи каждые 15 секунд и проверять, не был ли продан токен вручную.`, botInstanceId);
+                        } else {
+                            await notify(`⚠️ **Неудачная попытка ${saleAttempts}/3**. Повторим через 15 секунд...`, botInstanceId);
+                        }
+                        await new Promise(r => setTimeout(r, 15000));
+                        balance = await findTokenBalance(connection, wallet, mint, botInstanceId);
+                        if (balance === 0) {
+                            await notify(`✅ **Manual sale detected!**\nBot resumes trading.`, botInstanceId);
+                            break;
+                        }
+                    } else {
+                        saleAttempts = 0;
+                        balance = await findTokenBalance(connection, wallet, mint, botInstanceId);
+                    }
+                }
+
+                if (await findTokenBalance(connection, wallet, mint, botInstanceId) > 0) {
+                    console.log("[Sale] Final revoke for remaining balance");
+                    await revokeToken(connection, wallet, mint);
+                }
+
+                const pnl = totalUSDC - initialSpent;
+                console.log(`[PNL] spent=${initialSpent.toFixed(2)}, received=${totalUSDC.toFixed(2)}, pnl=${pnl.toFixed(2)}`);
+                await notify(
+                    `💰 **Trade Complete** for \`${mintAddress}\`\n` +
+                    `Bought for: \`${initialSpent.toFixed(2)}\` USDC\n` +
+                    `Sold for: \`${totalUSDC.toFixed(2)}\` USDC\n` +
+                    `**PnL: \`${pnl.toFixed(2)}\` USDC**\n` +
+                    `[Final Tx](https://solscan.io/tx/${lastSellTx})`, 
+                    botInstanceId
+                );
+
+                await safeQuery(
+                    `UPDATE trades SET sold_amount=$1, received_usdc=$2, pnl=$3, sell_tx=$4, closed_at=NOW() WHERE id=$5;`,
+                    [soldAmount, totalUSDC, pnl, lastSellTx, tradeId]
+                );
+                console.log(`[DB] Updated trade id=${tradeId} with sale info`);
+                break;
+            }
+        } catch (e) {
+            console.error(`[Trailing] Error in trailing loop for ${mintAddress}:`, e.message);
+
+            if (e.message.includes("SELL_EXECUTION_FAILED")) {
+                await notify(`🚨 **CRITICAL: SELL FAILED & BOT HALTED** 🚨\n\n` +
+                            `Token: \`${mintAddress}\`\n` +
+                            `Reason: The bot could not execute the sell order after a sell trigger.\n\n` +
+                            `**ACTION REQUIRED: Please sell this token manually.**\n\n`+
+                            `The bot will halt all new purchases until it detects that this token's balance is zero.`, botInstanceId);
+                isHalted = true;
+                haltedMintAddress = mintAddress;
+                haltedTradeId = tradeId;
+                break;
+            }
+
+            await notify(`🟡 **TSL Paused** for \`${mintAddress}\`\nAn error occurred: \`${e.message}\`\nVerifying position status...`, botInstanceId);
+            console.log("[Recovery] Verifying token balance to decide next action...");
+            const balance = await findTokenBalance(connection, wallet, mint, botInstanceId);
+
+            if (balance > 0) {
+                console.log(`[Recovery] Token ${mintAddress} is still in the wallet. Resuming TSL after a delay.`);
+                await notify(`✅ **TSL Resuming** for \`${mintAddress}\`. The token is still held. Monitoring continues.`, botInstanceId);
+                await new Promise(r => setTimeout(r, 60000));
+                continue;
+            } else {
+                console.log(`[Recovery] Token ${mintAddress} balance is zero. Assuming manual sell. Closing trade.`);
+                await notify(`🔵 **Position Closed Manually** for \`${mintAddress}\`. The token is no longer in the wallet. Stopping monitoring.`, botInstanceId);
+
+                await safeQuery(
+                    `UPDATE trades SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL', closed_at = NOW() WHERE id = $1;`,
+                    [tradeId]
+                );
+                console.log(`[DB] Marked trade id=${tradeId} as manually closed.`);
+                break;
+            }
+        }
+    }
 }
 
 
