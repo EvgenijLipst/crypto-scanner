@@ -14,7 +14,7 @@ const fetch = require("cross-fetch");
 const bs58 = require("bs58");
 const { Telegraf } = require("telegraf");
 const { Pool } = require("pg");
-const botInstanceId = Math.random().toString(36).substring(2, 8);
+
 
 // Генерируем уникальный ID для этого запуска бота
 
@@ -63,22 +63,19 @@ async function safeQuery(...args) {
 }
 
 // — Утилита: достать следующий сигнал из таблицы — 
-async function fetchNextSignal() {
-    // Сигналы только младше 1 минуты
+async function fetchAllPendingSignals() {
     const ONE_MINUTE_AGO = new Date(Date.now() - 60 * 1000).toISOString();
     const res = await safeQuery(
       `SELECT id, token_mint
          FROM signals
         WHERE processed = false
           AND created_at > $1
-        ORDER BY created_at
-        LIMIT 1;`,
+        ORDER BY created_at;`,
       [ONE_MINUTE_AGO]
     );
-    if (res.rows.length === 0) return null;
-    const { id, token_mint } = res.rows[0];
-    return { id, mint: new PublicKey(token_mint) };
-  }
+    return res.rows.map(row => ({ id: row.id, mint: new PublicKey(row.token_mint) }));
+}
+
   
 
 // — Основные вспомогательные функции —
@@ -356,6 +353,29 @@ async function notify(text, botInstanceId = 'global') {
       console.error("Telegram notification failed:", e.message);
     }
   }
+
+  async function monitorOpenPosition(connection, wallet, trade, botInstanceId) {
+    // Примерная структура: mint, bought_amount, spent_usdc, buy_tx, id
+    const mint = new PublicKey(trade.mint);
+    const mintAddress = trade.mint;
+    const tradeId = trade.id;
+    const initialSpent = trade.spent_usdc;
+    // Подтянуть decimals
+    let outputDecimals = 9; // по умолчанию, если не найдете точно
+    try {
+        const tokenInfo = await connection.getParsedAccountInfo(mint);
+        if (tokenInfo.value) {
+            outputDecimals = tokenInfo.value.data.parsed.info.decimals;
+        }
+    } catch (e) {
+        await notify(`🚨 **monitorOpenPosition: Не удалось получить decimals** для ${mintAddress}`, botInstanceId);
+    }
+
+    // Используйте trailing-логику из processSignal здесь.
+    // ... (сюда копируете цикл trailing из processSignal, только без части покупки)
+    // Везде используйте tradeId, initialSpent, mint, outputDecimals, и т.д.
+}
+
 
   async function processSignal(connection, wallet, signal, botInstanceId) {
     const { id: signalId, mint: outputMint } = signal;
@@ -814,6 +834,16 @@ function startHealthCheckServer() {
 
   let lastCleanup = Date.now();
 
+  // При запуске проверяем незакрытые трейды
+  const openTrades = await safeQuery(`SELECT * FROM trades WHERE closed_at IS NULL`);
+  if (openTrades.rows.length > 0) {
+      for (const trade of openTrades.rows) {
+          await monitorOpenPosition(connection, wallet, trade, botInstanceId);
+      }
+      // После завершения мониторинга всех открытых позиций переходите к сигналам
+  }
+  
+  
   while (true) {
     try {
 
@@ -862,14 +892,17 @@ function startHealthCheckServer() {
         // --- КОНЕЦ НОВОЙ ЛОГИКИ ПРОВЕРКИ В АВАРИЙНОМ РЕЖИМЕ ---
       } else {
         // --- Штатный режим работы (если бот не остановлен) ---
-        const signal = await fetchNextSignal();
-        if (signal) {
-          console.log(`[Main] Received signal for ${signal.mint.toBase58()}`);
-          await processSignal(connection, wallet, signal, botInstanceId);
-          console.log(`[Main] Finished processing ${signal.mint.toBase58()}, looking for next signal.`);
-        } else {
-          await new Promise(r => setTimeout(r, SIGNAL_CHECK_INTERVAL_MS));
-        }
+        const signals = await fetchAllPendingSignals();
+        if (signals.length > 0) {
+    for (const signal of signals) {
+        console.log(`[Main] Received signal for ${signal.mint.toBase58()}`);
+        await processSignal(connection, wallet, signal, botInstanceId);
+        console.log(`[Main] Finished processing ${signal.mint.toBase58()}, looking for next signal.`);
+    }
+} else {
+    await new Promise(r => setTimeout(r, SIGNAL_CHECK_INTERVAL_MS));
+}
+
       }
     } catch (err) {
       console.error("[Main] Error in main loop:", err.message);
