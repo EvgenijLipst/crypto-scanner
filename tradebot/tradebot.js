@@ -786,7 +786,7 @@ async function addErrorReasonColumnIfNotExists() {
     }
 }
 
-function startHealthCheckServer() {
+function startHealthCheckServer(botInstanceId) {
     // Используем встроенный модуль http, чтобы не добавлять лишних зависимостей
     const http = require('http');
     
