@@ -560,7 +560,7 @@ await safeQuery(
                 await notify(`🔔 **Sale Triggered** for \`${mintAddress}\`\nReason: ${sellReason}`, botInstanceId);
                 
                 
-if (typeof totalUSDC === 'undefined') totalUSDC = 0; // Безопасно инициализируем
+
 
 let balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
 let soldAmount = 0;
