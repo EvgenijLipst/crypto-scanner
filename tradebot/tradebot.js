@@ -781,7 +781,7 @@ function startHealthCheckServer() {
     server.listen(PORT, () => {
         console.log(`[HealthCheck] Server listening on port ${PORT}`);
         // Это уведомление только для вас, чтобы вы знали, что все работает
-        notify(`✅ Health check server started on port ${PORT}.`);
+        notify(`✅ Health check server started on port ${PORT}.`, botInstanceId);
     });
 }
 
