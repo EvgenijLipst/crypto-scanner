@@ -1164,20 +1164,25 @@ function startHealthCheckServer(botInstanceId) {
 
   // При запуске проверяем незакрытые трейды
   // При запуске — мониторим только самую последнюю незакрытую сделку
-  console.log("[Startup] Ищем последнюю незакрытую сделку…");
+  console.log("[Startup] Ищем последнюю незакрытую или незавершённую после фейла сделку…");
 const lastOpenResult = await safeQuery(`
   SELECT *
     FROM trades
    WHERE closed_at IS NULL
+      OR sell_tx = 'MANUAL_SELL_AFTER_FAIL'
 ORDER BY created_at DESC
    LIMIT 1
 `);
 if (lastOpenResult.rows.length === 1) {
   const trade = lastOpenResult.rows[0];
-  console.log(`[Startup] Найдена открытая сделка для ${trade.mint}. Запуск мониторинга…`);
+  console.log(
+    `[Startup] Найдена сделка по ${trade.mint} ` +
+    `(id=${trade.id}, sell_tx=${trade.sell_tx}, closed_at=${trade.closed_at}). ` +
+    `Запускаем мониторинг…`
+  );
   await monitorOpenPosition(connection, wallet, trade, botInstanceId);
 } else {
-  console.log("[Startup] Нет незакрытых сделок. Переходим к обработке сигналов.");
+  console.log("[Startup] Нет сделок для мониторинга. Переходим к сигналам.");
 }
   // После — переходим к сигналам (старые сделки больше не трогаем)
   
