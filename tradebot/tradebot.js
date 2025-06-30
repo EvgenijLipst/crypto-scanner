@@ -59,6 +59,28 @@ const MIN_DUST_AMOUNT = 0.0001;
 const bot = new Telegraf(TELEGRAM_TOKEN);
 const pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
+console.log(`[DB] Connecting to: ${DATABASE_URL}`);
+;(async () => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT current_database() AS db, current_schema() AS schema_name;
+    `);
+    console.log(`[DB] Connected to database: ${rows[0].db}, schema: ${rows[0].schema_name}`);
+  } catch (e) {
+    console.error('[DB] Could not fetch current_database():', e.message);
+  }
+})();
+
+console.log(`[DB] Connecting to: ${DATABASE_URL}`);
+;(async () => {
+  try {
+    const { rows } = await pool.query(`SELECT current_database() AS db, current_schema() AS schema_name;`);
+    console.log(`[DB] Connected to database: ${rows[0].db}, schema: ${rows[0].schema_name}`);
+  } catch (e) {
+    console.error('[DB] Could not fetch current_database():', e.message);
+  }
+})();
+
 let isPoolActive = true;
 
 async function safeQuery(...args) {
@@ -1181,7 +1203,7 @@ function startHealthCheckServer(botInstanceId) {
 
   // При запуске проверяем незакрытые трейды
   // При запуске — мониторим только самую последнюю незакрытую сделку
-  console.log("[Startup] Ищем последнюю незакрытую или незавершённую после фейла сделку…");
+  console.log('[Startup] lastOpenResult.rows =', lastOpenResult.rows);
 const lastOpenResult = await safeQuery(`
   SELECT *
     FROM trades
@@ -1190,6 +1212,8 @@ const lastOpenResult = await safeQuery(`
 ORDER BY created_at DESC
    LIMIT 1
 `);
+console.log('[Startup] lastOpenResult.rows =', lastOpenResult.rows);
+
 if (lastOpenResult.rows.length === 1) {
   const trade = lastOpenResult.rows[0];
   console.log(
