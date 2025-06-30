@@ -1203,7 +1203,7 @@ function startHealthCheckServer(botInstanceId) {
 
   // При запуске проверяем незакрытые трейды
   // При запуске — мониторим только самую последнюю незакрытую сделку
-  console.log('[Startup] lastOpenResult.rows =', lastOpenResult.rows);
+  
 const lastOpenResult = await safeQuery(`
   SELECT *
     FROM trades
@@ -1213,6 +1213,7 @@ ORDER BY created_at DESC
    LIMIT 1
 `);
 console.log('[Startup] lastOpenResult.rows =', lastOpenResult.rows);
+
 
 if (lastOpenResult.rows.length === 1) {
   const trade = lastOpenResult.rows[0];
