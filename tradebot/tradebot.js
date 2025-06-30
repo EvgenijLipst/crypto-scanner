@@ -11,6 +11,7 @@ const {
     getAssociatedTokenAddress
 } = require("@solana/spl-token");
 const fetch = require("cross-fetch");
+const { AbortController } = require("abort-controller");
 const bs58 = require("bs58");
 const { Telegraf } = require("telegraf");
 const { Pool } = require("pg");
@@ -44,12 +45,15 @@ const MANUAL_SELL_CONFIRMATIONS     = parseInt(process.env.MANUAL_SELL_CONFIRMAT
 
 
 
+
 // — Жёстко зашитые константы —
 const USDC_MINT             = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 const USDC_DECIMALS         = 6;
 const SWAP_PROGRAM_ID       = new PublicKey("JUP4Fb2cFoZz7n6RzbA7gHq9jz6yJ3zyZhftyPS87ya");
 const COOLDOWN_HOURS        = 1.0;
 const MIN_QUOTE_USDC_FOR_MONITOR = 10;
+const MIN_DUST_AMOUNT = 0.0001;
+
 
 // — Инициализация —
 const bot = new Telegraf(TELEGRAM_TOKEN);
@@ -709,7 +713,7 @@ await safeQuery(
     while (true) {
         await new Promise(r => setTimeout(r, PRICE_CHECK_INTERVAL_MS));
         try {
-            const MIN_QUOTE_USDC_FOR_MONITOR = 10;
+            
         const monitorAmountLamports = Math.max(
             Math.round(MIN_QUOTE_USDC_FOR_MONITOR * Math.pow(10, outputDecimals) / buyPricePerToken),
             1
@@ -1057,56 +1061,95 @@ function startHealthCheckServer(botInstanceId) {
       lastCleanup = Date.now();
     }
 
-      if (isHalted) {
-        // --- НАЧАЛО НОВОЙ ЛОГИКИ ПРОВЕРКИ В АВАРИЙНОМ РЕЖИМЕ ---
-        console.log(`[Halted] Bot is halted. Checking balance for stuck token: ${haltedMintAddress}`);
-        
-        const balance = await findTokenBalance(connection, wallet, new PublicKey(haltedMintAddress), botInstanceId);
-
-        if (balance === 0) {
-          manualSellConfirmations++;
-          console.log(`[Halted] Zero balance detected. Confirmation count: ${manualSellConfirmations}/${MANUAL_SELL_CONFIRMATIONS}`);
-        } else {
-          // Если баланс снова виден, сбрасываем счетчик
-          if (manualSellConfirmations > 0) {
-            console.log(`[Halted] Token balance is visible again. Resetting manual sell confirmation counter.`);
-          }
-          manualSellConfirmations = 0;
-        }
-
-        if (manualSellConfirmations >= MANUAL_SELL_CONFIRMATIONS) {
-          console.log(`[Halted] Stuck token has been sold (confirmed ${MANUAL_SELL_CONFIRMATIONS} times). Resuming normal operations.`);
-          await notify(`✅ **Operation Resumed!**\nManual sale of \`${haltedMintAddress}\` detected. The bot is now returning to normal operation.`, botInstanceId);
-          
-          await safeQuery(
-              `UPDATE trades SET sell_tx = 'MANUAL_SELL_AFTER_FAIL', closed_at = NOW() WHERE id = $1;`,
-              [haltedTradeId]
-          );
-
-          isHalted = false;
-          haltedMintAddress = null;
-          haltedTradeId = null;
-          manualSellConfirmations = 0; // Сбрасываем счетчик
-        } else {
-            console.log(`[Halted] Awaiting manual sale. Checking again in 1 minute.`);
-            await new Promise(r => setTimeout(r, 60000));
-        }
-        // --- КОНЕЦ НОВОЙ ЛОГИКИ ПРОВЕРКИ В АВАРИЙНОМ РЕЖИМЕ ---
-      } else {
-        // --- Штатный режим работы (если бот не остановлен) ---
+        // --- АВАРИЙНЫЙ РЕЖИМ (halted) ---
+        // --- АВАРИЙНЫЙ РЕЖИМ (halted) ---
+// --- АВАРИЙНЫЙ РЕЖИМ (halted) с ручным подтверждением ---
+if (isHalted) {
+    console.log(`[Halted] Bot is halted. Checking balance for stuck token: ${haltedMintAddress}`);
+    // 1) Получаем decimals и считаем dust
+    const tokenInfo = await connection.getParsedAccountInfo(new PublicKey(haltedMintAddress));
+    const outputDecimals = tokenInfo.value.data.parsed.info.decimals;
+    const dustLamports = Math.ceil(MIN_DUST_AMOUNT * Math.pow(10, outputDecimals));
+  
+    // 2) Узнаём баланс «застрявшего» токена
+    const balance = await findTokenBalance(
+      connection,
+      wallet,
+      new PublicKey(haltedMintAddress),
+      botInstanceId
+    );
+  
+    // 3) Если ещё больше, чем dust — ждём минуту и проверяем снова
+    if (balance > dustLamports) {
+      console.log(`[Recovery] Token ${haltedMintAddress} still in wallet (${balance}). Re-check in 1m…`);
+      await new Promise(r => setTimeout(r, 60000));
+      continue;
+    }
+  
+    // 4) Если остаток >0, но ≤ dust — считаем DUST
+    if (balance > 0) {
+      await notify(
+        `ℹ️ Остаток токена \`${haltedMintAddress}\`: ${balance} (≤ dust). Закрываю как DUST.`,
+        botInstanceId
+      );
+      // сразу отмечаем в БД
+      await safeQuery(
+        `UPDATE trades SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL', closed_at = NOW() WHERE id = $1;`,
+        [haltedTradeId]
+      );
+      console.log(`[DB] Marked trade id=${haltedTradeId} as closed as DUST.`);
+      isHalted = false;
+      haltedMintAddress = null;
+      haltedTradeId   = null;
+      manualSellConfirmations = 0;
+      continue;
+    }
+  
+    // 5) balance === 0 — фиксируем ручную продажу
+    console.log(`[Recovery] Detected balance=0 for ${haltedMintAddress}, manual sale!`);
+    manualSellConfirmations++;
+    console.log(`[Halted] manualSellConfirmations = ${manualSellConfirmations}/${MANUAL_SELL_CONFIRMATIONS}`);
+  
+    // 6) Если накопили нужное число подтверждений — выходим из halted
+    if (manualSellConfirmations >= MANUAL_SELL_CONFIRMATIONS) {
+      await notify(
+        `✅ **Operation Resumed!**\nManual sale of \`${haltedMintAddress}\` detected ${manualSellConfirmations} times. Resuming normal operation.`,
+        botInstanceId
+      );
+      await safeQuery(
+        `UPDATE trades SET sell_tx = 'MANUAL_SELL_AFTER_FAIL', closed_at = NOW() WHERE id = $1;`,
+        [haltedTradeId]
+      );
+      isHalted = false;
+      haltedMintAddress = null;
+      haltedTradeId   = null;
+      manualSellConfirmations = 0;
+      continue;
+    } else {
+      // иначе ждём ещё одну минуту и вновь проверяем
+      console.log(`[Halted] Awaiting next manual-sale confirmation. Next check in 1m…`);
+      await new Promise(r => setTimeout(r, 60000));
+      continue;
+    }
+  }
+  
+  
+    
+        // --- ШТАТНЫЙ РЕЖИМ ---
         const signals = await fetchAllPendingSignals();
         if (signals.length > 0) {
-    for (const signal of signals) {
-        console.log(`[Main] Received signal for ${signal.mint.toBase58()}`);
-        await processSignal(connection, wallet, signal, botInstanceId);
-        console.log(`[Main] Finished processing ${signal.mint.toBase58()}, looking for next signal.`);
-    }
-} else {
-    await new Promise(r => setTimeout(r, SIGNAL_CHECK_INTERVAL_MS));
-}
+            for (const signal of signals) {
+                console.log(`[Main] Received signal for ${signal.mint.toBase58()}`);
+                await processSignal(connection, wallet, signal, botInstanceId);
+                console.log(`[Main] Finished processing ${signal.mint.toBase58()}, looking for next.`);
+            }
+        } else {
+            await new Promise(r => setTimeout(r, SIGNAL_CHECK_INTERVAL_MS));
+        }
+    
 
       }
-    } catch (err) {
+     catch (err) {
       console.error("[Main] Error in main loop:", err.message);
       await notify(`🚨 **FATAL ERROR** in main loop: \`${err.message}\``, botInstanceId);
       await new Promise(r => setTimeout(r, SIGNAL_CHECK_INTERVAL_MS));
