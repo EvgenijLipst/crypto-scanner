@@ -1079,13 +1079,18 @@ function startHealthCheckServer(botInstanceId) {
   let lastCleanup = Date.now();
 
   // При запуске проверяем незакрытые трейды
-  const openTrades = await safeQuery(`SELECT * FROM trades WHERE closed_at IS NULL`);
-  if (openTrades.rows.length > 0) {
-      for (const trade of openTrades.rows) {
-          await monitorOpenPosition(connection, wallet, trade, botInstanceId);
-      }
-      // После завершения мониторинга всех открытых позиций переходите к сигналам
+  // При запуске — мониторим только самую последнюю незакрытую сделку
+const lastOpen = await safeQuery(`
+    SELECT *
+      FROM trades
+     WHERE closed_at IS NULL
+  ORDER BY created_at DESC
+     LIMIT 1
+  `);
+  if (lastOpen.rows.length === 1) {
+      await monitorOpenPosition(connection, wallet, lastOpen.rows[0], botInstanceId);
   }
+  // После — переходим к сигналам (старые сделки больше не трогаем)
   
   
   while (true) {
@@ -1175,13 +1180,10 @@ if (isHalted) {
     
         // --- ШТАТНЫЙ РЕЖИМ ---
         const signals = await fetchAllPendingSignals();
-        if (signals.length > 0) {
-            for (const signal of signals) {
-                console.log(`[Main] Received signal for ${signal.mint.toBase58()}`);
-                await processSignal(connection, wallet, signal, botInstanceId);
-                console.log(`[Main] Finished processing ${signal.mint.toBase58()}, looking for next.`);
-            }
-        } else {
+if (signals.length > 0) {
+    // обрабатываем только самый первый сигнал
+    await processSignal(connection, wallet, signals[0], botInstanceId);
+} else {
             await new Promise(r => setTimeout(r, SIGNAL_CHECK_INTERVAL_MS));
         }
     
