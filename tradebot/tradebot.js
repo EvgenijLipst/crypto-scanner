@@ -1080,13 +1080,19 @@ function startHealthCheckServer(botInstanceId) {
 
   // При запуске проверяем незакрытые трейды
   // При запуске — мониторим только самую последнюю незакрытую сделку
-const lastOpen = await safeQuery(`
+  console.log("[Startup] ищем последнюю незакрытую сделку…");
+    const lastOpen = await safeQuery(`
     SELECT *
       FROM trades
      WHERE closed_at IS NULL
   ORDER BY created_at DESC
      LIMIT 1
   `);
+  console.log(
+    "[Startup] найдено строк:", 
+    lastOpen.rows.length, 
+    lastOpen.rows[0] && lastOpen.rows[0].mint
+  );
   if (lastOpen.rows.length === 1) {
       await monitorOpenPosition(connection, wallet, lastOpen.rows[0], botInstanceId);
   }
