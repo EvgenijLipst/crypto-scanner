@@ -271,54 +271,52 @@ async function revokeToken(connection, wallet, mint) {
 async function findTokenBalance(connection, wallet, mint, botInstanceId) {
     const MAX_RETRIES = 3;
     const RETRY_DELAY_MS = 2000;
-  
-    // ── Получаем decimals токена ──
+
+    // ── Сначала один раз подтягиваем decimals этого токена ──
     let decimals = 0;
     try {
-      const info = await connection.getParsedAccountInfo(mint);
-      decimals = info.value?.data?.parsed?.info?.decimals ?? 0;
+        const info = await connection.getParsedAccountInfo(mint);
+        decimals = info.value?.data?.parsed?.info?.decimals ?? 0;
     } catch (e) {
-      console.warn(
-        `[Balance] Could not fetch decimals for ${mint.toBase58()}: ${e.message}`
-      );
+        console.warn(`[Balance] Could not fetch decimals for ${mint.toBase58()}: ${e.message}`);
     }
-  
+
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const resp = await connection.getParsedTokenAccountsByOwner(
-          wallet.publicKey,
-          { mint },
-          "finalized"
-        );
-        const lamports = resp.value.length > 0
-          ? parseInt(resp.value[0].account.data.parsed.info.tokenAmount.amount, 10)
-          : 0;
-        // Теперь правильно делим на 10^decimals
-        const human = lamports / Math.pow(10, decimals);
-        console.log(
-          `[Balance] ${mint.toBase58()} = ${human.toFixed(6)} ` +
-          `(${lamports} lamports) Attempt ${attempt}/${MAX_RETRIES}`
-        );
-        return lamports;
-      } catch (e) {
-        console.error(
-          `[Balance] Failed to find token balance on attempt ${attempt}/${MAX_RETRIES}:`,
-          e.message
-        );
-        if (attempt === MAX_RETRIES) {
-          await notify(
-            `🚨 **CRITICAL RPC ERROR**\n` +
-            `Failed to get wallet balance after ${MAX_RETRIES} attempts. Skipping signal.`,
-            botInstanceId
-          );
-          return 0;
+        try {
+            const resp = await connection.getParsedTokenAccountsByOwner(
+                wallet.publicKey,
+                { mint },
+                "finalized"
+            );
+            const lamports = resp.value.length > 0
+                ? parseInt(resp.value[0].account.data.parsed.info.tokenAmount.amount, 10)
+                : 0;
+            const human = lamports / Math.pow(10, decimals);
+            console.log(
+                `[Balance] ${mint.toBase58()} = ${human.toFixed(6)} ` +
+                `(${lamports} lamports) Attempt ${attempt}/${MAX_RETRIES}`
+            );
+            return lamports;
+        } catch (e) {
+            console.error(
+                `[Balance] Failed to find token balance on attempt ${attempt}/${MAX_RETRIES}:`,
+                e.message
+            );
+            if (attempt === MAX_RETRIES) {
+                await notify(
+                    `🚨 **CRITICAL RPC ERROR**\n` +
+                    `Failed to get wallet balance after ${MAX_RETRIES} attempts. Skipping signal.`,
+                    botInstanceId
+                );
+                return 0;
+            }
+            await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
         }
-        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
-      }
     }
-  
+
     return 0;
-  }
+}
+
   
 
 async function runPriceImpactCheck(connection, outputMint, outputDecimals) {
@@ -1166,22 +1164,21 @@ function startHealthCheckServer(botInstanceId) {
 
   // При запуске проверяем незакрытые трейды
   // При запуске — мониторим только самую последнюю незакрытую сделку
-  console.log("[Startup] ищем последнюю незакрытую сделку…");
-    const lastOpen = await safeQuery(`
-    SELECT *
-      FROM trades
-     WHERE closed_at IS NULL
-  ORDER BY created_at DESC
-     LIMIT 1
-  `);
-  console.log(
-    "[Startup] найдено строк:", 
-    lastOpen.rows.length, 
-    lastOpen.rows[0] && lastOpen.rows[0].mint
-  );
-  if (lastOpen.rows.length === 1) {
-      await monitorOpenPosition(connection, wallet, lastOpen.rows[0], botInstanceId);
-  }
+  console.log("[Startup] Ищем последнюю незакрытую сделку…");
+const lastOpenResult = await safeQuery(`
+  SELECT *
+    FROM trades
+   WHERE closed_at IS NULL
+ORDER BY created_at DESC
+   LIMIT 1
+`);
+if (lastOpenResult.rows.length === 1) {
+  const trade = lastOpenResult.rows[0];
+  console.log(`[Startup] Найдена открытая сделка для ${trade.mint}. Запуск мониторинга…`);
+  await monitorOpenPosition(connection, wallet, trade, botInstanceId);
+} else {
+  console.log("[Startup] Нет незакрытых сделок. Переходим к обработке сигналов.");
+}
   // После — переходим к сигналам (старые сделки больше не трогаем)
   
   
