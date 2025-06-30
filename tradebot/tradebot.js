@@ -353,24 +353,41 @@ async function checkRugPullRisk(outputMint) {
     try {
         const url = `https://api.rugcheck.xyz/v1/tokens/${outputMint.toBase58()}/report`;
         const response = await fetch(url);
-        if (!response.ok) throw new Error(`rugcheck.xyz API unavailable (status: ${response.status})`);
-        
+        if (!response.ok) {
+            throw new Error(`rugcheck.xyz API unavailable (status: ${response.status})`);
+        }
+
         const data = await response.json();
-        const liquidityRisk = data.risks.find(risk => risk.name === "liquidity");
-        
+        const liquidityRisk = data.risks.find(r => r.name === "liquidity");
+
         if (liquidityRisk && liquidityRisk.level === "danger") {
-            await notify(`⚠️ **Safety L2 Failed**\nToken: \`${outputMint.toBase58()}\`\nReason: \`${liquidityRisk.description}\``);
+            await notify(
+                `⚠️ **Safety L2 Failed**\n` +
+                `Token: \`${outputMint.toBase58()}\`\n` +
+                `Reason: \`${liquidityRisk.description}\``
+            );
             return false;
         }
+
         console.log(`[Safety L2] OK`);
+        await notify(
+            `✅ **Safety L2 Passed**\n` +
+            `Token: \`${outputMint.toBase58()}\``
+        );
         return true;
+
     } catch (error) {
-        // --- ИЗМЕНЕНИЯ ЗДЕСЬ ---
-        console.error(`[Safety L2] CRITICAL: Could not perform rug pull check. SKIPPING TOKEN. Error: ${error.message}`);
-        await notify(`🚨 **Safety L2 CRITICAL**\nCould not perform rug pull check for \`${outputMint.toBase58()}\`. **Skipping token as a precaution.**`);
-        return false; // <-- "fail-closed"
+        console.error(
+            `[Safety L2] CRITICAL: Could not perform rug pull check. SKIPPING TOKEN. Error: ${error.message}`
+        );
+        await notify(
+            `🚨 **Safety L2 CRITICAL**\n` +
+            `Could not perform rug pull check for \`${outputMint.toBase58()}\`. **Skipping token as a precaution.**`
+        );
+        return false;
     }
 }
+
 
 
 async function notify(text, botInstanceId = 'global') {
