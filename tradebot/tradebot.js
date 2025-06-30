@@ -71,15 +71,6 @@ console.log(`[DB] Connecting to: ${DATABASE_URL}`);
   }
 })();
 
-console.log(`[DB] Connecting to: ${DATABASE_URL}`);
-;(async () => {
-  try {
-    const { rows } = await pool.query(`SELECT current_database() AS db, current_schema() AS schema_name;`);
-    console.log(`[DB] Connected to database: ${rows[0].db}, schema: ${rows[0].schema_name}`);
-  } catch (e) {
-    console.error('[DB] Could not fetch current_database():', e.message);
-  }
-})();
 
 let isPoolActive = true;
 
@@ -315,8 +306,7 @@ async function findTokenBalance(connection, wallet, mint, botInstanceId) {
                 : 0;
             const human = lamports / Math.pow(10, decimals);
             console.log(
-                `[Balance] ${mint.toBase58()} = ${human.toFixed(6)} ` +
-                `(${lamports} lamports) Attempt ${attempt}/${MAX_RETRIES}`
+                `[Balance] ${mint.toBase58()} = ${human.toFixed(6)} tokens — Attempt ${attempt}/${MAX_RETRIES}`
             );
             return lamports;
         } catch (e) {
