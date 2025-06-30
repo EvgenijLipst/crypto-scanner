@@ -385,20 +385,26 @@ async function notify(text, botInstanceId = 'global') {
     // Дата покупки из trade.created_at (UTC!), переводим в миллисекунды
     const purchaseTimestamp = new Date(trade.created_at).getTime();
 
-    const initialBal = await findTokenBalance(connection, wallet, mint, botInstanceId);
-  if (initialBal === 0) {
-    await notify(
-      `🔵 **Position Closed Manually** for \`${mintAddress}\`. Token balance is zero.`,
-      botInstanceId
-    );
-    await safeQuery(
-      `UPDATE trades
-         SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL', closed_at = NOW()
-       WHERE id = $1;`,
-      [tradeId]
-    );
-    return;  // выходим сразу, не входим в цикл
-  }
+    // ── NEW: учитываем DUST ──
+const info = await connection.getParsedAccountInfo(mint);
+const decimals = info.value.data.parsed.info.decimals;
+const dustLamports = Math.ceil(MIN_DUST_AMOUNT * 10 ** decimals);
+
+const initialBal = await findTokenBalance(connection, wallet, mint, botInstanceId);
+// если на кошельке 0 или только пыль — считаем позицию закрытой
+if (initialBal === 0 || initialBal <= dustLamports) {
+  await notify(
+    `🔵 **Position Closed (or DUST)** for \`${mintAddress}\`. Balance = ${initialBal} ≤ dust (${dustLamports}).`,
+    botInstanceId
+  );
+  await safeQuery(
+    `UPDATE trades
+       SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL', closed_at = NOW()
+     WHERE id = $1;`,
+    [tradeId]
+  );
+  return;  // выходим до запуска трейлинга
+}
 
 
     while (true) {
