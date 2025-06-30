@@ -387,6 +387,23 @@ async function notify(text, botInstanceId = 'global') {
 
     while (true) {
         await new Promise(r => setTimeout(r, PRICE_CHECK_INTERVAL_MS));
+        
+        const onchainBalance = await findTokenBalance(connection, wallet, mint, botInstanceId);
+        if (onchainBalance === 0) {
+            // уведомляем и закрываем сделку в БД
+            await notify(
+                `🔵 **Position Closed Manually** for \`${mintAddress}\`. Token balance is zero.`,
+                botInstanceId
+            );
+            await safeQuery(
+                `UPDATE trades
+                    SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL',
+                        closed_at = NOW()
+                  WHERE id = $1;`,
+                [tradeId]
+            );
+            break;
+        }
         try {
             const monitorAmountLamports = Math.max(
                 Math.round(MIN_QUOTE_USDC_FOR_MONITOR * Math.pow(10, outputDecimals) / purchasePrice),
