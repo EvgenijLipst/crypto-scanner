@@ -385,6 +385,22 @@ async function notify(text, botInstanceId = 'global') {
     // Дата покупки из trade.created_at (UTC!), переводим в миллисекунды
     const purchaseTimestamp = new Date(trade.created_at).getTime();
 
+    const initialBal = await findTokenBalance(connection, wallet, mint, botInstanceId);
+  if (initialBal === 0) {
+    await notify(
+      `🔵 **Position Closed Manually** for \`${mintAddress}\`. Token balance is zero.`,
+      botInstanceId
+    );
+    await safeQuery(
+      `UPDATE trades
+         SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL', closed_at = NOW()
+       WHERE id = $1;`,
+      [tradeId]
+    );
+    return;  // выходим сразу, не входим в цикл
+  }
+
+
     while (true) {
         await new Promise(r => setTimeout(r, PRICE_CHECK_INTERVAL_MS));
         
