@@ -544,11 +544,11 @@ if (initialBal === 0 || initialBal <= dustLamports) {
                 await notify(`🔔 **Sale Triggered** for \`${mintAddress}\`\nReason: ${sellReason}`, botInstanceId);
             
                 // ── Учитываем DUST ──
-                const info = await connection.getParsedAccountInfo(outputMint);
+                const info = await connection.getParsedAccountInfo(mint);
                 const decimals = info.value.data.parsed.info.decimals;
                 const dustLamports = Math.ceil(MIN_DUST_AMOUNT * 10 ** decimals);
             
-                let balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
+                let balance = await findTokenBalance(connection, wallet, mint, botInstanceId);
                 // Если нет баланса или только пыль — закрываем сразу
                 if (balance === 0 || balance <= dustLamports) {
                     await notify(
@@ -913,11 +913,11 @@ await safeQuery(
                 await notify(`🔔 **Sale Triggered** for \`${mintAddress}\`\nReason: ${sellReason}`, botInstanceId);
             
                 // ── Учитываем DUST ──
-                const info = await connection.getParsedAccountInfo(outputMint);
+                const info = await connection.getParsedAccountInfo(mint);
                 const decimals = info.value.data.parsed.info.decimals;
                 const dustLamports = Math.ceil(MIN_DUST_AMOUNT * 10 ** decimals);
             
-                let balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
+                let balance = await findTokenBalance(connection, wallet, mint, botInstanceId);
                 // Если нет баланса или только пыль — закрываем сразу
                 if (balance === 0 || balance <= dustLamports) {
                     await notify(
