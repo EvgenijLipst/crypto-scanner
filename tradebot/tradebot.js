@@ -488,99 +488,132 @@ if (initialBal === 0 || initialBal <= dustLamports) {
             if (sellReason) {
                 console.log(`[Sale] Triggered by: ${sellReason}. Starting cascading sell...`);
                 await notify(`🔔 **Sale Triggered** for \`${mintAddress}\`\nReason: ${sellReason}`, botInstanceId);
-
-                let balance = await findTokenBalance(connection, wallet, mint, botInstanceId);
-                let soldAmount = 0;
-                let wasAnySaleSuccessful = false;
-                let totalUSDC = 0;
-                let lastSellTx = null;
+            
+                // ── Учитываем DUST ──
+                const info = await connection.getParsedAccountInfo(outputMint);
+                const decimals = info.value.data.parsed.info.decimals;
+                const dustLamports = Math.ceil(MIN_DUST_AMOUNT * 10 ** decimals);
+            
+                let balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
+                // Если нет баланса или только пыль — закрываем сразу
+                if (balance === 0 || balance <= dustLamports) {
+                    await notify(
+                        `🔵 **Position Closed (or DUST)** for \`${mintAddress}\`. ` +
+                        `Balance = ${balance} ≤ dust (${dustLamports}).`,
+                        botInstanceId
+                    );
+                    await safeQuery(
+                        `UPDATE trades SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL', closed_at = NOW() WHERE id = $1;`,
+                        [tradeId]
+                    );
+                    break;
+                }
+            
+                const PERCENTS = [100, 50, 25];
                 let errorLog = [];
                 let saleAttempts = 0;
-                const PERCENTS = [100, 50, 25];
-
+                let manualSaleSuggested = false;
+                let totalUSDC = 0;
+                let soldAmount = 0;
+                let lastSellTx = null;
+            
                 while (balance > 0) {
+                    // перед каждой итерацией проверяем manual sale / dust
+                    balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
+                    if (balance === 0 || balance <= dustLamports) {
+                        await notify(`✅ **Manual sale detected or DUST cleared**. Resuming new signals.`, botInstanceId);
+                        break;
+                    }
+            
                     let thisAttemptSuccess = false;
                     for (const pct of PERCENTS) {
                         if (balance === 0) break;
                         const amountSell = Math.floor(balance * pct / 100);
                         if (amountSell === 0) continue;
+            
                         for (let sellTry = 1; sellTry <= 3; sellTry++) {
                             try {
-                                await approveToken(connection, wallet, mint, amountSell);
-                                const sellQuote = await getQuote(mint, USDC_MINT, amountSell);
-                                const { swapTransaction: sellTx, lastValidBlockHeight: sellLVBH } = await getSwapTransaction(sellQuote, wallet.publicKey.toBase58());
-                                const sellTxid = await executeTransaction(connection, sellTx, wallet, sellLVBH);
+                                await approveToken(connection, wallet, outputMint, amountSell);
+                                const sellQuote = await getQuote(outputMint, USDC_MINT, amountSell);
+                                const { swapTransaction, lastValidBlockHeight } = await getSwapTransaction(
+                                    sellQuote,
+                                    wallet.publicKey.toBase58()
+                                );
+                                const sellTxid = await executeTransaction(connection, swapTransaction, wallet, lastValidBlockHeight);
                                 lastSellTx = sellTxid;
-
+            
                                 const usdcReceived = Number(sellQuote.outAmount) / 10 ** USDC_DECIMALS;
                                 totalUSDC += usdcReceived;
-                                const tokensSoldInChunk = Number(sellQuote.inAmount) / (10 ** outputDecimals);
-                                soldAmount += tokensSoldInChunk;
-                                const sellPrice = usdcReceived / tokensSoldInChunk;
-
-                                wasAnySaleSuccessful = true;
+                                soldAmount += Number(sellQuote.inAmount) / (10 ** decimals);
+            
                                 thisAttemptSuccess = true;
-
+            
                                 await notify(
                                     `🔻 **Sold ${pct}%** of \`${mintAddress}\`\n` +
-                                    `Price: \`${sellPrice.toFixed(6)}\` USDC\n` + 
-                                    `Received: \`${usdcReceived.toFixed(4)}\` USDC\n` +
+                                    `Received: ${usdcReceived.toFixed(4)} USDC\n` +
                                     `[Tx](https://solscan.io/tx/${sellTxid})`,
                                     botInstanceId
                                 );
                                 await new Promise(r => setTimeout(r, 5000));
-                                balance = await findTokenBalance(connection, wallet, mint, botInstanceId);
+            
+                                balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
                                 break;
                             } catch (e) {
-                                errorLog.push(`[${new Date().toISOString()}] Sell attempt ${sellTry}/3 for ${pct}% failed: ${e.message}`);
-                                await notify(`🚨 **Sale Error (${pct}%, try ${sellTry}/3)** for \`${mintAddress}\`:\n\`${e.message}\``, botInstanceId);
+                                errorLog.push(
+                                    `[${new Date().toISOString()}] Sell attempt ${sellTry}/3 for ${pct}% failed: ${e.message}`
+                                );
+                                await notify(
+                                    `🚨 **Sale Error (${pct}%, try ${sellTry}/3)** for \`${mintAddress}\`:\n\`${e.message}\``,
+                                    botInstanceId
+                                );
                                 if (sellTry < 3) await new Promise(r => setTimeout(r, 3000));
                             }
                         }
+                        if (thisAttemptSuccess) break;
                     }
-
+            
                     if (!thisAttemptSuccess) {
                         saleAttempts++;
-                        if (saleAttempts >= 3) {
-                            await notify(`🚨 **Критическая ошибка продажи**\n\nТокен \`${mintAddress}\` не удалось продать автоматически после 3 каскадных попыток. Пожалуйста, выполните ручную продажу через кошелек. Бот будет продолжать попытки автоматической продажи каждые 15 секунд и проверять, не был ли продан токен вручную.`, botInstanceId);
-                        } else {
-                            await notify(`⚠️ **Неудачная попытка ${saleAttempts}/3**. Повторим через 15 секунд...`, botInstanceId);
+                        // предлагаем ручную продажу один раз после первой неудачной итерации
+                        if (!manualSaleSuggested) {
+                            manualSaleSuggested = true;
+                            await notify(
+                                `🚨 **Автопродажа не сработала**. Пожалуйста, продайте токен вручную.`,
+                                botInstanceId
+                            );
                         }
                         await new Promise(r => setTimeout(r, 15000));
-                        balance = await findTokenBalance(connection, wallet, mint, botInstanceId);
-                        if (balance === 0) {
-                            await notify(`✅ **Manual sale detected!**\nBot resumes trading.`, botInstanceId);
-                            break;
-                        }
+                        continue;
                     } else {
                         saleAttempts = 0;
-                        balance = await findTokenBalance(connection, wallet, mint, botInstanceId);
                     }
                 }
-
-                if (await findTokenBalance(connection, wallet, mint, botInstanceId) > 0) {
+            
+                // финальная ревокация, если остался dust
+                if (await findTokenBalance(connection, wallet, outputMint, botInstanceId) > 0) {
                     console.log("[Sale] Final revoke for remaining balance");
-                    await revokeToken(connection, wallet, mint);
+                    await revokeToken(connection, wallet, outputMint);
                 }
-
+            
                 const pnl = totalUSDC - initialSpent;
                 console.log(`[PNL] spent=${initialSpent.toFixed(2)}, received=${totalUSDC.toFixed(2)}, pnl=${pnl.toFixed(2)}`);
                 await notify(
                     `💰 **Trade Complete** for \`${mintAddress}\`\n` +
-                    `Bought for: \`${initialSpent.toFixed(2)}\` USDC\n` +
-                    `Sold for: \`${totalUSDC.toFixed(2)}\` USDC\n` +
-                    `**PnL: \`${pnl.toFixed(2)}\` USDC**\n` +
-                    `[Final Tx](https://solscan.io/tx/${lastSellTx})`, 
+                    `PnL: ${pnl.toFixed(2)} USDC\n` +
+                    `[Final Tx](https://solscan.io/tx/${lastSellTx})`,
                     botInstanceId
                 );
-
+            
                 await safeQuery(
-                    `UPDATE trades SET sold_amount=$1, received_usdc=$2, pnl=$3, sell_tx=$4, closed_at=NOW() WHERE id=$5;`,
+                    `UPDATE trades 
+                        SET sold_amount=$1, received_usdc=$2, pnl=$3, sell_tx=$4, closed_at=NOW() 
+                      WHERE id=$5;`,
                     [soldAmount, totalUSDC, pnl, lastSellTx, tradeId]
                 );
                 console.log(`[DB] Updated trade id=${tradeId} with sale info`);
                 break;
             }
+            
         } catch (e) {
             console.error(`[Trailing] Error in trailing loop for ${mintAddress}:`, e.message);
 
@@ -814,116 +847,134 @@ await safeQuery(
             }
   
             if (sellReason) {
-                // Вся логика продажи (if (sellReason) { ... }) остается без изменений
-                // Просто скопируйте ее из вашего файла или из моего предыдущего ответа
-                // ...
-                // Это тот самый большой блок с каскадной продажей, который мы уже исправляли
-                // ...
-                // В конце этого блока должен быть 'break;'
                 console.log(`[Sale] Triggered by: ${sellReason}. Starting cascading sell...`);
                 await notify(`🔔 **Sale Triggered** for \`${mintAddress}\`\nReason: ${sellReason}`, botInstanceId);
-                
-                
-
-
-let balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
-let soldAmount = 0;
-let wasAnySaleSuccessful = false; 
-let totalUSDC = 0;
-let lastSellTx = null;
-let errorLog = [];
-let saleAttempts = 0;
-
-const PERCENTS = [100, 50, 25];
-
-// Новый цикл: продолжает попытки, чередуя автомат и проверку ручной продажи
-while (balance > 0) {
-    let thisAttemptSuccess = false;
-    for (const pct of PERCENTS) {
-        if (balance === 0) break;
-        const amountSell = Math.floor(balance * pct / 100);
-        if (amountSell === 0) continue;
-
-        for (let sellTry = 1; sellTry <= 3; sellTry++) {
-            try {
-                await approveToken(connection, wallet, outputMint, amountSell);
-                const sellQuote = await getQuote(outputMint, USDC_MINT, amountSell);
-                const { swapTransaction: sellTx, lastValidBlockHeight: sellLVBH } = await getSwapTransaction(sellQuote, wallet.publicKey.toBase58());
-                const sellTxid = await executeTransaction(connection, sellTx, wallet, sellLVBH);
-                lastSellTx = sellTxid;
-
-                const usdcReceived = Number(sellQuote.outAmount) / 10 ** USDC_DECIMALS;
-                totalUSDC += usdcReceived;
-                const tokensSoldInChunk = Number(sellQuote.inAmount) / (10 ** outputDecimals);
-                soldAmount += tokensSoldInChunk;
-                const sellPrice = usdcReceived / tokensSoldInChunk;
-
-                wasAnySaleSuccessful = true;
-                thisAttemptSuccess = true;
-
-                await notify(
-                    `🔻 **Sold ${pct}%** of \`${mintAddress}\`\n` +
-                    `Price: \`${sellPrice.toFixed(6)}\` USDC\n` + 
-                    `Received: \`${usdcReceived.toFixed(4)}\` USDC\n` +
-                    `[Tx](https://solscan.io/tx/${sellTxid})`,
-                    botInstanceId
-                );
-                await new Promise(r => setTimeout(r, 5000));
-                balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
-                break;
-            } catch (e) {
-                errorLog.push(`[${new Date().toISOString()}] Sell attempt ${sellTry}/3 for ${pct}% failed: ${e.message}`);
-                await notify(`🚨 **Sale Error (${pct}%, try ${sellTry}/3)** for \`${mintAddress}\`:\n\`${e.message}\``, botInstanceId);
-                if (sellTry < 3) await new Promise(r => setTimeout(r, 3000));
-            }
-        }
-    }
-
-    if (!thisAttemptSuccess) {
-        saleAttempts++;
-        if (saleAttempts >= 3) {
-            await notify(`🚨 **Критическая ошибка продажи**\n\nТокен \`${mintAddress}\` не удалось продать автоматически после 3 каскадных попыток. Пожалуйста, выполните ручную продажу через кошелек. Бот будет продолжать попытки автоматической продажи каждые 15 секунд и проверять, не был ли продан токен вручную.`, botInstanceId);
-        } else {
-            await notify(`⚠️ **Неудачная попытка ${saleAttempts}/3**. Повторим через 15 секунд...`, botInstanceId);
-        }
-        // Ждем 15 сек, затем снова полный каскад (или выход если вручную продали)
-        await new Promise(r => setTimeout(r, 15000));
-        balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
-        if (balance === 0) {
-            await notify(`✅ **Manual sale detected!**\nBot resumes trading.`, botInstanceId);
-            break;
-        }
-    } else {
-        saleAttempts = 0;
-        balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
-    }
-}
-
-
-  
+            
+                // ── Учитываем DUST ──
+                const info = await connection.getParsedAccountInfo(outputMint);
+                const decimals = info.value.data.parsed.info.decimals;
+                const dustLamports = Math.ceil(MIN_DUST_AMOUNT * 10 ** decimals);
+            
+                let balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
+                // Если нет баланса или только пыль — закрываем сразу
+                if (balance === 0 || balance <= dustLamports) {
+                    await notify(
+                        `🔵 **Position Closed (or DUST)** for \`${mintAddress}\`. ` +
+                        `Balance = ${balance} ≤ dust (${dustLamports}).`,
+                        botInstanceId
+                    );
+                    await safeQuery(
+                        `UPDATE trades SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL', closed_at = NOW() WHERE id = $1;`,
+                        [tradeId]
+                    );
+                    break;
+                }
+            
+                const PERCENTS = [100, 50, 25];
+                let errorLog = [];
+                let saleAttempts = 0;
+                let manualSaleSuggested = false;
+                let totalUSDC = 0;
+                let soldAmount = 0;
+                let lastSellTx = null;
+            
+                while (balance > 0) {
+                    // перед каждой итерацией проверяем manual sale / dust
+                    balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
+                    if (balance === 0 || balance <= dustLamports) {
+                        await notify(`✅ **Manual sale detected or DUST cleared**. Resuming new signals.`, botInstanceId);
+                        break;
+                    }
+            
+                    let thisAttemptSuccess = false;
+                    for (const pct of PERCENTS) {
+                        if (balance === 0) break;
+                        const amountSell = Math.floor(balance * pct / 100);
+                        if (amountSell === 0) continue;
+            
+                        for (let sellTry = 1; sellTry <= 3; sellTry++) {
+                            try {
+                                await approveToken(connection, wallet, outputMint, amountSell);
+                                const sellQuote = await getQuote(outputMint, USDC_MINT, amountSell);
+                                const { swapTransaction, lastValidBlockHeight } = await getSwapTransaction(
+                                    sellQuote,
+                                    wallet.publicKey.toBase58()
+                                );
+                                const sellTxid = await executeTransaction(connection, swapTransaction, wallet, lastValidBlockHeight);
+                                lastSellTx = sellTxid;
+            
+                                const usdcReceived = Number(sellQuote.outAmount) / 10 ** USDC_DECIMALS;
+                                totalUSDC += usdcReceived;
+                                soldAmount += Number(sellQuote.inAmount) / (10 ** decimals);
+            
+                                thisAttemptSuccess = true;
+            
+                                await notify(
+                                    `🔻 **Sold ${pct}%** of \`${mintAddress}\`\n` +
+                                    `Received: ${usdcReceived.toFixed(4)} USDC\n` +
+                                    `[Tx](https://solscan.io/tx/${sellTxid})`,
+                                    botInstanceId
+                                );
+                                await new Promise(r => setTimeout(r, 5000));
+            
+                                balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
+                                break;
+                            } catch (e) {
+                                errorLog.push(
+                                    `[${new Date().toISOString()}] Sell attempt ${sellTry}/3 for ${pct}% failed: ${e.message}`
+                                );
+                                await notify(
+                                    `🚨 **Sale Error (${pct}%, try ${sellTry}/3)** for \`${mintAddress}\`:\n\`${e.message}\``,
+                                    botInstanceId
+                                );
+                                if (sellTry < 3) await new Promise(r => setTimeout(r, 3000));
+                            }
+                        }
+                        if (thisAttemptSuccess) break;
+                    }
+            
+                    if (!thisAttemptSuccess) {
+                        saleAttempts++;
+                        // предлагаем ручную продажу один раз после первой неудачной итерации
+                        if (!manualSaleSuggested) {
+                            manualSaleSuggested = true;
+                            await notify(
+                                `🚨 **Автопродажа не сработала**. Пожалуйста, продайте токен вручную.`,
+                                botInstanceId
+                            );
+                        }
+                        await new Promise(r => setTimeout(r, 15000));
+                        continue;
+                    } else {
+                        saleAttempts = 0;
+                    }
+                }
+            
+                // финальная ревокация, если остался dust
                 if (await findTokenBalance(connection, wallet, outputMint, botInstanceId) > 0) {
                     console.log("[Sale] Final revoke for remaining balance");
                     await revokeToken(connection, wallet, outputMint);
                 }
-  
+            
                 const pnl = totalUSDC - initialSpent;
                 console.log(`[PNL] spent=${initialSpent.toFixed(2)}, received=${totalUSDC.toFixed(2)}, pnl=${pnl.toFixed(2)}`);
                 await notify(
                     `💰 **Trade Complete** for \`${mintAddress}\`\n` +
-                    `Bought for: \`${initialSpent.toFixed(2)}\` USDC\n` +
-                    `Sold for: \`${totalUSDC.toFixed(2)}\` USDC\n` +
-                    `**PnL: \`${pnl.toFixed(2)}\` USDC**\n` +
-                    `[Final Tx](https://solscan.io/tx/${lastSellTx})`, 
+                    `PnL: ${pnl.toFixed(2)} USDC\n` +
+                    `[Final Tx](https://solscan.io/tx/${lastSellTx})`,
                     botInstanceId
                 );
-  
+            
                 await safeQuery(
-                    `UPDATE trades SET sold_amount=$1, received_usdc=$2, pnl=$3, sell_tx=$4, closed_at=NOW() WHERE id=$5;`,
+                    `UPDATE trades 
+                        SET sold_amount=$1, received_usdc=$2, pnl=$3, sell_tx=$4, closed_at=NOW() 
+                      WHERE id=$5;`,
                     [soldAmount, totalUSDC, pnl, lastSellTx, tradeId]
                 );
                 console.log(`[DB] Updated trade id=${tradeId} with sale info`);
-                break; 
+                break;
             }
+            
         } catch (e) {
             console.error(`[Trailing] Error in trailing loop for ${mintAddress}:`, e.message);
   
