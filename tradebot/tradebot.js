@@ -278,7 +278,11 @@ async function findTokenBalance(connection, wallet, mint, botInstanceId) {
         // Убираем или комментируем детальный лог, он нам больше не нужен для постоянной работы
         // console.log('[RAW RPC RESPONSE for findTokenBalance]:', JSON.stringify(resp, null, 2));
         const bal = resp.value.length > 0 ? parseInt(resp.value[0].account.data.parsed.info.tokenAmount.amount, 10) : 0;
-        console.log(`[Balance] ${mint.toBase58()} balance = ${bal} (Attempt ${attempt}/${MAX_RETRIES})`);
+        const human = bal / (10 ** outputDecimals);
+        console.log(
+        `[Balance] ${mint.toBase58()} = ${human.toFixed(6)} ` +
+        `(${bal} lamports) Attempt ${attempt}/${MAX_RETRIES}`
+            );
         return bal; // Успех! Возвращаем баланс и выходим из цикла.
       } catch (e) {
         console.error(`[Balance] Failed to find token balance on attempt ${attempt}/${MAX_RETRIES}:`, e.message);
@@ -790,15 +794,23 @@ await safeQuery(
             1
         );
         const priceQuote = await getQuote(outputMint, USDC_MINT, monitorAmountLamports);
+        const tokenAmount = monitorAmountLamports / (10 ** outputDecimals);
+        const currentPrice = usdcReceived / tokenAmount;
+        const currentPL = (currentPrice - purchasePrice) / purchasePrice;
+        console.log(
+            `[Trailing] price=${currentPrice.toFixed(6)}, ` +
+            `P/L=${(currentPL * 100).toFixed(2)}%, ` +
+            `stop=${stopPrice.toFixed(6)}, time=${elapsedHours.toFixed(1)}h`
+          );
         if (!priceQuote.outAmount || Number(priceQuote.outAmount) === 0) {
             console.warn("[Trailing] Quote unavailable for monitoring, skipping cycle");
             continue; // Не сбрасываем high/low!
         }
-        const currentPrice = Number(priceQuote.outAmount) / (monitorAmountLamports / Math.pow(10, outputDecimals));
+        
             highestPrice = Math.max(highestPrice, currentPrice);
   
             const elapsedHours = (Date.now() - purchaseTimestamp) / (3600 * 1000);
-            const currentPL = (currentPrice - purchasePrice) / purchasePrice;
+            
             const stopPrice = highestPrice * (1 - TRAILING_STOP_PERCENTAGE / 100);
   
             console.log(`[Trailing] price=${currentPrice.toFixed(6)}, P/L=${(currentPL * 100).toFixed(2)}%, stop=${stopPrice.toFixed(6)}, time=${elapsedHours.toFixed(1)}h`);
