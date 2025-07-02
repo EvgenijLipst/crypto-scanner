@@ -938,6 +938,17 @@ await safeQuery(
       const boughtTokens = Number(buyQuote.outAmount) / 10 ** outputDecimals;
       buyPricePerToken = AMOUNT_TO_SWAP_USD / boughtTokens;
       console.log(`[Purchase] Bought ${boughtTokens.toFixed(6)} @ ${buyPricePerToken.toFixed(6)} USDC/token, tx=${buyTxid}`);
+
+      // --- ДОБАВЛЕНО: проверка фактического поступления токена ---
+      const actualBalance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
+      const dustLamports = Math.ceil(MIN_DUST_AMOUNT * 10 ** outputDecimals);
+      if (actualBalance === 0 || actualBalance <= dustLamports) {
+        await notify(
+          `❌ **Purchase failed or token not received** for \`${mintAddress}\`. Баланс после покупки: ${actualBalance} ≤ dust (${dustLamports})`,
+          botInstanceId
+        );
+        return;
+      }
       await notify(
         `✅ **Purchased**\nToken: \`${mintAddress}\`\n` +
         `Amount: \`${boughtTokens.toFixed(4)}\`\n` +
