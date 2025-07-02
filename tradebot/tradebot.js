@@ -338,44 +338,54 @@ async function runPriceImpactCheck(connection, outputMint, outputDecimals) {
         // Используем реальную сумму сделки для более точной проверки
         const amountForBuyCheckLamports = Math.round(AMOUNT_TO_SWAP_USD * (10 ** USDC_DECIMALS));
 
-        // …  
-console.log(`[Safety L1] Simulating buy for ${AMOUNT_TO_SWAP_USD} USDC...`);
-// ===== retry buy on COULD_NOT_FIND_ANY_ROUTE =====
-let buyQuote;
-try {
-  buyQuote = await getQuote(USDC_MINT, outputMint, amountForBuyCheckLamports);
-} catch (e) {
-  if (e.message.includes("COULD_NOT_FIND_ANY_ROUTE")) {
-    console.warn(`[Safety L1] No route for buy, retrying in 1s…`);
-    await new Promise(r => setTimeout(r, 1000));
-    buyQuote = await getQuote(USDC_MINT, outputMint, amountForBuyCheckLamports);
-  } else {
-    throw e;
-  }
-}
-const amountOfTokensToGet = parseInt(buyQuote.outAmount);
-if (amountOfTokensToGet === 0) throw new Error("Token not tradable, outAmount is zero.");
+        console.log(`[Safety L1] Simulating buy for ${AMOUNT_TO_SWAP_USD} USDC...`);
+        let buyQuote = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            buyQuote = await getQuote(USDC_MINT, outputMint, amountForBuyCheckLamports);
+            break;
+          } catch (e) {
+            if (e.message.includes("COULD_NOT_FIND_ANY_ROUTE")) {
+              console.warn(`[Safety L1] No route for buy, attempt ${attempt}/3. Retrying in 1s...`);
+              if (attempt < 3) await new Promise(r => setTimeout(r, 1000));
+            } else {
+              console.error(`[Safety L1] Error on buy quote attempt ${attempt}:`, e.message);
+              return { ok: false, impactPct: Infinity };
+            }
+          }
+        }
+        if (!buyQuote) {
+          console.error(`[Safety L1] Failed to get buy quote after 3 attempts.`);
+          return { ok: false, impactPct: Infinity };
+        }
+        const amountOfTokensToGet = parseInt(buyQuote.outAmount);
+        if (amountOfTokensToGet === 0) {
+          console.error("[Safety L1] Token not tradable, outAmount is zero.");
+          return { ok: false, impactPct: Infinity };
+        }
 
-// …
-        
         // Теперь симулируем немедленную продажу полученных токенов
-        // …
-
-console.log(`[Safety L1] Simulating immediate sell of ${amountOfTokensToGet} lamports...`);
-// ===== retry sell on COULD_NOT_FIND_ANY_ROUTE =====
-let sellQuote;
-try {
-  sellQuote = await getQuote(outputMint, USDC_MINT, amountOfTokensToGet);
-} catch (e) {
-  if (e.message.includes("COULD_NOT_FIND_ANY_ROUTE")) {
-    console.warn(`[Safety L1] No route for sell, retrying in 1s…`);
-    await new Promise(r => setTimeout(r, 1000));
-    sellQuote = await getQuote(outputMint, USDC_MINT, amountOfTokensToGet);
-  } else {
-    throw e;
-  }
-}
-const impactPct = parseFloat(sellQuote.priceImpactPct) * 100;
+        console.log(`[Safety L1] Simulating immediate sell of ${amountOfTokensToGet} lamports...`);
+        let sellQuote = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            sellQuote = await getQuote(outputMint, USDC_MINT, amountOfTokensToGet);
+            break;
+          } catch (e) {
+            if (e.message.includes("COULD_NOT_FIND_ANY_ROUTE")) {
+              console.warn(`[Safety L1] No route for sell, attempt ${attempt}/3. Retrying in 1s...`);
+              if (attempt < 3) await new Promise(r => setTimeout(r, 1000));
+            } else {
+              console.error(`[Safety L1] Error on sell quote attempt ${attempt}:`, e.message);
+              return { ok: false, impactPct: Infinity };
+            }
+          }
+        }
+        if (!sellQuote) {
+          console.error(`[Safety L1] Failed to get sell quote after 3 attempts.`);
+          return { ok: false, impactPct: Infinity };
+        }
+        const impactPct = parseFloat(sellQuote.priceImpactPct) * 100;
 
         console.log(`[Safety L1] Full-cycle price impact: ${impactPct.toFixed(4)}%`);
         if (impactPct > SAFE_PRICE_IMPACT_PERCENT) {
