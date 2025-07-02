@@ -399,7 +399,7 @@ async function runPriceImpactCheck(connection, outputMint, outputDecimals) {
     }
 }
 
-async function checkRugPullRisk(outputMint) {
+async function checkRugPullRisk(outputMint, botInstanceId) {
     console.log(`[Safety L2] Running Rug Pull Check for ${outputMint.toBase58()}`);
     try {
         const url = `https://api.rugcheck.xyz/v1/tokens/${outputMint.toBase58()}/report`;
@@ -415,7 +415,8 @@ async function checkRugPullRisk(outputMint) {
             await notify(
                 `⚠️ **Safety L2 Failed**\n` +
                 `Token: \`${outputMint.toBase58()}\`\n` +
-                `Reason: \`${liquidityRisk.description}\``
+                `Reason: \`${liquidityRisk.description}\``,
+                botInstanceId
             );
             return false;
         }
@@ -423,7 +424,8 @@ async function checkRugPullRisk(outputMint) {
         console.log(`[Safety L2] OK`);
         await notify(
             `✅ **Safety L2 Passed**\n` +
-            `Token: \`${outputMint.toBase58()}\``
+            `Token: \`${outputMint.toBase58()}\``,
+            botInstanceId
         );
         return true;
 
@@ -433,7 +435,8 @@ async function checkRugPullRisk(outputMint) {
         );
         await notify(
             `🚨 **Safety L2 CRITICAL**\n` +
-            `Could not perform rug pull check for \`${outputMint.toBase58()}\`. **Skipping token as a precaution.**`
+            `Could not perform rug pull check for \`${outputMint.toBase58()}\`. **Skipping token as a precaution.**`,
+            botInstanceId
         );
         return false;
     }
@@ -903,7 +906,7 @@ await safeQuery(
         return;
     }
   
-    const isNotRugPull = await checkRugPullRisk(outputMint);
+    const isNotRugPull = await checkRugPullRisk(outputMint, botInstanceId);
     if (!isNotRugPull) {
       await safeQuery(`UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
   [signalId, "RUGCHECK_FAIL"]);
@@ -964,32 +967,78 @@ await safeQuery(
     const purchasePrice = buyPricePerToken;
     const purchaseTimestamp = Date.now();
     let lastLiquidityCheckTimestamp = Date.now();
-  
+    // --- ДОБАВЛЕНО: для контроля подряд ошибок маршрута ---
+    let noRouteErrorCount = 0;
+    const NO_ROUTE_ERROR_LIMIT = 5;
+    const NO_ROUTE_FREEZE_MINUTES = 10;
+    let freezeUntil = 0;
+
     while (true) {
+        // Если "заморожено" — ждём и пропускаем мониторинг
+        if (Date.now() < freezeUntil) {
+            await new Promise(r => setTimeout(r, 60 * 1000)); // Проверяем раз в минуту
+            continue;
+        }
         await new Promise(r => setTimeout(r, PRICE_CHECK_INTERVAL_MS));
         try {
-            
-        const monitorAmountLamports = Math.max(
-            Math.round(MIN_QUOTE_USDC_FOR_MONITOR * Math.pow(10, outputDecimals) / buyPricePerToken),
-            1
-        );
-        const priceQuote = await getQuote(outputMint, USDC_MINT, monitorAmountLamports);
-        const tokenAmount = monitorAmountLamports / (10 ** outputDecimals);
-        const usdcAmount = Number(priceQuote.outAmount) / 10 ** USDC_DECIMALS;
-        const currentPrice = usdcReceived / tokenAmount;
-        const currentPL = (currentPrice - purchasePrice) / purchasePrice;
-        console.log(
-            `[Trailing] price=${currentPrice.toFixed(6)}, ` +
-            `P/L=${(currentPL * 100).toFixed(2)}%, ` +
-            `stop=${stopPrice.toFixed(6)}, time=${elapsedHours.toFixed(1)}h`
-          );
-        if (!priceQuote.outAmount || Number(priceQuote.outAmount) === 0) {
-            console.warn("[Trailing] Quote unavailable for monitoring, skipping cycle");
-            continue; // Не сбрасываем high/low!
-        }
-        
+            const monitorAmountLamports = Math.max(
+                Math.round(MIN_QUOTE_USDC_FOR_MONITOR * Math.pow(10, outputDecimals) / buyPricePerToken),
+                1
+            );
+            let priceQuote;
+            try {
+                priceQuote = await getQuote(outputMint, USDC_MINT, monitorAmountLamports);
+                // Если успешно — сбрасываем счётчик ошибок
+                noRouteErrorCount = 0;
+            } catch (e) {
+                if (
+                    e.message.includes("COULD_NOT_FIND_ANY_ROUTE") ||
+                    e.message.includes("Could not find any route")
+                ) {
+                    noRouteErrorCount++;
+                    console.warn(`[Trailing] No route found for monitoring, count = ${noRouteErrorCount}`);
+                    if (noRouteErrorCount >= NO_ROUTE_ERROR_LIMIT) {
+                        freezeUntil = Date.now() + NO_ROUTE_FREEZE_MINUTES * 60 * 1000;
+                        await notify(
+                            `🟡 **TSL Monitoring Frozen** for \`${mintAddress}\`\n` +
+                            `Не найден маршрут для quote ${NO_ROUTE_ERROR_LIMIT} раз подряд. ` +
+                            `Мониторинг приостановлен на ${NO_ROUTE_FREEZE_MINUTES} минут.`,
+                            botInstanceId
+                        );
+                        continue;
+                    }
+                    // Только при первом возникновении ошибки — уведомляем
+                    if (noRouteErrorCount === 1) {
+                        await notify(
+                            `🟡 **TSL Paused** for \`${mintAddress}\`\n` +
+                            `An error occurred: Could not find any route.\n` +
+                            `Будет предпринята повторная попытка.`,
+                            botInstanceId
+                        );
+                    }
+                    await new Promise(r => setTimeout(r, 1000));
+                    continue;
+                } else {
+                    throw e;
+                }
+            }
+            if (!priceQuote.outAmount || Number(priceQuote.outAmount) === 0) {
+                console.warn("[Trailing] Quote unavailable for monitoring, skipping cycle");
+                continue;
+            }
+            // Если дошли сюда — quote получен, сбрасываем freeze и счётчик
+            if (freezeUntil > 0) {
+                freezeUntil = 0;
+                await notify(
+                    `✅ **TSL Monitoring Resumed** for \`${mintAddress}\`\n` +
+                    `Quote снова доступен, мониторинг продолжается.`,
+                    botInstanceId
+                );
+            }
+            noRouteErrorCount = 0;
+            const currentPrice = Number(priceQuote.outAmount) / (monitorAmountLamports / Math.pow(10, outputDecimals));
             highestPrice = Math.max(highestPrice, currentPrice);
-  
+
             const elapsedHours = (Date.now() - purchaseTimestamp) / (3600 * 1000);
             
             const stopPrice = highestPrice * (1 - TRAILING_STOP_PERCENTAGE / 100);
@@ -1260,6 +1309,7 @@ const onchainLamports = await findTokenBalance(
     }
   }
 
+
 async function setupDatabase() {
     const client = await pool.connect();
     try {
@@ -1350,7 +1400,7 @@ function startHealthCheckServer(botInstanceId) {
     await addErrorReasonColumnIfNotExists();
   
     await setupDatabase();
-    startHealthCheckServer();
+    startHealthCheckServer(botInstanceId);
     console.log("--- Tradebot worker started ---");
     // И сразу начинаем использовать ID в уведомлениях
     await notify("🚀 Tradebot worker started!", botInstanceId); 
