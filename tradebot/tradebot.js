@@ -338,15 +338,44 @@ async function runPriceImpactCheck(connection, outputMint, outputDecimals) {
         // Используем реальную сумму сделки для более точной проверки
         const amountForBuyCheckLamports = Math.round(AMOUNT_TO_SWAP_USD * (10 ** USDC_DECIMALS));
 
-        console.log(`[Safety L1] Simulating buy for ${AMOUNT_TO_SWAP_USD} USDC...`);
-        const buyQuote = await getQuote(USDC_MINT, outputMint, amountForBuyCheckLamports);
-        const amountOfTokensToGet = parseInt(buyQuote.outAmount);
-        if (amountOfTokensToGet === 0) throw new Error("Token not tradable for the given amount, outAmount is zero.");
+        // …  
+console.log(`[Safety L1] Simulating buy for ${AMOUNT_TO_SWAP_USD} USDC...`);
+// ===== retry buy on COULD_NOT_FIND_ANY_ROUTE =====
+let buyQuote;
+try {
+  buyQuote = await getQuote(USDC_MINT, outputMint, amountForBuyCheckLamports);
+} catch (e) {
+  if (e.message.includes("COULD_NOT_FIND_ANY_ROUTE")) {
+    console.warn(`[Safety L1] No route for buy, retrying in 1s…`);
+    await new Promise(r => setTimeout(r, 1000));
+    buyQuote = await getQuote(USDC_MINT, outputMint, amountForBuyCheckLamports);
+  } else {
+    throw e;
+  }
+}
+const amountOfTokensToGet = parseInt(buyQuote.outAmount);
+if (amountOfTokensToGet === 0) throw new Error("Token not tradable, outAmount is zero.");
+
+// …
         
         // Теперь симулируем немедленную продажу полученных токенов
-        console.log(`[Safety L1] Simulating immediate sell of ${amountOfTokensToGet} lamports...`);
-        const sellQuote = await getQuote(outputMint, USDC_MINT, amountOfTokensToGet);
-        const impactPct = parseFloat(sellQuote.priceImpactPct) * 100;
+        // …
+
+console.log(`[Safety L1] Simulating immediate sell of ${amountOfTokensToGet} lamports...`);
+// ===== retry sell on COULD_NOT_FIND_ANY_ROUTE =====
+let sellQuote;
+try {
+  sellQuote = await getQuote(outputMint, USDC_MINT, amountOfTokensToGet);
+} catch (e) {
+  if (e.message.includes("COULD_NOT_FIND_ANY_ROUTE")) {
+    console.warn(`[Safety L1] No route for sell, retrying in 1s…`);
+    await new Promise(r => setTimeout(r, 1000));
+    sellQuote = await getQuote(outputMint, USDC_MINT, amountOfTokensToGet);
+  } else {
+    throw e;
+  }
+}
+const impactPct = parseFloat(sellQuote.priceImpactPct) * 100;
 
         console.log(`[Safety L1] Full-cycle price impact: ${impactPct.toFixed(4)}%`);
         if (impactPct > SAFE_PRICE_IMPACT_PERCENT) {
@@ -412,7 +441,7 @@ async function notify(text, botInstanceId = 'global') {
     }
   }
 
-  async function monitorOpenPosition(connection, wallet, trade, botInstanceId) {
+  async function mint(connection, wallet, trade, botInstanceId) {
     // Получаем параметры из trade
     const mint = new PublicKey(trade.mint);
     const mintAddress = trade.mint;
@@ -427,7 +456,7 @@ async function notify(text, botInstanceId = 'global') {
             outputDecimals = tokenInfo.value.data.parsed.info.decimals;
         }
     } catch (e) {
-        await notify(`🚨 **monitorOpenPosition: Не удалось получить decimals** для ${mintAddress}`, botInstanceId);
+        await notify(`🚨 **mint: Не удалось получить decimals** для ${mintAddress}`, botInstanceId);
     }
 
     // Основные переменные мониторинга
@@ -451,6 +480,32 @@ if (initialBal === 0 || initialBal <= dustLamports) {
     `🔵 **Position Closed (or DUST)** for \`${mintAddress}\`. Balance = ${initialBal} ≤ dust (${dustLamports}).`,
     botInstanceId
   );
+  
+  // ============ ON-CHAIN CHECK ===========
+const onchainLamports = await findTokenBalance(
+    connection,
+    wallet,
+    mint,            // там же, где вы в контексте работаете с этим mint
+    botInstanceId
+  );
+  if (onchainLamports > dustLamports) {
+    const onchainAmount = onchainLamports / (10 ** outputDecimals);
+    console.log(
+      `[Recovery] Token still on‐chain: ${onchainAmount.toFixed(6)} > dust ` +
+      `(${dustLamports / 10**outputDecimals}). Skip closing.`
+    );
+    await notify(
+      `ℹ️ Token still on‐chain (${onchainAmount.toFixed(6)}). ` +
+      `Продолжаем мониторинг.`,
+      botInstanceId
+    );
+  // в зависимости от места либо продолжаем цикл, либо просто выходим из текущей ветки:
+  return;  // в циклах monitorOpenPosition
+    // return; // в местах, где это выход из функции
+  }
+  // ============ /ON-CHAIN CHECK ===========
+  
+  
   await safeQuery(
     `UPDATE trades
        SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL', closed_at = NOW()
@@ -484,7 +539,24 @@ if (initialBal === 0 || initialBal <= dustLamports) {
                 Math.round(MIN_QUOTE_USDC_FOR_MONITOR * Math.pow(10, outputDecimals) / purchasePrice),
                 1
             );
-            const priceQuote = await getQuote(mint, USDC_MINT, monitorAmountLamports);
+            // =========== RETRY ON COULD_NOT_FIND_ANY_ROUTE ===========
+let priceQuote;
+try {
+  priceQuote = await getQuote(mint, USDC_MINT, monitorAmountLamports);
+} catch (e) {
+  if (
+    e.message.includes("COULD_NOT_FIND_ANY_ROUTE") ||
+    e.message.includes("Could not find any route")
+  ) {
+    console.warn(`[Trailing] No route found, retrying in 1s…`);
+    await new Promise(r => setTimeout(r, 1000));
+    // вторая попытка
+    priceQuote = await getQuote(mint, USDC_MINT, monitorAmountLamports);
+  } else {
+    throw e;
+  }
+}
+// ===========================================================
             if (!priceQuote.outAmount || Number(priceQuote.outAmount) === 0) {
                 console.warn("[Trailing] Quote unavailable for monitoring, skipping cycle");
                 continue;
@@ -556,6 +628,30 @@ if (initialBal === 0 || initialBal <= dustLamports) {
                         `Balance = ${balance} ≤ dust (${dustLamports}).`,
                         botInstanceId
                     );
+                    
+                    // ============ ON-CHAIN CHECK ===========
+const onchainLamports = await findTokenBalance(
+    connection,
+    wallet,
+    mint,            // там же, где вы в контексте работаете с этим mint
+    botInstanceId
+  );
+  if (onchainLamports > dustLamports) {
+    const onchainAmount = onchainLamports / (10 ** outputDecimals);
+    console.log(
+      `[Recovery] Token still on‐chain: ${onchainAmount.toFixed(6)} > dust ` +
+      `(${dustLamports / 10**outputDecimals}). Skip closing.`
+    );
+    await notify(
+      `ℹ️ Token still on‐chain (${onchainAmount.toFixed(6)}). ` +
+      `Продолжаем мониторинг.`,
+      botInstanceId
+    );
+  // в зависимости от места либо продолжаем цикл, либо просто выходим из текущей ветки:
+  return;  // в циклах monitorOpenPosition
+    // return; // в местах, где это выход из функции
+  }
+  // ============ /ON-CHAIN CHECK ===========
                     await safeQuery(
                         `UPDATE trades SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL', closed_at = NOW() WHERE id = $1;`,
                         [tradeId]
@@ -696,6 +792,30 @@ if (initialBal === 0 || initialBal <= dustLamports) {
                 console.log(`[Recovery] Token ${mintAddress} balance is zero. Assuming manual sell. Closing trade.`);
                 await notify(`🔵 **Position Closed Manually** for \`${mintAddress}\`. The token is no longer in the wallet. Stopping monitoring.`, botInstanceId);
 
+                
+                // ============ ON-CHAIN CHECK ===========
+const onchainLamports = await findTokenBalance(
+    connection,
+    wallet,
+    mint,            // там же, где вы в контексте работаете с этим mint
+    botInstanceId
+  );
+  if (onchainLamports > dustLamports) {
+    const onchainAmount = onchainLamports / (10 ** outputDecimals);
+    console.log(
+      `[Recovery] Token still on‐chain: ${onchainAmount.toFixed(6)} > dust ` +
+      `(${dustLamports / 10**outputDecimals}). Skip closing.`
+    );
+    await notify(
+      `ℹ️ Token still on‐chain (${onchainAmount.toFixed(6)}). ` +
+      `Продолжаем мониторинг.`,
+      botInstanceId
+    );
+  // в зависимости от места либо продолжаем цикл, либо просто выходим из текущей ветки:
+  return;  // в циклах monitorOpenPosition
+    // return; // в местах, где это выход из функции
+  }
+  // ============ /ON-CHAIN CHECK ===========
                 await safeQuery(
                     `UPDATE trades SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL', closed_at = NOW() WHERE id = $1;`,
                     [tradeId]
@@ -845,6 +965,7 @@ await safeQuery(
         );
         const priceQuote = await getQuote(outputMint, USDC_MINT, monitorAmountLamports);
         const tokenAmount = monitorAmountLamports / (10 ** outputDecimals);
+        const usdcAmount = Number(priceQuote.outAmount) / 10 ** USDC_DECIMALS;
         const currentPrice = usdcReceived / tokenAmount;
         const currentPL = (currentPrice - purchasePrice) / purchasePrice;
         console.log(
@@ -925,6 +1046,31 @@ await safeQuery(
                         `Balance = ${balance} ≤ dust (${dustLamports}).`,
                         botInstanceId
                     );
+                    
+                    // ============ ON-CHAIN CHECK ===========
+const onchainLamports = await findTokenBalance(
+    connection,
+    wallet,
+    mint,            // там же, где вы в контексте работаете с этим mint
+    botInstanceId
+  );
+  if (onchainLamports > dustLamports) {
+    const onchainAmount = onchainLamports / (10 ** outputDecimals);
+    console.log(
+      `[Recovery] Token still on‐chain: ${onchainAmount.toFixed(6)} > dust ` +
+      `(${dustLamports / 10**outputDecimals}). Skip closing.`
+    );
+    await notify(
+      `ℹ️ Token still on‐chain (${onchainAmount.toFixed(6)}). ` +
+      `Продолжаем мониторинг.`,
+      botInstanceId
+    );
+  // в зависимости от места либо продолжаем цикл, либо просто выходим из текущей ветки:
+  return;  // в циклах monitorOpenPosition
+    // return; // в местах, где это выход из функции
+  }
+  // ============ /ON-CHAIN CHECK ===========
+                    
                     await safeQuery(
                         `UPDATE trades SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL', closed_at = NOW() WHERE id = $1;`,
                         [tradeId]
@@ -1067,6 +1213,31 @@ await safeQuery(
             } else {
                 console.log(`[Recovery] Token ${mintAddress} balance is zero. Assuming manual sell. Closing trade.`);
                 await notify(`🔵 **Position Closed Manually** for \`${mintAddress}\`. The token is no longer in the wallet. Stopping monitoring.`, botInstanceId);
+                
+                
+                // ============ ON-CHAIN CHECK ===========
+const onchainLamports = await findTokenBalance(
+    connection,
+    wallet,
+    mint,            // там же, где вы в контексте работаете с этим mint
+    botInstanceId
+  );
+  if (onchainLamports > dustLamports) {
+    const onchainAmount = onchainLamports / (10 ** outputDecimals);
+    console.log(
+      `[Recovery] Token still on‐chain: ${onchainAmount.toFixed(6)} > dust ` +
+      `(${dustLamports / 10**outputDecimals}). Skip closing.`
+    );
+    await notify(
+      `ℹ️ Token still on‐chain (${onchainAmount.toFixed(6)}). ` +
+      `Продолжаем мониторинг.`,
+      botInstanceId
+    );
+  // в зависимости от места либо продолжаем цикл, либо просто выходим из текущей ветки:
+  return;  // в циклах monitorOpenPosition
+    // return; // в местах, где это выход из функции
+  }
+  // ============ /ON-CHAIN CHECK ===========
                 
                 await safeQuery(
                     `UPDATE trades SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL', closed_at = NOW() WHERE id = $1;`,
@@ -1212,7 +1383,7 @@ if (lastOpenResult.rows.length === 1) {
     `(id=${trade.id}, sell_tx=${trade.sell_tx}, closed_at=${trade.closed_at}). ` +
     `Запускаем мониторинг…`
   );
-  await monitorOpenPosition(connection, wallet, trade, botInstanceId);
+  await mint(connection, wallet, trade, botInstanceId);
 } else {
   console.log("[Startup] Нет сделок для мониторинга. Переходим к сигналам.");
 }
@@ -1262,6 +1433,31 @@ if (isHalted) {
         botInstanceId
       );
       // сразу отмечаем в БД
+      
+      // ============ ON-CHAIN CHECK ===========
+const onchainLamports = await findTokenBalance(
+    connection,
+    wallet,
+    mint,            // там же, где вы в контексте работаете с этим mint
+    botInstanceId
+  );
+  if (onchainLamports > dustLamports) {
+    const onchainAmount = onchainLamports / (10 ** outputDecimals);
+    console.log(
+      `[Recovery] Token still on‐chain: ${onchainAmount.toFixed(6)} > dust ` +
+      `(${dustLamports / 10**outputDecimals}). Skip closing.`
+    );
+    await notify(
+      `ℹ️ Token still on‐chain (${onchainAmount.toFixed(6)}). ` +
+      `Продолжаем мониторинг.`,
+      botInstanceId
+    );
+  // в зависимости от места либо продолжаем цикл, либо просто выходим из текущей ветки:
+  return;  // в циклах monitorOpenPosition
+    // return; // в местах, где это выход из функции
+  }
+  // ============ /ON-CHAIN CHECK ===========
+      
       await safeQuery(
         `UPDATE trades SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL', closed_at = NOW() WHERE id = $1;`,
         [haltedTradeId]
