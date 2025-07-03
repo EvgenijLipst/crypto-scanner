@@ -88,7 +88,7 @@ export class TelegramBot {
 [📊 Birdeye](${birdeyeLink})
 [📈 DEXScreener](https://dexscreener.com/solana/${signal.mint})
 
-⏰ Signal Time: ${new Date(signal.created_at).toLocaleString()}`;
+⏰ Signal Time: ${signal.created_at.toLocaleString()}`;
   }
 
   /**
