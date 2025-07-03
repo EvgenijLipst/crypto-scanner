@@ -80,24 +80,23 @@ class SignalBot {
         log('❌ Telegram connection failed', 'ERROR');
       }
       
-      // Подключение к Helius WebSocket (временно отключено)
-      log('⚠️ Helius WebSocket temporarily disabled for testing');
-      // try {
-      //   await this.helius.connect();
-      //   log('🔗 Helius WebSocket connected successfully');
-      // } catch (error) {
-      //   log('⚠️ Helius WebSocket connection failed:', 'WARN');
-      //   log(String(error), 'WARN');
-      //   log('🔄 Bot will continue without real-time monitoring');
-      // }
+      // Подключение к Helius WebSocket
+      try {
+        await this.helius.connect();
+        log('🔗 Helius WebSocket connected successfully');
+      } catch (error) {
+        log('⚠️ Helius WebSocket connection failed:', 'WARN');
+        log(String(error), 'WARN');
+        log('🔄 Bot will continue without real-time monitoring');
+      }
       
-      // Временно отключаем мониторинг для отладки
-      // this.startNotificationLoop();
+      // Запуск мониторинга уведомлений
+      this.startNotificationLoop();
       
-      // Временно отключаем очистку для отладки
-      // this.startCleanupLoop();
+      // Запуск очистки данных
+      this.startCleanupLoop();
       
-      log('✅ Signal Bot started successfully (Telegram testing mode)');
+      log('✅ Signal Bot started successfully (Production mode)');
       
       // Добавляем тестовый сигнал для проверки (отключен - Telegram работает)
       // log('🧪 Creating test signal...');
