@@ -1430,6 +1430,7 @@ function startHealthCheckServer(botInstanceId) {
     await setupDatabase();
     startHealthCheckServer(botInstanceId);
     console.log("--- Tradebot worker started ---");
+    console.log("🔧 [DEBUG] Bot initialization complete, starting main loop...");
     // И сразу начинаем использовать ID в уведомлениях
     await notify("🚀 Tradebot worker started!", botInstanceId); 
   
