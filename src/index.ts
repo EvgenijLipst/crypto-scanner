@@ -17,9 +17,16 @@ class SignalBot {
   private telegram: TelegramBot;
 
   constructor() {
-      const databaseUrl = process.env.DATABASE_URL;
-  const telegramToken = process.env.TELEGRAM_TOKEN;
-  const telegramChatId = process.env.TELEGRAM_CHAT_ID;
+      // Try to use DATABASE_URL first, fallback to PostgreSQL components
+      let databaseUrl = process.env.DATABASE_URL;
+      
+      if (!databaseUrl && process.env.PGHOST) {
+        databaseUrl = `postgresql://${process.env.PGUSER}:${process.env.PGPASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.PGDATABASE}`;
+        log(`Built DATABASE_URL from PostgreSQL components: ${databaseUrl}`);
+      }
+      
+      const telegramToken = process.env.TELEGRAM_TOKEN;
+      const telegramChatId = process.env.TELEGRAM_CHAT_ID;
 
     // Debug environment variables
     log(`Environment variables:`, 'INFO');
@@ -27,6 +34,10 @@ class SignalBot {
     log(`TELEGRAM_TOKEN: ${telegramToken ? telegramToken.substring(0, 10) + '...' : 'NOT SET'}`, 'INFO');
     log(`TELEGRAM_CHAT_ID: ${telegramChatId ? telegramChatId : 'NOT SET'}`, 'INFO');
     log(`HELIUS_KEY: ${process.env.HELIUS_KEY ? 'SET' : 'NOT SET'}`, 'INFO');
+    
+    // Debug PostgreSQL variables
+    log(`PGHOST: ${process.env.PGHOST ? 'SET' : 'NOT SET'}`, 'INFO');
+    log(`PGDATABASE: ${process.env.PGDATABASE ? 'SET' : 'NOT SET'}`, 'INFO');
 
     if (!databaseUrl) {
       throw new Error('DATABASE_URL environment variable is required');
