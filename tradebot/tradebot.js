@@ -965,30 +965,29 @@ await safeQuery(
       );
       ({ id: tradeId, spent_usdc: initialSpent } = res.rows[0]);
       console.log(`[DB] Inserted trade id=${tradeId}`);
+      
+      // ВАЖНО: Отмечаем сигнал как обработанный, чтобы он не повторялся
+      await safeQuery(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
+      
+      await notify(
+        `✅ **Purchase Complete** \`${mintAddress}\`\n` +
+        `Trade ID: ${tradeId}\n` +
+        `Amount: ${boughtTokens.toFixed(4)} tokens\n` +
+        `Price: ${buyPricePerToken.toFixed(6)} USDC\n` +
+        `🔄 Starting monitoring in separate cycle...`,
+        botInstanceId
+      );
+      
+      // КРИТИЧНО: Выходим из функции, чтобы основной цикл подхватил мониторинг
+      return;
     } catch (e) {
         console.error("[Purchase] Purchase phase failed:", e);
         await notify(`🚨 **Purchase Failed** for \`${mintAddress}\`:\n\`${e.message}\``, botInstanceId);
         return; 
     }
   
-    // === НАЧАЛО ЦИКЛА МОНИТОРИНГА (ФИНАЛЬНАЯ ВЕРСИЯ) ===
-    console.log("[Trailing] Starting position monitoring");
-    let highestPrice = buyPricePerToken;
-    let stopLossTriggerCount = 0;
-    const purchasePrice = buyPricePerToken;
-    const purchaseTimestamp = Date.now();
-    let lastLiquidityCheckTimestamp = Date.now();
-    // --- ДОБАВЛЕНО: для контроля подряд ошибок маршрута ---
-    let noRouteErrorCount = 0;
-    const NO_ROUTE_ERROR_LIMIT = 5;
-    const NO_ROUTE_FREEZE_MINUTES = 10;
-    const NO_ROUTE_MAX_HOURS = 0.5; // Если токен не торгуется 30 минут подряд - закрываем
-    let freezeUntil = 0;
-    let firstNoRouteTime = null;
-
-    while (true) {
-      // Строгая проверка баланса токена перед мониторингом
-let onchainBalance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
+    // Функция processSignal завершена - мониторинг будет в основном цикле
+  }
 const info = await connection.getParsedAccountInfo(outputMint);
 const decimals = info.value?.data?.parsed?.info?.decimals ?? 0;
 const dustLamports = Math.ceil(MIN_DUST_AMOUNT * 10 ** decimals);
