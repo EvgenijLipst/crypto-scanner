@@ -155,19 +155,7 @@ ${new Date().toLocaleString()}`;
    * Тестовое сообщение для проверки подключения
    */
   async sendTestMessage(): Promise<boolean> {
-    const message = `🤖 **Signal Bot Started** 🤖
-
-Bot is now running and monitoring for trading signals.
-
-Settings:
-• Min Token Age: 14 days
-• Min Liquidity: $10,000
-• Max FDV: $5,000,000
-• Volume Spike: 3x+
-• RSI Oversold: <35
-
-Ready to catch signals! 🎯`;
-
+    const message = `🤖 Signal Bot Test - ${new Date().toLocaleString()}`;
     return this.sendMessage(message);
   }
 } 

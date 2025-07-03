@@ -73,11 +73,11 @@ class SignalBot {
       //   log('🔄 Bot will continue without real-time monitoring');
       // }
       
-      // Запуск мониторинга уведомлений
-      this.startNotificationLoop();
+      // Временно отключаем мониторинг для отладки
+      // this.startNotificationLoop();
       
-      // Запуск очистки данных
-      this.startCleanupLoop();
+      // Временно отключаем очистку для отладки
+      // this.startCleanupLoop();
       
       log('✅ Signal Bot started successfully (Telegram testing mode)');
       
