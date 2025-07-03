@@ -985,6 +985,23 @@ await safeQuery(
     let freezeUntil = 0;
 
     while (true) {
+      // Строгая проверка баланса токена перед мониторингом
+let onchainBalance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
+const info = await connection.getParsedAccountInfo(outputMint);
+const decimals = info.value?.data?.parsed?.info?.decimals ?? 0;
+const dustLamports = Math.ceil(MIN_DUST_AMOUNT * 10 ** decimals);
+console.log(`[TSL] Mint: ${mintAddress}, On-chain balance: ${onchainBalance}, Dust threshold: ${dustLamports}`);
+if (!onchainBalance || onchainBalance <= dustLamports) {
+    await notify(
+        `🔵 **Position Closed (or DUST)** for \`${mintAddress}\`. Token balance = ${onchainBalance} ≤ dust (${dustLamports}).`,
+        botInstanceId
+    );
+    await safeQuery(
+        `UPDATE trades SET sell_tx = 'MANUAL_OR_EXTERNAL_SELL', closed_at = NOW() WHERE id = $1;`,
+        [tradeId]
+    );
+    break;
+}
         // Если "заморожено" — ждём и пропускаем мониторинг
         if (Date.now() < freezeUntil) {
             await new Promise(r => setTimeout(r, 60 * 1000)); // Проверяем раз в минуту
