@@ -19,8 +19,8 @@ export interface OHLCVRow {
 
 export interface SignalRow {
   id: number;
-  mint: string;
-  signal_ts: number;
+  mint: string;  // token_mint из БД
+  created_at: Date;
   ema_cross: boolean;
   vol_spike: number;
   rsi: number;

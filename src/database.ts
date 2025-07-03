@@ -8,9 +8,32 @@ export class Database {
   private pool: Pool;
 
   constructor(connectionString: string) {
+    log(`Connecting to database: ${connectionString.replace(/\/\/.*:.*@/, '//[credentials]@')}`);
+    
+    // Парсим строку подключения для отдельной настройки SSL
+    const isProduction = connectionString.includes('railway') || connectionString.includes('.proxy.rlwy.net');
+    
     this.pool = new Pool({
       connectionString,
-      ssl: { rejectUnauthorized: false }
+      ssl: isProduction ? { 
+        rejectUnauthorized: false
+      } : false,
+      // Добавляем дополнительные настройки подключения
+      max: 5,
+      idleTimeoutMillis: 20000,
+      connectionTimeoutMillis: 5000,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10000,
+    });
+
+    // Обработка ошибок подключения
+    this.pool.on('error', (err) => {
+      log('Database pool error:', 'ERROR');
+      log(String(err), 'ERROR');
+    });
+
+    this.pool.on('connect', () => {
+      log('Database client connected');
     });
   }
 
@@ -18,47 +41,61 @@ export class Database {
    * Инициализация таблиц
    */
   async initialize(): Promise<void> {
-    const client = await this.pool.connect();
-    try {
-      // Создаем таблицы
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS pools (
-          mint            TEXT PRIMARY KEY,
-          first_seen_ts   BIGINT,
-          liq_usd         NUMERIC,
-          fdv_usd         NUMERIC
-        );
-      `);
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        log(`Database connection attempt (${4 - retries}/3)...`);
+        
+        // Небольшая задержка перед попыткой подключения
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const client = await this.pool.connect();
+        try {
+          log('Connected to database, creating tables...');
+          
+          // Создаем таблицы (signals уже существует)
+          log('Creating pools table...');
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS pools (
+              mint            TEXT PRIMARY KEY,
+              first_seen_ts   BIGINT,
+              liq_usd         NUMERIC,
+              fdv_usd         NUMERIC
+            );
+          `);
 
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS ohlcv (
-          mint TEXT,
-          ts   BIGINT,
-          o NUMERIC, h NUMERIC, l NUMERIC, c NUMERIC, v NUMERIC,
-          PRIMARY KEY (mint, ts)
-        );
-      `);
+          log('Creating ohlcv table...');
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS ohlcv (
+              mint TEXT,
+              ts   BIGINT,
+              o NUMERIC, h NUMERIC, l NUMERIC, c NUMERIC, v NUMERIC,
+              PRIMARY KEY (mint, ts)
+            );
+          `);
 
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS signals (
-          id  SERIAL PRIMARY KEY,
-          mint TEXT,
-          signal_ts BIGINT,
-          ema_cross BOOLEAN,
-          vol_spike NUMERIC,
-          rsi       NUMERIC,
-          notified  BOOLEAN DEFAULT FALSE
-        );
-      `);
+          // Создаем индексы
+          log('Creating indexes...');
+          await client.query(`CREATE INDEX IF NOT EXISTS idx_pools_first_seen ON pools (first_seen_ts);`);
+          await client.query(`CREATE INDEX IF NOT EXISTS idx_ohlcv_mint_ts ON ohlcv (mint, ts DESC);`);
 
-      // Создаем индексы
-      await client.query(`CREATE INDEX IF NOT EXISTS idx_pools_first_seen ON pools (first_seen_ts);`);
-      await client.query(`CREATE INDEX IF NOT EXISTS idx_ohlcv_mint_ts ON ohlcv (mint, ts DESC);`);
-      await client.query(`CREATE INDEX IF NOT EXISTS idx_signals_notified ON signals (notified, signal_ts);`);
-
-      log('Database initialized successfully');
-    } finally {
-      client.release();
+          log('Database initialized successfully');
+          return; // Успешно инициализировали, выходим
+        } finally {
+          client.release();
+        }
+      } catch (error) {
+        retries--;
+        log(`Database initialization error (attempts left: ${retries}):`, 'ERROR');
+        log(String(error), 'ERROR');
+        
+        if (retries === 0) {
+          throw error;
+        }
+        
+        // Ждем перед следующей попыткой
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
     }
   }
 
@@ -130,16 +167,15 @@ export class Database {
    */
   async createSignal(
     mint: string, 
-    signalTs: number, 
     emaCross: boolean, 
     volSpike: number, 
     rsi: number
   ): Promise<void> {
     await this.pool.query(`
-      INSERT INTO signals(mint, signal_ts, ema_cross, vol_spike, rsi)
-      VALUES($1, $2, $3, $4, $5)
+      INSERT INTO signals(token_mint, ema_cross, vol_spike, rsi, processed, notified)
+      VALUES($1, $2, $3, $4, false, false)
       ON CONFLICT DO NOTHING
-    `, [mint, signalTs, emaCross, volSpike, rsi]);
+    `, [mint, emaCross, volSpike, rsi]);
   }
 
   /**
@@ -147,9 +183,10 @@ export class Database {
    */
   async getUnnotifiedSignals(): Promise<SignalRow[]> {
     const res = await this.pool.query(`
-      SELECT * FROM signals 
-      WHERE notified = false 
-      ORDER BY signal_ts ASC
+      SELECT id, token_mint as mint, created_at, ema_cross, vol_spike, rsi, notified 
+      FROM signals 
+      WHERE notified = false AND processed = false
+      ORDER BY created_at ASC
     `);
     return res.rows;
   }
@@ -165,13 +202,14 @@ export class Database {
    * Очистка старых данных
    */
   async cleanup(): Promise<void> {
-    const oneDayAgo = Math.floor(Date.now() / 1000) - (24 * 60 * 60);
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     
     // Удаляем старые OHLCV данные (старше 24 часов)
-    await this.pool.query('DELETE FROM ohlcv WHERE ts < $1', [oneDayAgo]);
+    const oneDayAgoTs = Math.floor(oneDayAgo.getTime() / 1000);
+    await this.pool.query('DELETE FROM ohlcv WHERE ts < $1', [oneDayAgoTs]);
     
     // Удаляем старые сигналы (старше 24 часов)
-    await this.pool.query('DELETE FROM signals WHERE signal_ts < $1', [oneDayAgo]);
+    await this.pool.query('DELETE FROM signals WHERE created_at < $1', [oneDayAgo]);
     
     log('Database cleanup completed');
   }

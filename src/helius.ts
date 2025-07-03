@@ -29,7 +29,7 @@ export class HeliusWebSocket {
    */
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const wsUrl = `wss://atlas-mainnet.helius-rpc.com?api-key=${this.apiKey}`;
+      const wsUrl = `wss://mainnet.helius-rpc.com/?api-key=${this.apiKey}`;
       
       log('Connecting to Helius WebSocket...');
       this.ws = new WebSocket(wsUrl);

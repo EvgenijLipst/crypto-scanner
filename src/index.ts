@@ -1,263 +1,175 @@
-// index.ts - Главный файл сигнального бота
+// Main Signal Bot - координирует все компоненты
 
-import dotenv from 'dotenv';
+import { config } from 'dotenv';
 import { Database } from './database';
 import { HeliusWebSocket } from './helius';
 import { JupiterAPI } from './jupiter';
 import { TelegramBot } from './telegram';
-import { calculateIndicators, checkBuySignal } from './indicators';
-import { passesAge, toUnixSeconds, log } from './utils';
-import { 
-  MIN_LIQUIDITY_USD, 
-  MAX_FDV_USD, 
-  MIN_HISTORY_CANDLES 
-} from './types';
+import { log, toUnixSeconds } from './utils';
+import { SwapEvent, PoolRow } from './types';
 
-// Загружаем переменные окружения
-dotenv.config();
+config();
 
 class SignalBot {
   private database: Database;
-  private heliusWS: HeliusWebSocket;
+  private helius: HeliusWebSocket;
   private jupiter: JupiterAPI;
   private telegram: TelegramBot;
-  
-  private stats = {
-    signalsProcessed: 0,
-    signalsSent: 0,
-    tokensAnalyzed: 0,
-    startTime: Date.now()
-  };
 
   constructor() {
-    // Проверяем обязательные переменные окружения
-    this.validateEnvironment();
+      const databaseUrl = process.env.DATABASE_URL;
+  const telegramToken = process.env.TELEGRAM_TOKEN;
+  const telegramChatId = process.env.TELEGRAM_CHAT_ID;
 
-    // Инициализируем компоненты
-    this.database = new Database(process.env.DATABASE_URL!);
-    this.heliusWS = new HeliusWebSocket(process.env.HELIUS_KEY!, this.database);
-    this.jupiter = new JupiterAPI();
-    this.telegram = new TelegramBot(
-      process.env.TELEGRAM_TOKEN!,
-      process.env.TELEGRAM_CHAT_ID!
-    );
-  }
-
-  /**
-   * Проверка переменных окружения
-   */
-  private validateEnvironment(): void {
-    const required = [
-      'DATABASE_URL',
-      'HELIUS_KEY',
-      'TELEGRAM_TOKEN',
-      'TELEGRAM_CHAT_ID'
-    ];
-
-    for (const env of required) {
-      if (!process.env[env]) {
-        throw new Error(`Missing required environment variable: ${env}`);
-      }
+    if (!databaseUrl) {
+      throw new Error('DATABASE_URL environment variable is required');
     }
 
-    log('Environment variables validated');
+    if (!telegramToken || !telegramChatId) {
+      throw new Error('TELEGRAM_TOKEN and TELEGRAM_CHAT_ID environment variables are required');
+    }
+
+    this.database = new Database(databaseUrl);
+    this.helius = new HeliusWebSocket(process.env.HELIUS_KEY!, this.database);
+    this.jupiter = new JupiterAPI();
+    this.telegram = new TelegramBot(telegramToken, telegramChatId);
   }
 
   /**
-   * Запуск бота
+   * Запуск сигнального бота
    */
   async start(): Promise<void> {
     try {
-      log('Starting Signal Bot...');
-
-      // Инициализируем базу данных
+      log('🚀 Starting Solana Signal Bot...');
+      
+      // Проверяем API ключ Helius
+      const heliusKey = process.env.HELIUS_KEY;
+      log(`Helius API Key: ${heliusKey ? heliusKey.substring(0, 8) + '...' : 'NOT SET'}`);
+      
+      // Инициализация базы данных
       await this.database.initialize();
-
+      
       // Отправляем тестовое сообщение в Telegram
-      await this.telegram.sendTestMessage();
-
-      // Подключаемся к Helius WebSocket
-      await this.heliusWS.connect();
-
-      // Запускаем циклы обработки
-      this.startIndicatorLoop();
+      log('🔔 Testing Telegram connection...');
+      const telegramSuccess = await this.telegram.sendTestMessage();
+      if (telegramSuccess) {
+        log('✅ Telegram connected successfully');
+      } else {
+        log('❌ Telegram connection failed', 'ERROR');
+      }
+      
+      // Подключение к Helius WebSocket
+      try {
+        await this.helius.connect();
+        log('🔗 Helius WebSocket connected successfully');
+      } catch (error) {
+        log('⚠️ Helius WebSocket connection failed:', 'WARN');
+        log(String(error), 'WARN');
+        log('🔄 Bot will continue without real-time monitoring');
+      }
+      
+      // Запуск мониторинга уведомлений
       this.startNotificationLoop();
-      this.startStatsLoop();
+      
+      // Запуск очистки данных
       this.startCleanupLoop();
-
-      log('Signal Bot started successfully');
+      
+      log('✅ Signal Bot started successfully (Telegram testing mode)');
+      
+      // Добавляем тестовый сигнал для проверки (отключен - Telegram работает)
+      // log('🧪 Creating test signal...');
+      // await this.createTestSignal();
+      
+      log('🔔 Ready to process signals! Check Telegram for notifications.');
+      
     } catch (error) {
-      log(`Failed to start Signal Bot: ${error}`, 'ERROR');
-      await this.telegram.sendErrorMessage(`Failed to start: ${error}`);
+      log('❌ Failed to start Signal Bot:', 'ERROR');
+      log(String(error), 'ERROR');
       process.exit(1);
     }
   }
 
   /**
-   * Цикл расчета индикаторов (каждую минуту)
+   * Создать тестовый сигнал для проверки
    */
-  private startIndicatorLoop(): void {
-    setInterval(async () => {
-      await this.runIndicatorSweep();
-    }, 60_000); // Каждую минуту
-
-    log('Indicator calculation loop started');
+  private async createTestSignal(): Promise<void> {
+    try {
+      // Используем реальный mint адрес (например, USDC)
+      const testMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'; // USDC
+      
+      // Создаем тестовый сигнал
+      await this.database.createSignal(
+        testMint,
+        true, // EMA cross
+        3.5, // Volume spike 3.5x
+        32.1 // RSI 32.1 (oversold)
+      );
+      
+      // Добавляем тестовый пул
+      await this.database.upsertPool(
+        testMint,
+        Math.floor(Date.now() / 1000) - (15 * 24 * 60 * 60), // 15 дней назад
+        25000, // $25K liquidity
+        2500000 // $2.5M FDV
+      );
+      
+      log(`🧪 Test signal created for ${testMint}`);
+    } catch (error) {
+      log('❌ Failed to create test signal:', 'ERROR');
+      log(String(error), 'ERROR');
+    }
   }
 
   /**
-   * Цикл отправки уведомлений (каждые 20 секунд)
+   * Отправка уведомлений в Telegram
    */
-  private startNotificationLoop(): void {
-    setInterval(async () => {
-      await this.runNotificationSweep();
-    }, 20_000); // Каждые 20 секунд
-
-    log('Notification loop started');
+  private async startNotificationLoop(): Promise<void> {
+    const checkInterval = 30000; // 30 секунд
+    
+    const sendNotifications = async () => {
+      try {
+        const unnotifiedSignals = await this.database.getUnnotifiedSignals();
+        
+        for (const signal of unnotifiedSignals) {
+          // Получаем данные пула для полного сигнала
+          const pool = await this.database.getPool(signal.mint);
+          if (pool) {
+            const priceImpact = 0; // TODO: получить через Jupiter API
+            await this.telegram.sendBuySignal(signal, { liq_usd: pool.liq_usd || 0, fdv_usd: pool.fdv_usd || 0 }, priceImpact);
+            await this.database.markSignalNotified(signal.id);
+            log(`📤 Notification sent for signal ${signal.id}`);
+          }
+        }
+      } catch (error) {
+        log('❌ Error sending notifications:', 'ERROR');
+        log(String(error), 'ERROR');
+      }
+    };
+    
+    // Отправляем уведомления сразу и потом каждые 30 секунд
+    await sendNotifications();
+    setInterval(sendNotifications, checkInterval);
+    
+    log('📤 Notification system started');
   }
 
   /**
-   * Цикл отправки статистики (каждый час)
-   */
-  private startStatsLoop(): void {
-    setInterval(async () => {
-      await this.sendStatsUpdate();
-    }, 3600_000); // Каждый час
-
-    log('Stats loop started');
-  }
-
-  /**
-   * Цикл очистки данных (каждые 4 часа)
+   * Очистка старых данных (каждые 6 часов)
    */
   private startCleanupLoop(): void {
-    setInterval(async () => {
-      await this.database.cleanup();
-    }, 4 * 3600_000); // Каждые 4 часа
-
-    log('Cleanup loop started');
-  }
-
-  /**
-   * Анализ всех известных токенов на сигналы
-   */
-  private async runIndicatorSweep(): Promise<void> {
-    try {
-      // Получаем все пулы старше 14 дней
-      const oldPools = await this.database.getOldPools();
-      
-      for (const pool of oldPools) {
-        if (!passesAge(pool)) continue;
-
-        this.stats.tokensAnalyzed++;
-
-        // Получаем свечи для анализа
-        const candles = await this.database.getCandles(pool.mint, MIN_HISTORY_CANDLES);
-        
-        if (candles.length < MIN_HISTORY_CANDLES) {
-          continue; // Недостаточно данных
-        }
-
-        // Рассчитываем индикаторы
-        const indicators = calculateIndicators(candles);
-        if (!indicators) continue;
-
-        // Проверяем сигнал на покупку
-        if (checkBuySignal(indicators)) {
-          await this.database.createSignal(
-            pool.mint,
-            toUnixSeconds(),
-            indicators.bullishCross,
-            indicators.volSpike,
-            indicators.rsi
-          );
-
-          this.stats.signalsProcessed++;
-          log(`Buy signal generated for ${pool.mint}`);
-        }
-      }
-    } catch (error) {
-      log(`Error in indicator sweep: ${error}`, 'ERROR');
-    }
-  }
-
-  /**
-   * Обработка и отправка неотправленных сигналов
-   */
-  private async runNotificationSweep(): Promise<void> {
-    try {
-      const unnotifiedSignals = await this.database.getUnnotifiedSignals();
-
-      for (const signal of unnotifiedSignals) {
-        await this.processSignalForNotification(signal);
-      }
-    } catch (error) {
-      log(`Error in notification sweep: ${error}`, 'ERROR');
-    }
-  }
-
-  /**
-   * Обработка сигнала для уведомления с финальными проверками
-   */
-  private async processSignalForNotification(signal: any): Promise<void> {
-    try {
-      const pool = await this.database.getPool(signal.mint);
-      if (!pool) {
-        await this.database.markSignalNotified(signal.id);
-        return;
-      }
-
-      // Проверяем ликвидность
-      if (pool.liq_usd < MIN_LIQUIDITY_USD) {
-        log(`Signal rejected: Low liquidity ${pool.liq_usd} < ${MIN_LIQUIDITY_USD}`);
-        await this.database.markSignalNotified(signal.id);
-        return;
-      }
-
-      // Проверяем FDV
-      if (pool.fdv_usd > MAX_FDV_USD) {
-        log(`Signal rejected: High FDV ${pool.fdv_usd} > ${MAX_FDV_USD}`);
-        await this.database.markSignalNotified(signal.id);
-        return;
-      }
-
-      // Проверяем price impact через Jupiter
-      const { priceImpact, passed } = await this.jupiter.checkPriceImpact(signal.mint);
-      
-      if (!passed) {
-        log(`Signal rejected: High price impact ${priceImpact}%`);
-        await this.database.markSignalNotified(signal.id);
-        return;
-      }
-
-      // Все проверки пройдены - отправляем сигнал
-      const success = await this.telegram.sendBuySignal(
-        signal,
-        { liq_usd: pool.liq_usd, fdv_usd: pool.fdv_usd },
-        priceImpact
-      );
-
-      if (success) {
-        await this.database.markSignalNotified(signal.id);
-        this.stats.signalsSent++;
-        log(`Signal sent successfully for ${signal.mint}`);
-      }
-    } catch (error) {
-      log(`Error processing signal for ${signal.mint}: ${error}`, 'ERROR');
-      // Отмечаем как отправленный, чтобы избежать повторных попыток
-      await this.database.markSignalNotified(signal.id);
-    }
-  }
-
-  /**
-   * Отправка статистики работы
-   */
-  private async sendStatsUpdate(): Promise<void> {
-    const uptime = (Date.now() - this.stats.startTime) / 1000;
+    const cleanupInterval = 6 * 60 * 60 * 1000; // 6 часов
     
-    await this.telegram.sendStats({
-      ...this.stats,
-      uptime
-    });
+    const performCleanup = async () => {
+      try {
+        await this.database.cleanup();
+      } catch (error) {
+        log('❌ Error during cleanup:', 'ERROR');
+        log(String(error), 'ERROR');
+      }
+    };
+    
+    setInterval(performCleanup, cleanupInterval);
+    log('🧹 Cleanup loop started');
   }
 
   /**
@@ -266,42 +178,23 @@ class SignalBot {
   async shutdown(): Promise<void> {
     log('Shutting down Signal Bot...');
     
-    this.heliusWS.close();
+    this.helius.close();
     await this.database.close();
     
-    log('Signal Bot shutdown complete');
+    log('Signal Bot shut down successfully');
     process.exit(0);
   }
 }
 
-// Главная функция
-async function main() {
-  const bot = new SignalBot();
+// Создаем и запускаем бота
+const signalBot = new SignalBot();
 
-  // Graceful shutdown handlers
-  process.on('SIGTERM', () => bot.shutdown());
-  process.on('SIGINT', () => bot.shutdown());
-  
-  // Обработка необработанных ошибок
-  process.on('unhandledRejection', (reason, promise) => {
-    log(`Unhandled Rejection at: ${promise}, reason: ${reason}`, 'ERROR');
-  });
+// Graceful shutdown
+process.on('SIGINT', () => signalBot.shutdown());
+process.on('SIGTERM', () => signalBot.shutdown());
 
-  process.on('uncaughtException', (error) => {
-    log(`Uncaught Exception: ${error}`, 'ERROR');
-    process.exit(1);
-  });
-
-  // Запускаем бота
-  await bot.start();
-}
-
-// Запуск только если это главный модуль
-if (require.main === module) {
-  main().catch(error => {
-    log(`Fatal error: ${error}`, 'ERROR');
-    process.exit(1);
-  });
-}
-
-export { SignalBot }; 
+// Запускаем бота
+signalBot.start().catch((error) => {
+  log('❌ Fatal error:', error);
+  process.exit(1);
+}); 
