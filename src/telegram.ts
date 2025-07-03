@@ -14,9 +14,12 @@ export class TelegramBot {
     
     log(`TelegramBot constructor received chatId: "${chatId}" (type: ${typeof chatId}, length: ${chatId?.length})`);
     
-    // Parse chatId more carefully
-    const parsedChatId = parseInt(chatId);
-    log(`parseInt("${chatId}") = ${parsedChatId} (isNaN: ${isNaN(parsedChatId)})`);
+    // Clean and parse chatId more carefully
+    const cleanedChatId = chatId.trim().replace(/^[=\s]+/, '');
+    log(`Cleaned chatId: "${cleanedChatId}"`);
+    
+    const parsedChatId = parseInt(cleanedChatId);
+    log(`parseInt("${cleanedChatId}") = ${parsedChatId} (isNaN: ${isNaN(parsedChatId)})`);
     
     this.chatId = parsedChatId || 0;
     this.baseUrl = `https://api.telegram.org/bot${token}`;
