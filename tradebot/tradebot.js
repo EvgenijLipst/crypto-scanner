@@ -1666,6 +1666,22 @@ const onchainLamports = await findTokenBalance(
 if (signals.length > 0) {
     // обрабатываем только самый первый сигнал
     await processSignal(connection, wallet, signals[0], botInstanceId);
+    
+    // КРИТИЧНО: После каждой обработки сигнала проверяем, нужно ли запустить мониторинг
+    const newTradeResult = await safeQuery(`
+      SELECT *
+        FROM trades
+       WHERE closed_at IS NULL
+         AND sell_tx IS NULL
+      ORDER BY created_at DESC
+       LIMIT 1
+    `);
+    
+    if (newTradeResult.rows.length === 1) {
+        const newTrade = newTradeResult.rows[0];
+        console.log(`[Main] Новая сделка обнаружена: ${newTrade.mint}, запускаем мониторинг...`);
+        await mint(connection, wallet, newTrade, botInstanceId);
+    }
 } else {
             await new Promise(r => setTimeout(r, SIGNAL_CHECK_INTERVAL_MS));
         }
