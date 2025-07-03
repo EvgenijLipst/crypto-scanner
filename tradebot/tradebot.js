@@ -982,7 +982,9 @@ await safeQuery(
     let noRouteErrorCount = 0;
     const NO_ROUTE_ERROR_LIMIT = 5;
     const NO_ROUTE_FREEZE_MINUTES = 10;
+    const NO_ROUTE_MAX_HOURS = 2; // Если токен не торгуется 2 часа подряд - закрываем
     let freezeUntil = 0;
+    let firstNoRouteTime = null;
 
     while (true) {
       // Строгая проверка баланса токена перед мониторингом
@@ -1016,21 +1018,44 @@ if (!onchainBalance || onchainBalance <= dustLamports) {
             let priceQuote;
             try {
                 priceQuote = await getQuote(outputMint, USDC_MINT, monitorAmountLamports);
-                // Если успешно — сбрасываем счётчик ошибок
+                // Если успешно — сбрасываем счётчик ошибок и время первой ошибки
                 noRouteErrorCount = 0;
+                firstNoRouteTime = null;
             } catch (e) {
                 if (
                     e.message.includes("COULD_NOT_FIND_ANY_ROUTE") ||
                     e.message.includes("Could not find any route")
                 ) {
                     noRouteErrorCount++;
-                    console.warn(`[Trailing] No route found for monitoring, count = ${noRouteErrorCount}`);
+                    
+                    // Запоминаем время первой ошибки "нет маршрута"
+                    if (firstNoRouteTime === null) {
+                        firstNoRouteTime = Date.now();
+                    }
+                    
+                    // Проверяем, не прошло ли слишком много времени без возможности торговать
+                    const hoursWithoutRoute = (Date.now() - firstNoRouteTime) / (3600 * 1000);
+                    if (hoursWithoutRoute >= NO_ROUTE_MAX_HOURS) {
+                        await notify(
+                            `🔴 **Closing Illiquid Token** \`${mintAddress}\`\n` +
+                            `Токен не торгуется уже ${hoursWithoutRoute.toFixed(1)} часов. Закрываем позицию как неликвидную.`,
+                            botInstanceId
+                        );
+                        await safeQuery(
+                            `UPDATE trades SET sell_tx = 'ILLIQUID_TOKEN_CLOSURE', closed_at = NOW() WHERE id = $1;`,
+                            [tradeId]
+                        );
+                        break;
+                    }
+                    
+                    console.warn(`[Trailing] No route found for monitoring, count = ${noRouteErrorCount}, hours without route = ${hoursWithoutRoute.toFixed(1)}`);
                     if (noRouteErrorCount >= NO_ROUTE_ERROR_LIMIT) {
                         freezeUntil = Date.now() + NO_ROUTE_FREEZE_MINUTES * 60 * 1000;
                         await notify(
                             `🟡 **TSL Monitoring Frozen** for \`${mintAddress}\`\n` +
                             `Не найден маршрут для quote ${NO_ROUTE_ERROR_LIMIT} раз подряд. ` +
-                            `Мониторинг приостановлен на ${NO_ROUTE_FREEZE_MINUTES} минут.`,
+                            `Мониторинг приостановлен на ${NO_ROUTE_FREEZE_MINUTES} минут.\n` +
+                            `(Без маршрута уже ${hoursWithoutRoute.toFixed(1)}ч из ${NO_ROUTE_MAX_HOURS}ч)`,
                             botInstanceId
                         );
                         continue;
@@ -1064,6 +1089,7 @@ if (!onchainBalance || onchainBalance <= dustLamports) {
                 );
             }
             noRouteErrorCount = 0;
+            firstNoRouteTime = null;
             const currentPrice = Number(priceQuote.outAmount) / (monitorAmountLamports / Math.pow(10, outputDecimals));
             highestPrice = Math.max(highestPrice, currentPrice);
 
