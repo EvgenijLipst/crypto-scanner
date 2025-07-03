@@ -1,16 +1,24 @@
 {
-  "name": "crypto-screener",
+  "name": "solana-signal-bot",
   "version": "1.0.0",
-  "description": "Crypto TA Scanner for Railway",
-  "main": "ta_scanner.js",
+  "description": "Advanced Solana Signal Bot with Helius WebSocket",
+  "main": "start-signal-bot.js",
   "scripts": {
-    "start": "node ta_scanner.js"
+    "start": "node start-signal-bot.js",
+    "dev": "npx ts-node src/index.ts",
+    "build": "npx tsc",
+    "test": "npx tsc --noEmit"
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.2",
-    "axios": "^1.7.2",
-    "axios-rate-limit": "^1.4.0",
+    "@types/node": "^24.0.10",
+    "@types/pg": "^8.15.4",
+    "@types/ws": "^8.18.1",
+    "cross-fetch": "^4.1.0",
+    "dotenv": "^17.0.1",
     "pg": "^8.16.3",
-    "telegraf": "^4.16.3"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "ws": "^8.18.3"
   }
 }
