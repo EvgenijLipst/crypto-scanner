@@ -67,17 +67,15 @@ class SignalBot {
       // Инициализация базы данных
       await this.database.initialize();
       
-      // Отправляем тестовое сообщение в Telegram
+      // Отправляем уведомление о запуске в Telegram
       log('🔔 Testing Telegram connection...');
       
-      // Получаем chat ID для отладки
-      await this.telegram.getChatInfo();
-      
-      const telegramSuccess = await this.telegram.sendTestMessage();
+      const telegramSuccess = await this.telegram.sendMessage('🚀 Signal Bot запущен и готов к работе!');
       if (telegramSuccess) {
         log('✅ Telegram connected successfully');
       } else {
         log('❌ Telegram connection failed', 'ERROR');
+        await this.telegram.sendErrorMessage('Failed to connect to Telegram');
       }
       
       // Подключение к Helius WebSocket
@@ -87,6 +85,7 @@ class SignalBot {
       } catch (error) {
         log('⚠️ Helius WebSocket connection failed:', 'WARN');
         log(String(error), 'WARN');
+        await this.telegram.sendErrorMessage(`WebSocket connection failed: ${error}`);
         log('🔄 Bot will continue without real-time monitoring');
       }
       
@@ -96,49 +95,18 @@ class SignalBot {
       // Запуск очистки данных
       this.startCleanupLoop();
       
-      log('✅ Signal Bot started successfully (Production mode)');
+      // Запуск отчетов активности
+      this.startActivityReports();
       
-      // Добавляем тестовый сигнал для проверки (отключен - Telegram работает)
-      // log('🧪 Creating test signal...');
-      // await this.createTestSignal();
+      log('✅ Signal Bot started successfully (Production mode)');
       
       log('🔔 Ready to process signals! Check Telegram for notifications.');
       
     } catch (error) {
       log('❌ Failed to start Signal Bot:', 'ERROR');
       log(String(error), 'ERROR');
+      await this.telegram.sendErrorMessage(`Signal Bot startup failed: ${error}`);
       process.exit(1);
-    }
-  }
-
-  /**
-   * Создать тестовый сигнал для проверки
-   */
-  private async createTestSignal(): Promise<void> {
-    try {
-      // Используем реальный mint адрес (например, USDC)
-      const testMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'; // USDC
-      
-      // Создаем тестовый сигнал
-      await this.database.createSignal(
-        testMint,
-        true, // EMA cross
-        3.5, // Volume spike 3.5x
-        32.1 // RSI 32.1 (oversold)
-      );
-      
-      // Добавляем тестовый пул
-      await this.database.upsertPool(
-        testMint,
-        Math.floor(Date.now() / 1000) - (15 * 24 * 60 * 60), // 15 дней назад
-        25000, // $25K liquidity
-        2500000 // $2.5M FDV
-      );
-      
-      log(`🧪 Test signal created for ${testMint}`);
-    } catch (error) {
-      log('❌ Failed to create test signal:', 'ERROR');
-      log(String(error), 'ERROR');
     }
   }
 
@@ -157,14 +125,29 @@ class SignalBot {
           const pool = await this.database.getPool(signal.mint);
           if (pool) {
             const priceImpact = 0; // TODO: получить через Jupiter API
-            await this.telegram.sendBuySignal(signal, { liq_usd: pool.liq_usd || 0, fdv_usd: pool.fdv_usd || 0 }, priceImpact);
-            await this.database.markSignalNotified(signal.id);
-            log(`📤 Notification sent for signal ${signal.id}`);
+            const success = await this.telegram.sendBuySignal(signal, { liq_usd: pool.liq_usd || 0, fdv_usd: pool.fdv_usd || 0 }, priceImpact);
+            
+            // Помечаем как уведомленный только если отправка успешна
+            if (success) {
+              await this.database.markSignalNotified(signal.id);
+            } else {
+              log(`Failed to send notification for signal ${signal.id}, will retry later`);
+            }
           }
         }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         log('❌ Error sending notifications:', 'ERROR');
-        log(String(error), 'ERROR');
+        log(errorMessage, 'ERROR');
+        
+        // Отправляем ошибку в Telegram только если это не сетевая проблема
+        if (!errorMessage.includes('timeout') && !errorMessage.includes('Connection terminated')) {
+          try {
+            await this.telegram.sendErrorMessage(`Notification error: ${errorMessage}`);
+          } catch (telegramError) {
+            log('Failed to send error message to Telegram (network issue)', 'WARN');
+          }
+        }
       }
     };
     
@@ -192,6 +175,37 @@ class SignalBot {
     
     setInterval(performCleanup, cleanupInterval);
     log('🧹 Cleanup loop started');
+  }
+
+  /**
+   * Отчеты о активности WebSocket (каждые 10 минут)
+   */
+  private startActivityReports(): void {
+    const reportInterval = 10 * 60 * 1000; // 10 минут
+    
+    const sendActivityReport = async () => {
+      try {
+        const stats = this.helius.getActivityStats();
+        await this.telegram.sendActivityReport(stats);
+        
+        // Сбрасываем счетчики после отчета для следующего периода
+        this.helius.resetStats();
+        
+        log(`📊 Activity report sent: ${stats.messagesReceived} messages, ${stats.swapEventsProcessed} swaps`);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        log('❌ Error sending activity report:', 'ERROR');
+        log(errorMessage, 'ERROR');
+      }
+    };
+    
+    // Первый отчет через 10 минут, затем каждые 10 минут
+    setTimeout(() => {
+      sendActivityReport();
+      setInterval(sendActivityReport, reportInterval);
+    }, reportInterval);
+    
+    log('📊 Activity reporting started (every 10 minutes)');
   }
 
   /**

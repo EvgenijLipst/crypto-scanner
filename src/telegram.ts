@@ -44,13 +44,20 @@ export class TelegramBot {
       
       log(`Payload: ${JSON.stringify(payload)}`);
       
+      // Создаем AbortController для таймаута
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 секунд
+      
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const error = await response.text();
@@ -61,7 +68,16 @@ export class TelegramBot {
       log('Telegram message sent successfully');
       return true;
     } catch (error) {
-      log(`Error sending Telegram message: ${error}`, 'ERROR');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorName = error instanceof Error ? error.name : 'Unknown';
+      
+      if (errorName === 'AbortError' || errorMessage.includes('timeout')) {
+        log('Telegram message timeout - network issue, will retry later', 'WARN');
+      } else if (errorMessage.includes('Connection terminated')) {
+        log('Telegram connection terminated - network issue, will retry later', 'WARN');
+      } else {
+        log(`Error sending Telegram message: ${errorMessage}`, 'ERROR');
+      }
       return false;
     }
   }
@@ -88,92 +104,79 @@ export class TelegramBot {
   ): string {
     const birdeyeLink = createBirdeyeLink(signal.mint);
     
-    return `📈 **BUY SIGNAL** 📈
+    // Объяснение почему этот токен достоин покупки
+    const reasons = [];
+    if (signal.ema_cross) reasons.push('✅ EMA 9/21 пересечение (бычий сигнал)');
+    if (signal.vol_spike >= 3) reasons.push(`✅ Всплеск объема x${formatNumber(signal.vol_spike, 1)} (высокий интерес)`);
+    if (signal.rsi < 35) reasons.push(`✅ RSI ${formatNumber(signal.rsi, 1)} (перепроданность)`);
+    if (poolInfo.liq_usd >= 10000) reasons.push('✅ Достаточная ликвидность (>$10K)');
+    if (poolInfo.fdv_usd <= 5000000) reasons.push('✅ Разумная оценка (<$5M FDV)');
+    
+    return `🚀 **СИГНАЛ ПОКУПКИ** 🚀
 
-🪙 **Token:** \`${signal.mint}\`
+🪙 **Токен:** \`${signal.mint}\`
 
-📊 **Technical Analysis:**
+💡 **Почему стоит покупать:**
+${reasons.join('\n')}
+
+📊 **Технический анализ:**
 • EMA Cross: ${signal.ema_cross ? '✅' : '❌'}
 • Volume Spike: x${formatNumber(signal.vol_spike, 1)} ${signal.vol_spike >= 3 ? '✅' : '❌'}
 • RSI: ${formatNumber(signal.rsi, 1)} ${signal.rsi < 35 ? '✅' : '❌'}
 
-💰 **Pool Info:**
-• Liquidity: $${formatNumber(poolInfo.liq_usd)}
+💰 **Данные пула:**
+• Ликвидность: $${formatNumber(poolInfo.liq_usd)}
 • FDV: $${formatNumber(poolInfo.fdv_usd)}
-• Price Impact: ${formatNumber(priceImpact, 2)}%
+• Прайс-импакт: ${formatNumber(priceImpact, 2)}%
 
-🔗 **Links:**
+🔗 **Ссылки:**
 [📊 Birdeye](${birdeyeLink})
 [📈 DEXScreener](https://dexscreener.com/solana/${signal.mint})
 
-⏰ Signal Time: ${signal.created_at.toLocaleString()}`;
+⏰ ${signal.created_at.toLocaleString()}`;
   }
 
   /**
    * Отправить сообщение об ошибке
    */
   async sendErrorMessage(error: string): Promise<void> {
-    const message = `🚨 **Signal Bot Error** 🚨\n\n\`${error}\``;
+    const message = `🚨 **Signal Bot Error** 🚨\n\n\`${escapeMarkdown(error)}\``;
     await this.sendMessage(message);
   }
 
   /**
-   * Отправить статистику работы бота
+   * Отправить статистику активности WebSocket
    */
-  async sendStats(stats: {
-    signalsProcessed: number;
-    signalsSent: number;
-    tokensAnalyzed: number;
-    uptime: number;
+  async sendActivityReport(stats: {
+    messagesReceived: number;
+    swapEventsProcessed: number;
+    poolEventsProcessed: number;
+    errorsEncountered: number;
+    uptimeMinutes: number;
+    lastActivityMinutes: number;
+    isConnected: boolean;
+    messagesPerMinute: string;
   }): Promise<void> {
-    const uptimeHours = (stats.uptime / 3600).toFixed(1);
+    const statusIcon = stats.isConnected ? '🟢' : '🔴';
+    const activityIcon = stats.lastActivityMinutes < 2 ? '🔥' : stats.lastActivityMinutes < 10 ? '⚡' : '⏳';
     
-    const message = `📊 **Signal Bot Stats** 📊
+    const message = `${statusIcon} **WebSocket Activity Report** ${activityIcon}
 
-🔄 **Processing:**
-• Signals Processed: ${stats.signalsProcessed}
-• Signals Sent: ${stats.signalsSent}
-• Tokens Analyzed: ${stats.tokensAnalyzed}
+📡 **Connection Status:** ${stats.isConnected ? 'Connected' : 'Disconnected'}
+⏱️ **Uptime:** ${stats.uptimeMinutes} минут
+🕐 **Last Activity:** ${stats.lastActivityMinutes} минут назад
 
-⏱️ **Uptime:** ${uptimeHours} hours
+📊 **Activity Stats:**
+• Messages Received: ${stats.messagesReceived}
+• Swap Events: ${stats.swapEventsProcessed}
+• Pool Events: ${stats.poolEventsProcessed}
+• Errors: ${stats.errorsEncountered}
+• Rate: ${stats.messagesPerMinute}/min
 
-${new Date().toLocaleString()}`;
+${stats.messagesReceived === 0 ? '⚠️ **WARNING**: Нет входящих сообщений!' : '✅ **WebSocket активен**'}
+
+⏰ ${new Date().toLocaleString()}`;
     
     await this.sendMessage(message);
-  }
-
-  /**
-   * Получить информацию о чате (для отладки chat ID)
-   */
-  async getChatInfo(): Promise<void> {
-    try {
-      const url = `${this.baseUrl}/getUpdates`;
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        log(`Failed to get chat info: ${response.status}`, 'ERROR');
-        return;
-      }
-
-      const data = await response.json();
-      log(`Chat updates: ${JSON.stringify(data, null, 2)}`);
-      
-      if (data.result && data.result.length > 0) {
-        const lastMessage = data.result[data.result.length - 1];
-        if (lastMessage.message && lastMessage.message.chat) {
-          log(`Your chat ID: ${lastMessage.message.chat.id}`);
-        }
-      }
-    } catch (error) {
-      log(`Error getting chat info: ${error}`, 'ERROR');
-    }
-  }
-
-  /**
-   * Тестовое сообщение для проверки подключения
-   */
-  async sendTestMessage(): Promise<boolean> {
-    const message = `Signal Bot Test - ${new Date().toLocaleString()}`;
-    return this.sendMessage(message, 'HTML');
   }
 } 

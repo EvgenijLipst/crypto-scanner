@@ -17,11 +17,53 @@ export class HeliusWebSocket {
   private ws: WebSocket | null = null;
   private apiKey: string;
   private database: Database;
+  private isConnected = false;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
   private pingInterval: NodeJS.Timeout | null = null;
+  
+  // Счетчики активности для мониторинга
+  private stats = {
+    messagesReceived: 0,
+    swapEventsProcessed: 0,
+    poolEventsProcessed: 0,
+    errorsEncountered: 0,
+    lastActivityTime: Date.now(),
+    connectionStartTime: Date.now(),
+  };
 
   constructor(apiKey: string, database: Database) {
     this.apiKey = apiKey;
     this.database = database;
+  }
+
+  /**
+   * Получить статистику активности WebSocket
+   */
+  getActivityStats() {
+    const uptimeMinutes = Math.floor((Date.now() - this.stats.connectionStartTime) / 60000);
+    const lastActivityMinutes = Math.floor((Date.now() - this.stats.lastActivityTime) / 60000);
+    
+    return {
+      ...this.stats,
+      uptimeMinutes,
+      lastActivityMinutes,
+      isConnected: this.isConnected,
+      messagesPerMinute: uptimeMinutes > 0 ? (this.stats.messagesReceived / uptimeMinutes).toFixed(1) : '0',
+    };
+  }
+
+  /**
+   * Сброс счетчиков (для периодических отчетов)
+   */
+  resetStats() {
+    this.stats = {
+      messagesReceived: 0,
+      swapEventsProcessed: 0,
+      poolEventsProcessed: 0,
+      errorsEncountered: 0,
+      lastActivityTime: Date.now(),
+      connectionStartTime: Date.now(),
+    };
   }
 
   /**
@@ -36,6 +78,8 @@ export class HeliusWebSocket {
 
       this.ws.on('open', () => {
         log('Helius WebSocket connected');
+        this.isConnected = true;
+        this.stats.connectionStartTime = Date.now();
         this.startPing();
         this.subscribeToTransactions();
         resolve();
@@ -47,11 +91,14 @@ export class HeliusWebSocket {
 
       this.ws.on('error', (error) => {
         log(`WebSocket error: ${error.message}`, 'ERROR');
+        this.stats.errorsEncountered++;
+        this.isConnected = false;
         reject(error);
       });
 
       this.ws.on('close', () => {
         log('WebSocket connection closed', 'WARN');
+        this.isConnected = false;
         if (this.pingInterval) {
           clearInterval(this.pingInterval);
           this.pingInterval = null;
@@ -115,12 +162,17 @@ export class HeliusWebSocket {
       const messageStr = data.toString('utf8');
       const message: HeliusMessage = JSON.parse(messageStr);
 
+      // Увеличиваем счетчик полученных сообщений
+      this.stats.messagesReceived++;
+      this.stats.lastActivityTime = Date.now();
+
       // Обрабатываем уведомления о логах
       if (message.method === 'logsNotification') {
         await this.handleLogsNotification(message.params);
       }
     } catch (error) {
       log(`Error parsing WebSocket message: ${error}`, 'ERROR');
+      this.stats.errorsEncountered++;
     }
   }
 
@@ -154,6 +206,9 @@ export class HeliusWebSocket {
    */
   private async handlePoolInit(signature: string, logLine: string): Promise<void> {
     try {
+      // Увеличиваем счетчик обработанных событий пулов
+      this.stats.poolEventsProcessed++;
+      
       // Здесь нужна дополнительная логика для извлечения mint адреса из логов
       // Это упрощенная версия - в реальности нужно парсить transaction details
       
@@ -163,6 +218,7 @@ export class HeliusWebSocket {
       // Пока что пропускаем, так как нужна дополнительная логика
     } catch (error) {
       log(`Error handling pool init: ${error}`, 'ERROR');
+      this.stats.errorsEncountered++;
     }
   }
 
@@ -171,6 +227,9 @@ export class HeliusWebSocket {
    */
   private async handleSwap(signature: string, logLine: string): Promise<void> {
     try {
+      // Увеличиваем счетчик обработанных событий свапов
+      this.stats.swapEventsProcessed++;
+      
       // Здесь тоже нужна дополнительная логика для извлечения деталей свапа
       // В упрощенной версии просто логируем
       
@@ -183,6 +242,7 @@ export class HeliusWebSocket {
       // - временной метки
     } catch (error) {
       log(`Error handling swap: ${error}`, 'ERROR');
+      this.stats.errorsEncountered++;
     }
   }
 
