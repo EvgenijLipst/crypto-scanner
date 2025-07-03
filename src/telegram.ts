@@ -11,10 +11,12 @@ export class TelegramBot {
 
   constructor(token: string, chatId: string) {
     this.token = token;
-    this.chatId = parseInt(chatId) || 0;
+    // Remove any leading = or whitespace from chatId
+    const cleanChatId = chatId.replace(/^[=\s]+/, '');
+    this.chatId = parseInt(cleanChatId) || 0;
     this.baseUrl = `https://api.telegram.org/bot${token}`;
     
-    log(`TelegramBot initialized with chat_id: ${this.chatId}, token: ${token.substring(0, 10)}...`);
+    log(`TelegramBot initialized with chat_id: ${this.chatId} (cleaned from: "${chatId}"), token: ${token.substring(0, 10)}...`);
   }
 
   /**
