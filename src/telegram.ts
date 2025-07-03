@@ -88,7 +88,7 @@ export class TelegramBot {
 [📊 Birdeye](${birdeyeLink})
 [📈 DEXScreener](https://dexscreener.com/solana/${signal.mint})
 
-⏰ Signal Time: ${signal.created_at.toLocaleString()}`;
+⏰ Signal Time: ${new Date(signal.created_at).toLocaleString()}`;
   }
 
   /**
@@ -122,6 +122,33 @@ export class TelegramBot {
 ${new Date().toLocaleString()}`;
     
     await this.sendMessage(message);
+  }
+
+  /**
+   * Получить информацию о чате (для отладки chat ID)
+   */
+  async getChatInfo(): Promise<void> {
+    try {
+      const url = `${this.baseUrl}/getUpdates`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        log(`Failed to get chat info: ${response.status}`, 'ERROR');
+        return;
+      }
+
+      const data = await response.json();
+      log(`Chat updates: ${JSON.stringify(data, null, 2)}`);
+      
+      if (data.result && data.result.length > 0) {
+        const lastMessage = data.result[data.result.length - 1];
+        if (lastMessage.message && lastMessage.message.chat) {
+          log(`Your chat ID: ${lastMessage.message.chat.id}`);
+        }
+      }
+    } catch (error) {
+      log(`Error getting chat info: ${error}`, 'ERROR');
+    }
   }
 
   /**
