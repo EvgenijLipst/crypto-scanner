@@ -982,7 +982,7 @@ await safeQuery(
     let noRouteErrorCount = 0;
     const NO_ROUTE_ERROR_LIMIT = 5;
     const NO_ROUTE_FREEZE_MINUTES = 10;
-    const NO_ROUTE_MAX_HOURS = 2; // Если токен не торгуется 2 часа подряд - закрываем
+    const NO_ROUTE_MAX_HOURS = 0.5; // Если токен не торгуется 30 минут подряд - закрываем
     let freezeUntil = 0;
     let firstNoRouteTime = null;
 
@@ -1457,6 +1457,27 @@ function startHealthCheckServer(botInstanceId) {
     startHealthCheckServer(botInstanceId);
     console.log("--- Tradebot worker started ---");
     console.log("🔧 [DEBUG] Bot initialization complete, starting main loop...");
+    
+    // ВРЕМЕННО: Принудительно закрываем проблемный токен
+    const problematicMint = 'GqcYoMUr1x4N3kU7ViFd3T3EUx3C2cWKRdWFjYxSkKuh';
+    const forceCloseResult = await safeQuery(
+        `UPDATE trades SET sell_tx = 'FORCE_CLOSED_ILLIQUID', closed_at = NOW() 
+         WHERE mint = $1 AND closed_at IS NULL RETURNING id, created_at;`,
+        [problematicMint]
+    );
+    if (forceCloseResult.rows.length > 0) {
+        const trade = forceCloseResult.rows[0];
+        const timeHeld = (Date.now() - new Date(trade.created_at).getTime()) / (3600 * 1000);
+        await notify(
+            `🔴 **Force Closed Illiquid Token**\n` +
+            `Token: \`${problematicMint}\`\n` +
+            `Time held: ${timeHeld.toFixed(1)} hours\n` +
+            `Reason: Manual force closure due to persistent no-route errors`,
+            botInstanceId
+        );
+        console.log(`[ForceClose] Closed trade id=${trade.id} for illiquid token after ${timeHeld.toFixed(1)} hours`);
+    }
+    
     // И сразу начинаем использовать ID в уведомлениях
     await notify("🚀 Tradebot worker started!", botInstanceId); 
   
@@ -1496,9 +1517,35 @@ if (lastOpenResult.rows.length === 1) {
   console.log(
     `[Startup] Найдена сделка по ${trade.mint} ` +
     `(id=${trade.id}, sell_tx=${trade.sell_tx}, closed_at=${trade.closed_at}). ` +
-    `Запускаем мониторинг…`
+    `Проверяем наличие токена в кошельке…`
   );
-  await mint(connection, wallet, trade, botInstanceId);
+  
+  // Проверяем, есть ли токен реально в кошельке
+  const tradeMint = new PublicKey(trade.mint);
+  const actualBalance = await findTokenBalance(connection, wallet, tradeMint, botInstanceId);
+  
+  // Получаем decimals для расчета dust
+  const tokenInfo = await connection.getParsedAccountInfo(tradeMint);
+  const decimals = tokenInfo.value?.data?.parsed?.info?.decimals ?? 9;
+  const dustLamports = Math.ceil(MIN_DUST_AMOUNT * Math.pow(10, decimals));
+  
+  if (actualBalance === 0 || actualBalance <= dustLamports) {
+    await notify(
+      `🔵 **Token Not Found in Wallet** \`${trade.mint}\`\n` +
+      `Balance: ${actualBalance} ≤ dust (${dustLamports})\n` +
+      `Auto-closing trade from startup check.`,
+      botInstanceId
+    );
+    await safeQuery(
+      `UPDATE trades SET sell_tx = 'STARTUP_WALLET_CHECK_MISSING', closed_at = NOW() WHERE id = $1;`,
+      [trade.id]
+    );
+    console.log(`[Startup] Token ${trade.mint} not found in wallet, closed trade id=${trade.id}`);
+  } else {
+    const tokenAmount = actualBalance / Math.pow(10, decimals);
+    console.log(`[Startup] Token ${trade.mint} confirmed in wallet: ${tokenAmount.toFixed(6)} tokens. Starting monitoring...`);
+    await mint(connection, wallet, trade, botInstanceId);
+  }
 } else {
   console.log("[Startup] Нет сделок для мониторинга. Переходим к сигналам.");
 }
