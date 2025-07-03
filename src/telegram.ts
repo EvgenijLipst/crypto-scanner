@@ -11,12 +11,17 @@ export class TelegramBot {
 
   constructor(token: string, chatId: string) {
     this.token = token;
-    // Remove any leading = or whitespace from chatId
-    const cleanChatId = chatId.replace(/^[=\s]+/, '');
-    this.chatId = parseInt(cleanChatId) || 0;
+    
+    log(`TelegramBot constructor received chatId: "${chatId}" (type: ${typeof chatId}, length: ${chatId?.length})`);
+    
+    // Parse chatId more carefully
+    const parsedChatId = parseInt(chatId);
+    log(`parseInt("${chatId}") = ${parsedChatId} (isNaN: ${isNaN(parsedChatId)})`);
+    
+    this.chatId = parsedChatId || 0;
     this.baseUrl = `https://api.telegram.org/bot${token}`;
     
-    log(`TelegramBot initialized with chat_id: ${this.chatId} (cleaned from: "${chatId}"), token: ${token.substring(0, 10)}...`);
+    log(`TelegramBot initialized with final chat_id: ${this.chatId}, token: ${token.substring(0, 10)}...`);
   }
 
   /**

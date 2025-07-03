@@ -32,7 +32,7 @@ class SignalBot {
     log(`Environment variables:`, 'INFO');
     log(`DATABASE_URL: ${databaseUrl ? 'SET' : 'NOT SET'}`, 'INFO');
     log(`TELEGRAM_TOKEN: ${telegramToken ? telegramToken.substring(0, 10) + '...' : 'NOT SET'}`, 'INFO');
-    log(`TELEGRAM_CHAT_ID: ${telegramChatId ? telegramChatId : 'NOT SET'}`, 'INFO');
+    log(`TELEGRAM_CHAT_ID: "${telegramChatId}" (type: ${typeof telegramChatId})`, 'INFO');
     log(`HELIUS_KEY: ${process.env.HELIUS_KEY ? 'SET' : 'NOT SET'}`, 'INFO');
     
     // Debug PostgreSQL variables
