@@ -1068,7 +1068,7 @@ if (!onchainBalance || onchainBalance <= dustLamports) {
             highestPrice = Math.max(highestPrice, currentPrice);
 
             const elapsedHours = (Date.now() - purchaseTimestamp) / (3600 * 1000);
-            
+            const currentPL = (currentPrice - purchasePrice) / purchasePrice;
             const stopPrice = highestPrice * (1 - TRAILING_STOP_PERCENTAGE / 100);
   
             console.log(`[Trailing] price=${currentPrice.toFixed(6)}, P/L=${(currentPL * 100).toFixed(2)}%, stop=${stopPrice.toFixed(6)}, time=${elapsedHours.toFixed(1)}h`);
@@ -1121,11 +1121,11 @@ if (!onchainBalance || onchainBalance <= dustLamports) {
                 await notify(`🔔 **Sale Triggered** for \`${mintAddress}\`\nReason: ${sellReason}`, botInstanceId);
             
                 // ── Учитываем DUST ──
-                const info = await connection.getParsedAccountInfo(mint);
+                const info = await connection.getParsedAccountInfo(outputMint);
                 const decimals = info.value.data.parsed.info.decimals;
                 const dustLamports = Math.ceil(MIN_DUST_AMOUNT * 10 ** decimals);
             
-                let balance = await findTokenBalance(connection, wallet, mint, botInstanceId);
+                let balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
                 // Если нет баланса или только пыль — закрываем сразу
                 if (balance === 0 || balance <= dustLamports) {
                     await notify(
@@ -1138,7 +1138,7 @@ if (!onchainBalance || onchainBalance <= dustLamports) {
 const onchainLamports = await findTokenBalance(
     connection,
     wallet,
-    mint,            // там же, где вы в контексте работаете с этим mint
+    outputMint,            // там же, где вы в контексте работаете с этим outputMint
     botInstanceId
   );
   if (onchainLamports > dustLamports) {
@@ -1306,7 +1306,7 @@ const onchainLamports = await findTokenBalance(
 const onchainLamports = await findTokenBalance(
     connection,
     wallet,
-    mint,            // там же, где вы в контексте работаете с этим mint
+    outputMint,            // там же, где вы в контексте работаете с этим outputMint
     botInstanceId
   );
   if (onchainLamports > dustLamports) {
