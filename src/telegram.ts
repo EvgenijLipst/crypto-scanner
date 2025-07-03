@@ -6,12 +6,12 @@ import { formatNumber, escapeMarkdown, createBirdeyeLink, log } from './utils';
 
 export class TelegramBot {
   private token: string;
-  private chatId: string;
+  private chatId: number;
   private baseUrl: string;
 
   constructor(token: string, chatId: string) {
     this.token = token;
-    this.chatId = chatId;
+    this.chatId = parseInt(chatId);
     this.baseUrl = `https://api.telegram.org/bot${token}`;
   }
 
@@ -20,18 +20,24 @@ export class TelegramBot {
    */
   async sendMessage(text: string, parseMode: 'Markdown' | 'MarkdownV2' | 'HTML' = 'Markdown'): Promise<boolean> {
     try {
+      log(`Attempting to send message to chat_id: ${this.chatId} with token: ${this.token.substring(0, 10)}...`);
+      
       const url = `${this.baseUrl}/sendMessage`;
+      const payload = {
+        chat_id: this.chatId,
+        text,
+        parse_mode: parseMode,
+        disable_web_page_preview: true,
+      };
+      
+      log(`Payload: ${JSON.stringify(payload)}`);
+      
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          chat_id: this.chatId,
-          text,
-          parse_mode: parseMode,
-          disable_web_page_preview: true,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -155,7 +161,7 @@ ${new Date().toLocaleString()}`;
    * Тестовое сообщение для проверки подключения
    */
   async sendTestMessage(): Promise<boolean> {
-    const message = `🤖 Signal Bot Test - ${new Date().toLocaleString()}`;
-    return this.sendMessage(message);
+    const message = `Signal Bot Test - ${new Date().toLocaleString()}`;
+    return this.sendMessage(message, 'HTML');
   }
 } 
