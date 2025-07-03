@@ -5,6 +5,6 @@
   },
   "deploy": {
     "restartPolicyType": "ON_FAILURE",
-    "startCommand": "npm start"
+    "startCommand": "cd tradebot && npm start"
   }
 }
