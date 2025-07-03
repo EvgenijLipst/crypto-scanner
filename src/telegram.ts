@@ -11,8 +11,10 @@ export class TelegramBot {
 
   constructor(token: string, chatId: string) {
     this.token = token;
-    this.chatId = parseInt(chatId);
+    this.chatId = parseInt(chatId) || 0;
     this.baseUrl = `https://api.telegram.org/bot${token}`;
+    
+    log(`TelegramBot initialized with chat_id: ${this.chatId}, token: ${token.substring(0, 10)}...`);
   }
 
   /**

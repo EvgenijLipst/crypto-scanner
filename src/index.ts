@@ -21,6 +21,13 @@ class SignalBot {
   const telegramToken = process.env.TELEGRAM_TOKEN;
   const telegramChatId = process.env.TELEGRAM_CHAT_ID;
 
+    // Debug environment variables
+    log(`Environment variables:`, 'INFO');
+    log(`DATABASE_URL: ${databaseUrl ? 'SET' : 'NOT SET'}`, 'INFO');
+    log(`TELEGRAM_TOKEN: ${telegramToken ? telegramToken.substring(0, 10) + '...' : 'NOT SET'}`, 'INFO');
+    log(`TELEGRAM_CHAT_ID: ${telegramChatId ? telegramChatId : 'NOT SET'}`, 'INFO');
+    log(`HELIUS_KEY: ${process.env.HELIUS_KEY ? 'SET' : 'NOT SET'}`, 'INFO');
+
     if (!databaseUrl) {
       throw new Error('DATABASE_URL environment variable is required');
     }
