@@ -21,7 +21,6 @@ export interface SignalRow {
   id: number;
   mint: string;
   signal_ts: number; // unix timestamp когда был создан сигнал
-  created_at: Date;
   ema_cross: boolean;
   vol_spike: number;
   rsi: number;

@@ -133,7 +133,7 @@ ${reasons.join('\n')}
 [📊 Birdeye](${birdeyeLink})
 [📈 DEXScreener](https://dexscreener.com/solana/${signal.mint})
 
-⏰ ${signal.created_at.toLocaleString()}`;
+⏰ ${new Date(signal.signal_ts * 1000).toLocaleString()}`;
   }
 
   /**

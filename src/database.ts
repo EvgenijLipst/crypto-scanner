@@ -216,8 +216,7 @@ export class Database {
    */
   async getUnnotifiedSignals(): Promise<SignalRow[]> {
     const res = await this.pool.query(`
-      SELECT id, mint, signal_ts, ema_cross, vol_spike, rsi, notified,
-             to_timestamp(signal_ts) as created_at
+      SELECT id, mint, signal_ts, ema_cross, vol_spike, rsi, notified
       FROM signals 
       WHERE notified = false
       ORDER BY signal_ts ASC
