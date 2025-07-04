@@ -149,8 +149,11 @@ ${reasons.join('\n')}
    */
   async sendActivityReport(stats: {
     messagesReceived: number;
+    logsNotifications: number;
+    programNotifications?: number;
     swapEventsProcessed: number;
     poolEventsProcessed: number;
+    otherMessages: number;
     errorsEncountered: number;
     uptimeMinutes: number;
     lastActivityMinutes: number;
@@ -160,20 +163,25 @@ ${reasons.join('\n')}
     const statusIcon = stats.isConnected ? '🟢' : '🔴';
     const activityIcon = stats.lastActivityMinutes < 2 ? '🔥' : stats.lastActivityMinutes < 10 ? '⚡' : '⏳';
     
+    const programCount = stats.programNotifications || stats.logsNotifications || 0;
+    
     const message = `${statusIcon} **WebSocket Activity Report** ${activityIcon}
 
 📡 **Connection Status:** ${stats.isConnected ? 'Connected' : 'Disconnected'}
 ⏱️ **Uptime:** ${stats.uptimeMinutes} минут
 🕐 **Last Activity:** ${stats.lastActivityMinutes} минут назад
 
-📊 **Activity Stats:**
-• Messages Received: ${stats.messagesReceived}
-• Swap Events: ${stats.swapEventsProcessed}
-• Pool Events: ${stats.poolEventsProcessed}
+📊 **Message Details:**
+• Total Messages: ${stats.messagesReceived}
+• Program Notifications: ${programCount}
+• AMM Events Processed: ${stats.swapEventsProcessed}
+• Pool Events Found: ${stats.poolEventsProcessed}
+• Other Messages: ${stats.otherMessages}
 • Errors: ${stats.errorsEncountered}
 • Rate: ${stats.messagesPerMinute}/min
 
-${stats.messagesReceived === 0 ? '⚠️ **WARNING**: Нет входящих сообщений!' : '✅ **WebSocket активен**'}
+${stats.messagesReceived === 0 ? '⚠️ **WARNING**: Нет входящих сообщений!' : 
+  programCount === 0 ? '⚠️ **WARNING**: Нет program уведомлений!' : '✅ **WebSocket активен**'}
 
 ⏰ ${new Date().toLocaleString()}`;
     

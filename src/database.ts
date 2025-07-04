@@ -149,6 +149,13 @@ export class Database {
   }
 
   /**
+   * Обновить OHLCV данные (алиас для ingestSwap для совместимости)
+   */
+  async updateOHLCV(mint: string, price: number, volumeUsd: number, timestamp: number): Promise<void> {
+    return this.ingestSwap(mint, price, volumeUsd, timestamp);
+  }
+
+  /**
    * Получить последние свечи для расчета индикаторов
    */
   async getCandles(mint: string, limit: number = 40): Promise<OHLCVRow[]> {
@@ -163,6 +170,13 @@ export class Database {
   }
 
   /**
+   * Получить OHLCV данные (алиас для getCandles)
+   */
+  async getOHLCV(mint: string, limit: number = 40): Promise<OHLCVRow[]> {
+    return this.getCandles(mint, limit);
+  }
+
+  /**
    * Создать сигнал
    */
   async createSignal(
@@ -171,11 +185,11 @@ export class Database {
     volSpike: number, 
     rsi: number
   ): Promise<void> {
+    const currentTimestamp = Math.floor(Date.now() / 1000);
     await this.pool.query(`
-      INSERT INTO signals(token_mint, ema_cross, vol_spike, rsi, processed, notified)
-      VALUES($1, $2, $3, $4, false, false)
-      ON CONFLICT DO NOTHING
-    `, [mint, emaCross, volSpike, rsi]);
+      INSERT INTO signals(mint, signal_ts, ema_cross, vol_spike, rsi, notified)
+      VALUES($1, $2, $3, $4, $5, false)
+    `, [mint, currentTimestamp, emaCross, volSpike, rsi]);
   }
 
   /**
@@ -183,10 +197,11 @@ export class Database {
    */
   async getUnnotifiedSignals(): Promise<SignalRow[]> {
     const res = await this.pool.query(`
-      SELECT id, token_mint as mint, created_at, ema_cross, vol_spike, rsi, notified 
+      SELECT id, mint, signal_ts, ema_cross, vol_spike, rsi, notified,
+             to_timestamp(signal_ts) as created_at
       FROM signals 
-      WHERE notified = false AND processed = false
-      ORDER BY created_at ASC
+      WHERE notified = false
+      ORDER BY signal_ts ASC
     `);
     return res.rows;
   }
