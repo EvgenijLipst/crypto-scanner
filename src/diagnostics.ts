@@ -5,6 +5,7 @@ import path from 'path';
 import { Database } from './database';
 import { TelegramBot } from './telegram';
 import { log } from './utils';
+import { AutoRepairSystem } from './auto-repair';
 
 interface DiagnosticResult {
   issue: string;
@@ -29,6 +30,7 @@ interface SystemHealth {
 export class DiagnosticsSystem {
   private database: Database;
   private telegram: TelegramBot;
+  private autoRepair: AutoRepairSystem;
   private logFilePath: string;
   private diagnosticsLogPath: string;
   private errorPatterns: Map<string, DiagnosticResult> = new Map();
@@ -36,11 +38,12 @@ export class DiagnosticsSystem {
   constructor(database: Database, telegram: TelegramBot) {
     this.database = database;
     this.telegram = telegram;
+    this.autoRepair = new AutoRepairSystem(database, telegram);
     this.logFilePath = path.join(process.cwd(), 'telegram.log');
     this.diagnosticsLogPath = path.join(process.cwd(), 'diagnostics.log');
     
     this.initializeErrorPatterns();
-    log('🔧 Diagnostics system initialized');
+    log('🔧 Diagnostics system initialized with auto-repair capabilities');
   }
 
   private initializeErrorPatterns(): void {
@@ -193,10 +196,10 @@ export class DiagnosticsSystem {
     log('💾 Logging diagnostics results...');
     await this.logDiagnostics(health);
 
-    // Автоисправления
+    // Автономные исправления через AutoRepairSystem
     if (issues.length > 0) {
-      log(`🔧 Attempting auto-fixes for ${issues.length} issues...`);
-      await this.attemptAutoFixes(issues);
+      log(`🔧 Attempting autonomous auto-repairs for ${issues.length} issues...`);
+      await this.performAutonomousRepairs(issues);
     }
 
     log(`🔍 Diagnostics completed in ${health.metrics.uptime}s, found ${issues.length} issues`);
@@ -501,7 +504,63 @@ export class DiagnosticsSystem {
   }
 
   /**
-   * Попытка автоисправлений
+   * Автономные исправления через AutoRepairSystem
+   */
+  private async performAutonomousRepairs(issues: DiagnosticResult[]): Promise<void> {
+    let criticalIssues = 0;
+    let fixedIssues = 0;
+    
+    for (const issue of issues) {
+      if (issue.severity === 'CRITICAL' || issue.severity === 'HIGH') {
+        criticalIssues++;
+        
+        try {
+          // Используем автономную систему исправлений
+          const fixed = await this.autoRepair.handleCriticalError(issue.issue, {
+            severity: issue.severity,
+            description: issue.description,
+            solution: issue.solution
+          });
+          
+          if (fixed) {
+            fixedIssues++;
+            log(`✅ Autonomous repair successful: ${issue.issue}`);
+          } else {
+            log(`❌ Autonomous repair failed: ${issue.issue}`);
+            
+            // Fallback на старый метод автоисправления
+            if (issue.autoFix) {
+              try {
+                const legacyFixed = await issue.autoFix();
+                if (legacyFixed) {
+                  fixedIssues++;
+                  log(`✅ Legacy auto-fix successful: ${issue.issue}`);
+                }
+              } catch (error) {
+                log(`❌ Legacy auto-fix error for ${issue.issue}: ${error}`, 'ERROR');
+              }
+            }
+          }
+        } catch (error) {
+          log(`❌ Autonomous repair error for ${issue.issue}: ${error}`, 'ERROR');
+        }
+      }
+    }
+    
+    // Отправляем уведомление только если есть критические проблемы
+    if (criticalIssues > 3) {
+      await this.telegram.sendMessage(
+        `🤖 **Autonomous System Repair** 🤖\n\n` +
+        `Found ${criticalIssues} critical issues.\n` +
+        `Auto-repaired: ${fixedIssues}\n` +
+        `Status: ${fixedIssues === criticalIssues ? '✅ All issues resolved automatically' : '⚠️ Some issues may require manual intervention'}\n\n` +
+        `System is now self-healing and will continue monitoring.`
+      );
+    }
+  }
+
+  /**
+   * Попытка автоисправлений (legacy метод)
    */
   private async attemptAutoFixes(issues: DiagnosticResult[]): Promise<void> {
     for (const issue of issues) {
