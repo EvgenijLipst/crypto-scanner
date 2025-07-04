@@ -44,34 +44,92 @@ export class DiagnosticsSystem {
   }
 
   private initializeErrorPatterns(): void {
+    // Ошибки сигнального бота
     this.errorPatterns.set('token_mint', {
-      issue: 'DATABASE_SCHEMA_MISMATCH',
+      issue: 'TOKEN_MINT_COLUMN_ERROR',
       severity: 'CRITICAL',
-      description: 'Code trying to access non-existent column "token_mint" - should be "mint"',
+      description: 'Database query using deprecated "token_mint" column',
       autoFix: this.fixTokenMintIssue.bind(this),
-      solution: 'Update database queries to use "mint" instead of "token_mint"'
+      solution: 'Rename token_mint column to mint in database'
     });
-    
+
     this.errorPatterns.set('Connection terminated', {
-      issue: 'TELEGRAM_CONNECTION_ERROR',
-      severity: 'MEDIUM',
-      description: 'Telegram API connection issues',
-      solution: 'Retry with exponential backoff, check network connectivity'
-    });
-    
-    this.errorPatterns.set('COULD_NOT_FIND_ANY_ROUTE', {
-      issue: 'JUPITER_ROUTING_ERROR',
-      severity: 'LOW',
-      description: 'Jupiter API cannot find swap route for token',
-      solution: 'Skip token or retry later when liquidity improves'
-    });
-    
-        this.errorPatterns.set('Database pool error', {
       issue: 'DATABASE_CONNECTION_ERROR',
       severity: 'HIGH',
-      description: 'PostgreSQL connection pool errors',
+      description: 'Database connection terminated unexpectedly',
       autoFix: this.fixDatabaseConnection.bind(this),
       solution: 'Restart database connection pool'
+    });
+
+    this.errorPatterns.set('timeout', {
+      issue: 'TELEGRAM_TIMEOUT',
+      severity: 'MEDIUM',
+      description: 'Telegram API timeout errors',
+      solution: 'Check network connectivity and Telegram API status'
+    });
+
+    // Ошибки трейдбота
+    this.errorPatterns.set('COULD_NOT_FIND_ANY_ROUTE', {
+      issue: 'JUPITER_NO_ROUTE',
+      severity: 'HIGH',
+      description: 'Jupiter API cannot find trading routes',
+      solution: 'Check token liquidity and Jupiter API status'
+    });
+
+    this.errorPatterns.set('Quote error', {
+      issue: 'JUPITER_QUOTE_ERROR',
+      severity: 'HIGH',
+      description: 'Jupiter quote API errors',
+      solution: 'Check Jupiter API status and token validity'
+    });
+
+    this.errorPatterns.set('Swap tx error', {
+      issue: 'JUPITER_SWAP_ERROR',
+      severity: 'HIGH',
+      description: 'Jupiter swap transaction errors',
+      solution: 'Check wallet balance and token approvals'
+    });
+
+    this.errorPatterns.set('Transaction failed', {
+      issue: 'SOLANA_TX_FAILED',
+      severity: 'HIGH',
+      description: 'Solana transaction execution failed',
+      solution: 'Check RPC connection and wallet balance'
+    });
+
+    this.errorPatterns.set('Insufficient funds', {
+      issue: 'WALLET_INSUFFICIENT_FUNDS',
+      severity: 'CRITICAL',
+      description: 'Wallet has insufficient funds for trading',
+      solution: 'Add funds to trading wallet'
+    });
+
+    this.errorPatterns.set('Price impact too high', {
+      issue: 'HIGH_PRICE_IMPACT',
+      severity: 'MEDIUM',
+      description: 'Trade rejected due to high price impact',
+      solution: 'Reduce trade size or wait for better liquidity'
+    });
+
+    this.errorPatterns.set('Telegram notification failed', {
+      issue: 'TELEGRAM_NOTIFICATION_FAILED',
+      severity: 'MEDIUM',
+      description: 'Failed to send Telegram notifications',
+      solution: 'Check Telegram bot token and chat ID'
+    });
+
+    this.errorPatterns.set('Rug pull risk detected', {
+      issue: 'RUG_PULL_DETECTED',
+      severity: 'HIGH',
+      description: 'Potential rug pull risk detected',
+      solution: 'Review token safety checks and filters'
+    });
+
+    this.errorPatterns.set('Database query failed', {
+      issue: 'DATABASE_QUERY_ERROR',
+      severity: 'HIGH',
+      description: 'Database query execution failed',
+      solution: 'Check database connection and query syntax'
     });
   }
 

@@ -15,9 +15,10 @@ const { AbortController } = require("abort-controller");
 const bs58 = require("bs58");
 const { Telegraf } = require("telegraf");
 const { Pool } = require("pg");
-
+const { TradebotDiagnostics } = require("./diagnostics");
 
 // Генерируем уникальный ID для этого запуска бота
+let diagnostics;
 
 
 let isHalted = false;
@@ -763,6 +764,54 @@ async function main() {
     
     console.log(`[Wallet] ${wallet.publicKey.toBase58()}`);
     await notify(`🤖 **Tradebot Started** - Instance: \`${botInstanceId}\``, botInstanceId);
+    
+    // Инициализируем систему диагностики
+    diagnostics = new TradebotDiagnostics(pool, notify);
+    
+    // Функция диагностики
+    async function runDiagnostics() {
+        try {
+            console.log('🔧 [Tradebot] Starting diagnostics check...');
+            const health = await diagnostics.runDiagnostics();
+            
+            console.log(`🔍 [Tradebot] Diagnostics completed: ${health.overallStatus}, found ${health.issues.length} issues`);
+            
+            if (health.overallStatus === 'CRITICAL') {
+                const message = 
+                    `🚨 **TRADEBOT CRITICAL ISSUES** 🚨\n\n` +
+                    `Issues found: ${health.issues.length}\n` +
+                    `Status: ${health.overallStatus}\n\n` +
+                    health.issues.map(i => `• ${i.issue}: ${i.description}`).join('\n');
+                
+                console.log('📢 [Tradebot] Sending critical diagnostics alert to Telegram');
+                await notify(message, botInstanceId);
+            } else if (health.overallStatus === 'WARNING') {
+                console.log(`⚠️ [Tradebot] System warnings detected: ${health.issues.length} issues`);
+                
+                // Отправляем предупреждения в Telegram только если их много
+                if (health.issues.length > 3) {
+                    const message = 
+                        `⚠️ **TRADEBOT WARNINGS** ⚠️\n\n` +
+                        `Issues found: ${health.issues.length}\n\n` +
+                        health.issues.slice(0, 3).map(i => `• ${i.issue}: ${i.description}`).join('\n') +
+                        (health.issues.length > 3 ? `\n... и еще ${health.issues.length - 3} проблем` : '');
+                    
+                    await notify(message, botInstanceId);
+                }
+            } else {
+                console.log('✅ [Tradebot] System health check passed');
+            }
+        } catch (e) {
+            console.error(`❌ [Tradebot] Error in diagnostics: ${e}`);
+            await notify(`🚨 **Tradebot Diagnostics Error**: ${e}`, botInstanceId);
+        }
+    }
+    
+    // Запускаем диагностику каждые 10 минут
+    setInterval(runDiagnostics, 10 * 60 * 1000);
+    
+    // Первая диагностика через 1 минуту после запуска
+    setTimeout(runDiagnostics, 60_000);
     
     // Основной цикл проверки сигналов
     while (true) {
