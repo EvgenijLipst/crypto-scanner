@@ -12,6 +12,7 @@
     "abort-controller": "^3.0.0",
     "bs58": "^5.0.0",
     "cross-fetch": "^4.0.0",
+    "dotenv": "^17.0.1",
     "pg": "^8.11.3",
     "telegraf": "^4.16.3"
   },

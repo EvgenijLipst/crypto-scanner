@@ -1,3 +1,5 @@
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+
 const {
     Connection,
     Keypair,
@@ -82,18 +84,6 @@ console.log(`[DB] Connecting to: ${DATABASE_URL}`);
   try {
     // Создаем необходимые таблицы если их нет
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS signals (
-        id SERIAL PRIMARY KEY,
-        mint TEXT,
-        signal_ts BIGINT,
-        ema_cross BOOLEAN,
-        vol_spike NUMERIC,
-        rsi NUMERIC,
-        notified BOOLEAN DEFAULT FALSE
-      );
-    `);
-    
-    await pool.query(`
       CREATE TABLE IF NOT EXISTS trades (
         id SERIAL PRIMARY KEY,
         mint TEXT,
@@ -125,34 +115,7 @@ async function safeQuery(...args) {
     return pool.query(...args);
 }
 
-// — Утилита: достать следующий сигнал из таблицы — 
-async function fetchAllPendingSignals() {
-    const ONE_MINUTE_AGO = Math.floor((Date.now() - 60 * 1000) / 1000);
-    const res = await safeQuery(
-      `SELECT mint
-         FROM signals
-        WHERE signal_ts > $1
-        ORDER BY signal_ts;`,
-      [ONE_MINUTE_AGO]
-    );
-    return res.rows.map(row => ({ mint: new PublicKey(row.mint) }));
-}
-
-  
-
 // — Основные вспомогательные функции —
-
-async function cleanupOldSignals() {
-    // Удаляем сигналы старше 1 часа (processed=true или false — неважно)
-    const ONE_HOUR_AGO = Math.floor((Date.now() - 60 * 60 * 1000) / 1000);
-    const res = await safeQuery(
-      `DELETE FROM signals WHERE signal_ts < $1 RETURNING mint;`,
-      [ONE_HOUR_AGO]
-    );
-    if (res.rowCount > 0) {
-      console.log(`[Cleanup] Deleted ${res.rowCount} old signals`);
-    }
-  }
 
 async function getQuote(inputMint, outputMint, amount, maxRetries = 3) {
     const url = `https://quote-api.jup.ag/v6/quote?inputMint=${inputMint.toBase58()}&outputMint=${outputMint.toBase58()}&amount=${amount}&slippageBps=${SLIPPAGE_BPS}`;
@@ -915,7 +878,7 @@ async function main() {
     while (true) {
         try {
             // 1. Очистка старых сигналов
-            await cleanupOldSignals();
+            // await cleanupOldSignals(); // Удалены, работаем только с trades
             
             // 2. Проверяем открытые позиции (только недавние - не старше 1 минуты)
             const ONE_MINUTE_AGO = new Date(Date.now() - 60 * 1000).toISOString();
@@ -987,117 +950,117 @@ async function main() {
             
             // 3. Если нет открытых позиций, ищем новые сигналы
             console.log(`[Main] No open positions. Checking for new signals...`);
-            const pendingSignals = await fetchAllPendingSignals();
+            // const pendingSignals = await fetchAllPendingSignals(); // Удалены, работаем только с trades
             
-            if (pendingSignals.length === 0) {
-                console.log(`[Main] No pending signals found. Waiting ${SIGNAL_CHECK_INTERVAL_MS}ms...`);
-                await new Promise(resolve => setTimeout(resolve, SIGNAL_CHECK_INTERVAL_MS));
-                continue;
-            }
+            // if (pendingSignals.length === 0) { // Удалены, работаем только с trades
+            //     console.log(`[Main] No pending signals found. Waiting ${SIGNAL_CHECK_INTERVAL_MS}ms...`);
+            //     await new Promise(resolve => setTimeout(resolve, SIGNAL_CHECK_INTERVAL_MS));
+            //     continue;
+            // }
             
-            console.log(`[Main] Found ${pendingSignals.length} pending signal(s)`);
+            // console.log(`[Main] Found ${pendingSignals.length} pending signal(s)`); // Удалены, работаем только с trades
             
-            // 4. Обрабатываем первый сигнал
-            const signal = pendingSignals[0];
-            const mintAddress = signal.mint.toBase58();
+            // 4. Обрабатываем первый сигнал // Удалены, работаем только с trades
+            // const signal = pendingSignals[0]; // Удалены, работаем только с trades
+            // const mintAddress = signal.mint.toBase58(); // Удалены, работаем только с trades
             
-            console.log(`[Main] Processing signal for token: ${mintAddress}`);
-            await notify(`🎯 **Processing Signal** for \`${mintAddress}\``, botInstanceId);
+            // console.log(`[Main] Processing signal for token: ${mintAddress}`); // Удалены, работаем только с trades
+            // await notify(`🎯 **Processing Signal** for \`${mintAddress}\``, botInstanceId); // Удалены, работаем только с trades
             
-            // Обновляем статистику
-            tradingStats.signalsProcessed++;
-            tradingStats.lastActivity = Date.now();
+            // Обновляем статистику // Удалены, работаем только с trades
+            // tradingStats.signalsProcessed++; // Удалены, работаем только с trades
+            // tradingStats.lastActivity = Date.now(); // Удалены, работаем только с trades
             
-            try {
-                // Проверяем, есть ли уже трейд для этого токена (только недавние)
-                const existingTrade = await safeQuery(
-                    `SELECT id FROM trades 
-                     WHERE mint = $1 
-                     AND closed_at IS NULL 
-                     AND created_at > $2`,
-                    [mintAddress, ONE_MINUTE_AGO]
-                );
+            // try { // Удалены, работаем только с trades
+            //     // Проверяем, есть ли уже трейд для этого токена (только недавние) // Удалены, работаем только с trades
+            //     const existingTrade = await safeQuery( // Удалены, работаем только с trades
+            //         `SELECT id FROM trades  // Удалены, работаем только с trades
+            //          WHERE mint = $1  // Удалены, работаем только с trades
+            //          AND closed_at IS NULL  // Удалены, работаем только с trades
+            //          AND created_at > $2`, // Удалены, работаем только с trades
+            //         [mintAddress, ONE_MINUTE_AGO] // Удалены, работаем только с trades
+            //     ); // Удалены, работаем только с trades
                 
-                if (existingTrade.rows.length > 0) {
-                    console.log(`[Main] Recent trade already exists for ${mintAddress}, skipping...`);
-                    continue;
-                }
+            //     if (existingTrade.rows.length > 0) { // Удалены, работаем только с trades
+            //         console.log(`[Main] Recent trade already exists for ${mintAddress}, skipping...`); // Удалены, работаем только с trades
+            //         continue; // Удалены, работаем только с trades
+            //     } // Удалены, работаем только с trades
                 
-                // Safety checks
-                const { ok: priceImpactOk } = await runPriceImpactCheck(connection, signal.mint, 9);
-                if (!priceImpactOk) {
-                    console.log(`[Main] Price impact check failed for ${mintAddress}`);
-                    continue;
-                }
+            //     // Safety checks // Удалены, работаем только с trades
+            //     const { ok: priceImpactOk } = await runPriceImpactCheck(connection, signal.mint, 9); // Удалены, работаем только с trades
+            //     if (!priceImpactOk) { // Удалены, работаем только с trades
+            //         console.log(`[Main] Price impact check failed for ${mintAddress}`); // Удалены, работаем только с trades
+            //         continue; // Удалены, работаем только с trades
+            //     } // Удалены, работаем только с trades
                 
-                const rugCheckOk = await checkRugPullRisk(signal.mint, botInstanceId);
-                if (!rugCheckOk) {
-                    console.log(`[Main] Rug pull check failed for ${mintAddress}`);
-                    continue;
-                }
+            //     const rugCheckOk = await checkRugPullRisk(signal.mint, botInstanceId); // Удалены, работаем только с trades
+            //     if (!rugCheckOk) { // Удалены, работаем только с trades
+            //         console.log(`[Main] Rug pull check failed for ${mintAddress}`); // Удалены, работаем только с trades
+            //         continue; // Удалены, работаем только с trades
+            //     } // Удалены, работаем только с trades
                 
-                // Выполняем покупку
-                console.log(`[Main] Executing buy for ${mintAddress}...`);
-                const amountUSDC = Math.round(AMOUNT_TO_SWAP_USD * (10 ** USDC_DECIMALS));
+            //     // Выполняем покупку // Удалены, работаем только с trades
+            //     console.log(`[Main] Executing buy for ${mintAddress}...`); // Удалены, работаем только с trades
+            //     const amountUSDC = Math.round(AMOUNT_TO_SWAP_USD * (10 ** USDC_DECIMALS)); // Удалены, работаем только с trades
                 
-                const buyQuote = await getQuote(USDC_MINT, signal.mint, amountUSDC);
-                const { swapTransaction, lastValidBlockHeight } = await getSwapTransaction(
-                    buyQuote, 
-                    wallet.publicKey.toBase58()
-                );
+            //     const buyQuote = await getQuote(USDC_MINT, signal.mint, amountUSDC); // Удалены, работаем только с trades
+            //     const { swapTransaction, lastValidBlockHeight } = await getSwapTransaction( // Удалены, работаем только с trades
+            //         buyQuote,  // Удалены, работаем только с trades
+            //         wallet.publicKey.toBase58() // Удалены, работаем только с trades
+            //     ); // Удалены, работаем только с trades
                 
-                const buyTxid = await executeTransaction(connection, swapTransaction, wallet, lastValidBlockHeight);
+            //     const buyTxid = await executeTransaction(connection, swapTransaction, wallet, lastValidBlockHeight); // Удалены, работаем только с trades
                 
-                // Сохраняем трейд в базу
-                const boughtAmount = Number(buyQuote.outAmount);
-                const tokenInfo = await connection.getParsedAccountInfo(signal.mint);
-                const decimals = tokenInfo.value?.data?.parsed?.info?.decimals || 9;
-                const boughtAmountHuman = boughtAmount / (10 ** decimals);
+            //     // Сохраняем трейд в базу // Удалены, работаем только с trades
+            //     const boughtAmount = Number(buyQuote.outAmount); // Удалены, работаем только с trades
+            //     const tokenInfo = await connection.getParsedAccountInfo(signal.mint); // Удалены, работаем только с trades
+            //     const decimals = tokenInfo.value?.data?.parsed?.info?.decimals || 9; // Удалены, работаем только с trades
+            //     const boughtAmountHuman = boughtAmount / (10 ** decimals); // Удалены, работаем только с trades
                 
-                const insertResult = await safeQuery(
-                    `INSERT INTO trades (mint, buy_tx, bought_amount, spent_usdc, created_at)
-                     VALUES ($1, $2, $3, $4, NOW())
-                     RETURNING id`,
-                    [mintAddress, buyTxid, boughtAmountHuman, AMOUNT_TO_SWAP_USD]
-                );
+            //     const insertResult = await safeQuery( // Удалены, работаем только с trades
+            //         `INSERT INTO trades (mint, buy_tx, bought_amount, spent_usdc, created_at) // Удалены, работаем только с trades
+            //          VALUES ($1, $2, $3, $4, NOW()) // Удалены, работаем только с trades
+            //          RETURNING id`, // Удалены, работаем только с trades
+            //         [mintAddress, buyTxid, boughtAmountHuman, AMOUNT_TO_SWAP_USD] // Удалены, работаем только с trades
+            //     ); // Удалены, работаем только с trades
                 
-                const tradeId = insertResult.rows[0].id;
+            //     const tradeId = insertResult.rows[0].id; // Удалены, работаем только с trades
                 
-                // Обновляем статистику успешной сделки
-                tradingStats.tradesExecuted++;
-                tradingStats.successfulTrades++;
-                tradingStats.totalVolumeUSD += AMOUNT_TO_SWAP_USD;
+            //     // Обновляем статистику успешной сделки // Удалены, работаем только с trades
+            //     tradingStats.tradesExecuted++; // Удалены, работаем только с trades
+            //     tradingStats.successfulTrades++; // Удалены, работаем только с trades
+            //     tradingStats.totalVolumeUSD += AMOUNT_TO_SWAP_USD; // Удалены, работаем только с trades
                 
-                await notify(
-                    `🟢 **BUY EXECUTED** for \`${mintAddress}\`\n` +
-                    `💰 Spent: $${AMOUNT_TO_SWAP_USD} USDC\n` +
-                    `🪙 Received: ${boughtAmountHuman.toFixed(6)} tokens\n` +
-                    `📋 Trade ID: ${tradeId}\n` +
-                    `🔗 TX: \`${buyTxid}\``,
-                    botInstanceId
-                );
+            //     await notify( // Удалены, работаем только с trades
+            //         `🟢 **BUY EXECUTED** for \`${mintAddress}\`\n` + // Удалены, работаем только с trades
+            //         `💰 Spent: $${AMOUNT_TO_SWAP_USD} USDC\n` + // Удалены, работаем только с trades
+            //         `🪙 Received: ${boughtAmountHuman.toFixed(6)} tokens\n` + // Удалены, работаем только с trades
+            //         `📋 Trade ID: ${tradeId}\n` + // Удалены, работаем только с trades
+            //         `🔗 TX: \`${buyTxid}\``, // Удалены, работаем только с trades
+            //         botInstanceId // Удалены, работаем только с trades
+            //     ); // Удалены, работаем только с trades
                 
-                // Начинаем мониторинг этой позиции
-                const trade = {
-                    id: tradeId,
-                    mint: mintAddress,
-                    bought_amount: boughtAmountHuman,
-                    spent_usdc: AMOUNT_TO_SWAP_USD,
-                    created_at: new Date().toISOString()
-                };
+            //     // Начинаем мониторинг этой позиции // Удалены, работаем только с trades
+            //     const trade = { // Удалены, работаем только с trades
+            //         id: tradeId, // Удалены, работаем только с trades
+            //         mint: mintAddress, // Удалены, работаем только с trades
+            //         bought_amount: boughtAmountHuman, // Удалены, работаем только с trades
+            //         spent_usdc: AMOUNT_TO_SWAP_USD, // Удалены, работаем только с trades
+            //         created_at: new Date().toISOString() // Удалены, работаем только с trades
+            //     }; // Удалены, работаем только с trades
                 
-                // Запускаем мониторинг в следующей итерации цикла
-                console.log(`[Main] Buy successful. Will start monitoring in next cycle.`);
+            //     // Запускаем мониторинг в следующей итерации цикла // Удалены, работаем только с trades
+            //     console.log(`[Main] Buy successful. Will start monitoring in next cycle.`); // Удалены, работаем только с trades
                 
-            } catch (error) {
-                console.error(`[Main] Error processing signal for ${mintAddress}:`, error.message);
+            // } catch (error) { // Удалены, работаем только с trades
+            //     console.error(`[Main] Error processing signal for ${mintAddress}:`, error.message); // Удалены, работаем только с trades
                 
-                // Обновляем статистику неудачной сделки
-                tradingStats.failedTrades++;
-                tradingStats.errorsEncountered++;
+            //     // Обновляем статистику неудачной сделки // Удалены, работаем только с trades
+            //     tradingStats.failedTrades++; // Удалены, работаем только с trades
+            //     tradingStats.errorsEncountered++; // Удалены, работаем только с trades
                 
-                await notify(`❌ **Buy Failed** for \`${mintAddress}\`: ${error.message}`, botInstanceId);
-            }
+            //     await notify(`❌ **Buy Failed** for \`${mintAddress}\`: ${error.message}`, botInstanceId); // Удалены, работаем только с trades
+            // } // Удалены, работаем только с trades
             
         } catch (error) {
             console.error(`[Main] Critical error in main loop:`, error.message);
