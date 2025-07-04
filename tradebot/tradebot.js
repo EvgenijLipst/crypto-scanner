@@ -80,12 +80,40 @@ const pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorize
 console.log(`[DB] Connecting to: ${DATABASE_URL}`);
 ;(async () => {
   try {
+    // Создаем необходимые таблицы если их нет
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS signals (
+        id SERIAL PRIMARY KEY,
+        mint TEXT,
+        signal_ts BIGINT,
+        ema_cross BOOLEAN,
+        vol_spike NUMERIC,
+        rsi NUMERIC,
+        notified BOOLEAN DEFAULT FALSE
+      );
+    `);
+    
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS trades (
+        id SERIAL PRIMARY KEY,
+        mint TEXT,
+        buy_tx TEXT,
+        sell_tx TEXT,
+        bought_amount NUMERIC,
+        spent_usdc NUMERIC,
+        received_usdc NUMERIC,
+        created_at TIMESTAMP DEFAULT NOW(),
+        closed_at TIMESTAMP
+      );
+    `);
+    
     const { rows } = await pool.query(`
       SELECT current_database() AS db, current_schema() AS schema_name;
     `);
     console.log(`[DB] Connected to database: ${rows[0].db}, schema: ${rows[0].schema_name}`);
+    console.log(`[DB] Tables initialized successfully`);
   } catch (e) {
-    console.error('[DB] Could not fetch current_database():', e.message);
+    console.error('[DB] Could not initialize database:', e.message);
   }
 })();
 
