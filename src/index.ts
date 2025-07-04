@@ -40,22 +40,57 @@ async function indicatorSweep() {
 
 async function notifySweep() {
   try {
+    log('🔍 Starting notifySweep...');
+    
+    log('📋 Getting unnotified signals...');
     const signals = await db.getUnnotifiedSignals();
+    log(`📋 Found ${signals.length} unnotified signals`);
+    
     for (const sig of signals) {
+      log(`🔍 Processing signal: ${JSON.stringify(sig)}`);
+      
+      log(`📋 Getting pool info for mint: ${sig.mint}`);
       const pool = await db.getPool(sig.mint);
-      if (!pool) continue;
-      if (Number(pool.liq_usd) < MIN_LIQUIDITY_USD) continue;
-      if (Number(pool.fdv_usd) > MAX_FDV_USD) continue;
+      if (!pool) {
+        log(`❌ No pool found for mint: ${sig.mint}`);
+        continue;
+      }
+      
+      log(`📋 Pool info: ${JSON.stringify(pool)}`);
+      
+      if (Number(pool.liq_usd) < MIN_LIQUIDITY_USD) {
+        log(`❌ Liquidity too low: ${pool.liq_usd} < ${MIN_LIQUIDITY_USD}`);
+        continue;
+      }
+      
+      if (Number(pool.fdv_usd) > MAX_FDV_USD) {
+        log(`❌ FDV too high: ${pool.fdv_usd} > ${MAX_FDV_USD}`);
+        continue;
+      }
+      
       // Проверка price impact через Jupiter
+      log(`🔍 Getting Jupiter quote for ${sig.mint}...`);
       const quote = await jupiter.getQuote('EPjFWdd5AufqSSqeM2qA9G4KJ9b9wiG9vG7bG6wGw7bS', sig.mint, 200 * 1e6); // USDC mint, $200
-      if (!quote || Number(quote.priceImpactPct) * 100 > MAX_PRICE_IMPACT_PERCENT) continue;
+      if (!quote || Number(quote.priceImpactPct) * 100 > MAX_PRICE_IMPACT_PERCENT) {
+        log(`❌ Price impact check failed for ${sig.mint}`);
+        continue;
+      }
+      
+      log(`✅ All checks passed for ${sig.mint}, sending to Telegram...`);
+      
       // Passed all filters — send to Telegram
       await tg.sendBuySignal(sig, pool, Number(quote.priceImpactPct) * 100);
+      
+      log(`📋 Marking signal ${sig.id} as notified...`);
       await db.markSignalNotified(sig.id);
+      
       log(`📢 Sent signal for ${sig.mint}`);
     }
+    
+    log('✅ notifySweep completed successfully');
   } catch (e) {
     log(`Error in notifySweep: ${e}`, 'ERROR');
+    log(`Error stack: ${e instanceof Error ? e.stack : 'No stack trace'}`, 'ERROR');
     await tg.sendErrorMessage(`Notification Sweep Error: ${e}`);
   }
 }
@@ -63,9 +98,19 @@ async function notifySweep() {
 async function runDiagnostics() {
   try {
     log('🔧 Starting diagnostics check...');
+    log(`🔍 Diagnostics system initialized: ${!!diagnostics}`);
+    
     const health = await diagnostics.runDiagnostics();
     
     log(`🔍 Diagnostics completed: ${health.overallStatus}, found ${health.issues.length} issues`);
+    
+    // Детальное логирование каждой проблемы
+    health.issues.forEach((issue, index) => {
+      log(`🚨 Issue ${index + 1}: ${issue.issue} (${issue.severity})`);
+      log(`   Description: ${issue.description}`);
+      log(`   Solution: ${issue.solution}`);
+      log(`   Has auto-fix: ${!!issue.autoFix}`);
+    });
     
     if (health.overallStatus === 'CRITICAL') {
       const message = 
@@ -94,6 +139,7 @@ async function runDiagnostics() {
     }
   } catch (e) {
     log(`Error in diagnostics: ${e}`, 'ERROR');
+    log(`Diagnostics error stack: ${e instanceof Error ? e.stack : 'No stack trace'}`, 'ERROR');
     await tg.sendErrorMessage(`Diagnostics Error: ${e}`);
   }
 }

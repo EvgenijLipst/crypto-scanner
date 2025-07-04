@@ -205,58 +205,122 @@ export class DiagnosticsSystem {
   }
 
   /**
-   * Анализ логов Telegram на предмет ошибок
+   * Анализ логов Telegram для выявления проблем
    */
   private async analyzeTelegramLogs(): Promise<DiagnosticResult[]> {
     const issues: DiagnosticResult[] = [];
 
     try {
-      log(`📋 Checking Telegram log file: ${this.logFilePath}`);
+      log('🔍 Starting detailed Telegram log analysis...');
       
-      if (!fs.existsSync(this.logFilePath)) {
-        log(`📋 Telegram log file does not exist yet: ${this.logFilePath}`);
+      const logs = this.telegram.getRecentTelegramLogs(100);
+      log(`📋 Found ${logs.length} recent Telegram log entries`);
+
+      if (logs.length === 0) {
+        log('📋 Telegram log file does not exist yet: ' + this.logFilePath);
         return issues;
       }
 
-      const content = fs.readFileSync(this.logFilePath, 'utf8');
-      const lines = content.trim().split('\n').filter(line => line.length > 0);
-      
-      log(`📋 Analyzing ${lines.length} log lines`);
-      
-      // Анализируем последние 100 записей
-      const recentLines = lines.slice(-100);
-      const errorLines = recentLines.filter(line => line.includes('[ERROR]'));
+      // Подробный анализ каждого типа ошибки
+      const errorCounts: { [key: string]: number } = {};
+      const detailedErrors: string[] = [];
 
-      log(`📋 Found ${errorLines.length} error lines in recent logs`);
-
-      for (const errorLine of errorLines) {
-        for (const [pattern, diagnostic] of this.errorPatterns) {
-          if (errorLine.includes(pattern)) {
-            // Считаем частоту этой ошибки
-            const occurrences = errorLines.filter(line => line.includes(pattern)).length;
+      logs.forEach((line, index) => {
+        log(`🔍 Analyzing log line ${index + 1}: ${line.substring(0, 100)}...`);
+        
+        // Проверяем каждый паттерн ошибок
+        for (const [pattern, config] of this.errorPatterns.entries()) {
+          if (line.includes(pattern)) {
+            errorCounts[pattern] = (errorCounts[pattern] || 0) + 1;
+            detailedErrors.push(`[${pattern}] ${line}`);
             
-            log(`📋 Found error pattern "${pattern}" with ${occurrences} occurrences`);
+            log(`🚨 Found error pattern "${pattern}" in line: ${line}`);
             
-            const issue: DiagnosticResult = {
-              ...diagnostic,
-              description: `${diagnostic.description} (${occurrences} occurrences in last 100 logs)`
-            };
-
-            // Повышаем severity если ошибка частая
-            if (occurrences > 10) {
-              issue.severity = 'CRITICAL';
-            } else if (occurrences > 5) {
-              issue.severity = 'HIGH';
+            // Особо детальный анализ для token_mint
+            if (pattern === 'token_mint') {
+              log('🔍 DETAILED token_mint error analysis:');
+              log(`  - Full line: ${line}`);
+              log(`  - Line length: ${line.length}`);
+              log(`  - Contains "column": ${line.includes('column')}`);
+              log(`  - Contains "does not exist": ${line.includes('does not exist')}`);
+              log(`  - Line index in logs: ${index}`);
+              
+              // Пытаемся найти контекст ошибки
+              if (index > 0) {
+                log(`  - Previous line: ${logs[index - 1]}`);
+              }
+              if (index < logs.length - 1) {
+                log(`  - Next line: ${logs[index + 1]}`);
+              }
             }
+          }
+        }
+      });
 
-            issues.push(issue);
-            break; // Не дублируем одинаковые ошибки
+             log(`📊 Error pattern counts: ${JSON.stringify(errorCounts, null, 2)}`);
+      log(`📋 Detailed errors found: ${detailedErrors.length}`);
+
+      // Создаем диагностические результаты
+      for (const [pattern, count] of Object.entries(errorCounts)) {
+        const config = this.errorPatterns.get(pattern);
+        if (config && count > 0) {
+          log(`🚨 Creating diagnostic result for pattern "${pattern}" with ${count} occurrences`);
+          
+          const issue: DiagnosticResult = {
+            issue: config.issue,
+            severity: config.severity,
+            description: `${config.description} (${count} occurrences)`,
+            solution: config.solution,
+            autoFix: config.autoFix
+          };
+
+          issues.push(issue);
+          
+          // Для token_mint добавляем дополнительную информацию
+          if (pattern === 'token_mint') {
+            log('🔧 token_mint error detected, attempting immediate auto-fix...');
+            
+            // Пытаемся выполнить автоисправление немедленно
+            if (config.autoFix) {
+              try {
+                const fixResult = await config.autoFix();
+                log(`🔧 Auto-fix result for token_mint: ${fixResult ? 'SUCCESS' : 'FAILED'}`);
+                
+                if (fixResult) {
+                  await this.telegram.sendMessage(
+                    '✅ **Auto-fix Applied**\n' +
+                    'Successfully fixed token_mint column issue in database.\n' +
+                    'System should now work normally.'
+                  );
+                } else {
+                  await this.telegram.sendMessage(
+                    '❌ **Auto-fix Failed**\n' +
+                    'Could not automatically fix token_mint issue.\n' +
+                    'Manual intervention may be required.'
+                  );
+                }
+              } catch (error) {
+                log(`❌ Auto-fix error: ${error}`, 'ERROR');
+                await this.telegram.sendMessage(
+                  '🚨 **Auto-fix Error**\n' +
+                  `Failed to apply auto-fix: ${error}`
+                );
+              }
+            }
           }
         }
       }
 
+      log(`📋 Total diagnostic issues created: ${issues.length}`);
+
     } catch (error) {
-      log(`❌ Error analyzing telegram logs: ${error}`, 'ERROR');
+      log(`Error analyzing Telegram logs: ${error}`, 'ERROR');
+      issues.push({
+        issue: 'LOG_ANALYSIS_ERROR',
+        severity: 'MEDIUM',
+        description: `Failed to analyze Telegram logs: ${error}`,
+        solution: 'Check log file permissions and format'
+      });
     }
 
     return issues;
@@ -319,16 +383,62 @@ export class DiagnosticsSystem {
   private async fixTokenMintIssue(): Promise<boolean> {
     try {
       log('🔧 Attempting to fix token_mint issue...');
+      log('🔍 Checking current database schema...');
       
-      // Проверяем структуру таблицы и исправляем
-      await (this.database as any).pool.query(`
-        ALTER TABLE signals RENAME COLUMN token_mint TO mint;
+      // Сначала проверяем текущую структуру
+      const result = await (this.database as any).pool.query(`
+        SELECT column_name, data_type 
+        FROM information_schema.columns 
+        WHERE table_name = 'signals'
+        ORDER BY ordinal_position
       `);
       
-      log('✅ Successfully renamed token_mint to mint');
+      const columns = result.rows.map((row: any) => row.column_name);
+      log(`📋 Current signals table columns: ${columns.join(', ')}`);
+      
+      const hasTokenMint = columns.includes('token_mint');
+      const hasMint = columns.includes('mint');
+      
+      log(`🔍 Has token_mint column: ${hasTokenMint}`);
+      log(`🔍 Has mint column: ${hasMint}`);
+      
+      if (hasTokenMint && hasMint) {
+        log('🔧 Both columns exist, dropping token_mint...');
+        await (this.database as any).pool.query(`
+          ALTER TABLE signals DROP COLUMN token_mint CASCADE;
+        `);
+        log('✅ Successfully dropped token_mint column');
+      } else if (hasTokenMint && !hasMint) {
+        log('🔧 Renaming token_mint to mint...');
+        await (this.database as any).pool.query(`
+          ALTER TABLE signals RENAME COLUMN token_mint TO mint;
+        `);
+        log('✅ Successfully renamed token_mint to mint');
+      } else if (!hasTokenMint && hasMint) {
+        log('✅ Schema is already correct (mint column exists, token_mint does not)');
+      } else {
+        log('❌ Neither column exists, adding mint column...');
+        await (this.database as any).pool.query(`
+          ALTER TABLE signals ADD COLUMN mint TEXT;
+        `);
+        log('✅ Successfully added mint column');
+      }
+      
+      // Проверяем финальную структуру
+      const finalResult = await (this.database as any).pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'signals'
+        ORDER BY ordinal_position
+      `);
+      
+      const finalColumns = finalResult.rows.map((row: any) => row.column_name);
+      log(`📋 Final signals table columns: ${finalColumns.join(', ')}`);
+      
       return true;
     } catch (error) {
       log(`❌ Failed to fix token_mint issue: ${error}`, 'ERROR');
+      log(`❌ Error details: ${JSON.stringify(error, null, 2)}`);
       return false;
     }
   }

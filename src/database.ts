@@ -135,8 +135,24 @@ export class Database {
    * Получить информацию о пуле
    */
   async getPool(mint: string): Promise<PoolRow | null> {
-    const res = await this.pool.query('SELECT * FROM pools WHERE mint = $1', [mint]);
-    return res.rows[0] || null;
+    try {
+      log(`🔍 Getting pool info for mint: ${mint}`);
+      const sql = 'SELECT * FROM pools WHERE mint = $1';
+      log(`📋 SQL: ${sql} with params: [${mint}]`);
+      
+      const res = await this.pool.query(sql, [mint]);
+      log(`📋 getPool returned ${res.rows.length} rows`);
+      
+      if (res.rows.length > 0) {
+        log(`📋 Pool data: ${JSON.stringify(res.rows[0])}`);
+      }
+      
+      return res.rows[0] || null;
+    } catch (error) {
+      log(`❌ Error in getPool: ${error}`, 'ERROR');
+      log(`❌ Error stack: ${error instanceof Error ? error.stack : 'No stack'}`, 'ERROR');
+      throw error;
+    }
   }
 
   /**
@@ -204,31 +220,70 @@ export class Database {
     volSpike: number, 
     rsi: number
   ): Promise<void> {
-    const currentTimestamp = Math.floor(Date.now() / 1000);
-    await this.pool.query(`
-      INSERT INTO signals(mint, signal_ts, ema_cross, vol_spike, rsi, notified)
-      VALUES($1, $2, $3, $4, $5, false)
-    `, [mint, currentTimestamp, emaCross, volSpike, rsi]);
+    try {
+      log(`🔍 Creating signal for mint: ${mint}`);
+      const currentTimestamp = Math.floor(Date.now() / 1000);
+      const sql = `
+        INSERT INTO signals(mint, signal_ts, ema_cross, vol_spike, rsi, notified)
+        VALUES($1, $2, $3, $4, $5, false)
+      `;
+      log(`📋 SQL: ${sql}`);
+      log(`📋 Params: [${mint}, ${currentTimestamp}, ${emaCross}, ${volSpike}, ${rsi}]`);
+      
+      await this.pool.query(sql, [mint, currentTimestamp, emaCross, volSpike, rsi]);
+      log(`✅ Successfully created signal for ${mint}`);
+    } catch (error) {
+      log(`❌ Error in createSignal: ${error}`, 'ERROR');
+      log(`❌ Error stack: ${error instanceof Error ? error.stack : 'No stack'}`, 'ERROR');
+      throw error;
+    }
   }
 
   /**
    * Получить неотправленные сигналы
    */
   async getUnnotifiedSignals(): Promise<SignalRow[]> {
-    const res = await this.pool.query(`
-      SELECT id, mint, signal_ts, ema_cross, vol_spike, rsi, notified
-      FROM signals 
-      WHERE notified = false
-      ORDER BY signal_ts ASC
-    `);
-    return res.rows;
+    try {
+      log('🔍 Executing getUnnotifiedSignals query...');
+      const sql = `
+        SELECT id, mint, signal_ts, ema_cross, vol_spike, rsi, notified
+        FROM signals 
+        WHERE notified = false
+        ORDER BY signal_ts ASC
+      `;
+      log(`📋 SQL: ${sql}`);
+      
+      const res = await this.pool.query(sql);
+      log(`📋 getUnnotifiedSignals returned ${res.rows.length} rows`);
+      
+      if (res.rows.length > 0) {
+        log(`📋 First signal: ${JSON.stringify(res.rows[0])}`);
+      }
+      
+      return res.rows;
+    } catch (error) {
+      log(`❌ Error in getUnnotifiedSignals: ${error}`, 'ERROR');
+      log(`❌ Error stack: ${error instanceof Error ? error.stack : 'No stack'}`, 'ERROR');
+      throw error;
+    }
   }
 
   /**
    * Отметить сигнал как отправленный
    */
   async markSignalNotified(signalId: number): Promise<void> {
-    await this.pool.query('UPDATE signals SET notified = true WHERE id = $1', [signalId]);
+    try {
+      log(`🔍 Marking signal ${signalId} as notified...`);
+      const sql = 'UPDATE signals SET notified = true WHERE id = $1';
+      log(`📋 SQL: ${sql} with params: [${signalId}]`);
+      
+      await this.pool.query(sql, [signalId]);
+      log(`✅ Successfully marked signal ${signalId} as notified`);
+    } catch (error) {
+      log(`❌ Error in markSignalNotified: ${error}`, 'ERROR');
+      log(`❌ Error stack: ${error instanceof Error ? error.stack : 'No stack'}`, 'ERROR');
+      throw error;
+    }
   }
 
   /**
