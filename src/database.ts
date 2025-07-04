@@ -223,8 +223,8 @@ export class Database {
     const oneDayAgoTs = Math.floor(oneDayAgo.getTime() / 1000);
     await this.pool.query('DELETE FROM ohlcv WHERE ts < $1', [oneDayAgoTs]);
     
-    // Удаляем старые сигналы (старше 24 часов)
-    await this.pool.query('DELETE FROM signals WHERE created_at < $1', [oneDayAgo]);
+    // Удаляем старые сигналы (старше 24 часов) - используем signal_ts, а не created_at
+    await this.pool.query('DELETE FROM signals WHERE signal_ts < $1', [oneDayAgoTs]);
     
     log('Database cleanup completed');
   }
