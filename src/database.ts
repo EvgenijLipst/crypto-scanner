@@ -74,10 +74,34 @@ export class Database {
             );
           `);
 
+          // Создаем/обновляем таблицу signals с правильной структурой
+          log('Creating/updating signals table...');
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS signals (
+              id  SERIAL PRIMARY KEY,
+              mint TEXT,
+              signal_ts BIGINT,
+              ema_cross BOOLEAN,
+              vol_spike NUMERIC,
+              rsi       NUMERIC,
+              notified  BOOLEAN DEFAULT FALSE
+            );
+          `);
+
+          // Миграция: переименовать token_mint в mint, если нужно
+          try {
+            await client.query(`ALTER TABLE signals RENAME COLUMN token_mint TO mint;`);
+            log('Migrated token_mint to mint');
+          } catch (e) {
+            // Игнорируем ошибку - возможно, миграция уже выполнена
+            log('Migration token_mint->mint already done or not needed');
+          }
+
           // Создаем индексы
           log('Creating indexes...');
           await client.query(`CREATE INDEX IF NOT EXISTS idx_pools_first_seen ON pools (first_seen_ts);`);
           await client.query(`CREATE INDEX IF NOT EXISTS idx_ohlcv_mint_ts ON ohlcv (mint, ts DESC);`);
+          await client.query(`CREATE INDEX IF NOT EXISTS idx_signals_notified ON signals (notified, signal_ts);`);
 
           log('Database initialized successfully');
           return; // Успешно инициализировали, выходим
