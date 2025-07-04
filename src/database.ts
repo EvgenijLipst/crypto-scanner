@@ -74,10 +74,13 @@ export class Database {
             );
           `);
 
-          // Создаем/обновляем таблицу signals с правильной структурой
-          log('Creating/updating signals table...');
+          // Принудительно пересоздаем таблицу signals с правильной структурой
+          log('Recreating signals table with correct structure...');
+          
+          // Удаляем старую таблицу и создаем новую
+          await client.query(`DROP TABLE IF EXISTS signals;`);
           await client.query(`
-            CREATE TABLE IF NOT EXISTS signals (
+            CREATE TABLE signals (
               id  SERIAL PRIMARY KEY,
               mint TEXT,
               signal_ts BIGINT,
@@ -87,15 +90,7 @@ export class Database {
               notified  BOOLEAN DEFAULT FALSE
             );
           `);
-
-          // Миграция: переименовать token_mint в mint, если нужно
-          try {
-            await client.query(`ALTER TABLE signals RENAME COLUMN token_mint TO mint;`);
-            log('Migrated token_mint to mint');
-          } catch (e) {
-            // Игнорируем ошибку - возможно, миграция уже выполнена
-            log('Migration token_mint->mint already done or not needed');
-          }
+          log('Successfully recreated signals table with mint field');
 
           // Создаем индексы
           log('Creating indexes...');
