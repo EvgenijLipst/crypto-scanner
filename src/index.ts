@@ -62,20 +62,39 @@ async function notifySweep() {
 
 async function runDiagnostics() {
   try {
+    log('🔧 Starting diagnostics check...');
     const health = await diagnostics.runDiagnostics();
     
+    log(`🔍 Diagnostics completed: ${health.overallStatus}, found ${health.issues.length} issues`);
+    
     if (health.overallStatus === 'CRITICAL') {
-      await tg.sendMessage(
+      const message = 
         `🚨 **CRITICAL SYSTEM ISSUES DETECTED** 🚨\n\n` +
         `Issues found: ${health.issues.length}\n` +
         `Status: ${health.overallStatus}\n\n` +
-        health.issues.map(i => `• ${i.issue}: ${i.description}`).join('\n')
-      );
+        health.issues.map(i => `• ${i.issue}: ${i.description}`).join('\n');
+      
+      log('📢 Sending critical diagnostics alert to Telegram');
+      await tg.sendMessage(message);
     } else if (health.overallStatus === 'WARNING') {
       log(`⚠️ System warnings detected: ${health.issues.length} issues`);
+      
+      // Отправляем предупреждения в Telegram только если их много
+      if (health.issues.length > 3) {
+        const message = 
+          `⚠️ **SYSTEM WARNINGS** ⚠️\n\n` +
+          `Issues found: ${health.issues.length}\n\n` +
+          health.issues.slice(0, 5).map(i => `• ${i.issue}: ${i.description}`).join('\n') +
+          (health.issues.length > 5 ? `\n... и еще ${health.issues.length - 5} проблем` : '');
+        
+        await tg.sendMessage(message);
+      }
+    } else {
+      log('✅ System health check passed');
     }
   } catch (e) {
     log(`Error in diagnostics: ${e}`, 'ERROR');
+    await tg.sendErrorMessage(`Diagnostics Error: ${e}`);
   }
 }
 

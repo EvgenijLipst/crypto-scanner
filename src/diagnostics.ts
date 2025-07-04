@@ -86,22 +86,31 @@ export class DiagnosticsSystem {
 
     try {
       // 1. Анализ Telegram логов
+      log('📋 Analyzing Telegram logs...');
       const telegramIssues = await this.analyzeTelegramLogs();
+      log(`📋 Found ${telegramIssues.length} Telegram issues`);
       issues.push(...telegramIssues);
 
       // 2. Проверка базы данных
+      log('🗄️ Checking database health...');
       const dbIssues = await this.checkDatabaseHealth();
+      log(`🗄️ Found ${dbIssues.length} database issues`);
       issues.push(...dbIssues);
 
       // 3. Анализ частоты ошибок
+      log('📊 Analyzing error patterns...');
       const errorRateIssues = await this.analyzeErrorPatterns();
+      log(`📊 Found ${errorRateIssues.length} error pattern issues`);
       issues.push(...errorRateIssues);
 
       // 4. Проверка системных ресурсов
+      log('💻 Checking system resources...');
       const systemIssues = await this.checkSystemResources();
+      log(`💻 Found ${systemIssues.length} system issues`);
       issues.push(...systemIssues);
 
     } catch (error) {
+      log(`❌ Diagnostics error: ${error}`, 'ERROR');
       issues.push({
         issue: 'DIAGNOSTICS_ERROR',
         severity: 'HIGH',
@@ -123,10 +132,14 @@ export class DiagnosticsSystem {
     };
 
     // Записываем результаты диагностики
+    log('💾 Logging diagnostics results...');
     await this.logDiagnostics(health);
 
     // Автоисправления
-    await this.attemptAutoFixes(issues);
+    if (issues.length > 0) {
+      log(`🔧 Attempting auto-fixes for ${issues.length} issues...`);
+      await this.attemptAutoFixes(issues);
+    }
 
     log(`🔍 Diagnostics completed in ${health.metrics.uptime}s, found ${issues.length} issues`);
     
@@ -140,22 +153,31 @@ export class DiagnosticsSystem {
     const issues: DiagnosticResult[] = [];
 
     try {
+      log(`📋 Checking Telegram log file: ${this.logFilePath}`);
+      
       if (!fs.existsSync(this.logFilePath)) {
+        log(`📋 Telegram log file does not exist yet: ${this.logFilePath}`);
         return issues;
       }
 
       const content = fs.readFileSync(this.logFilePath, 'utf8');
       const lines = content.trim().split('\n').filter(line => line.length > 0);
       
+      log(`📋 Analyzing ${lines.length} log lines`);
+      
       // Анализируем последние 100 записей
       const recentLines = lines.slice(-100);
       const errorLines = recentLines.filter(line => line.includes('[ERROR]'));
+
+      log(`📋 Found ${errorLines.length} error lines in recent logs`);
 
       for (const errorLine of errorLines) {
         for (const [pattern, diagnostic] of this.errorPatterns) {
           if (errorLine.includes(pattern)) {
             // Считаем частоту этой ошибки
             const occurrences = errorLines.filter(line => line.includes(pattern)).length;
+            
+            log(`📋 Found error pattern "${pattern}" with ${occurrences} occurrences`);
             
             const issue: DiagnosticResult = {
               ...diagnostic,
@@ -176,7 +198,7 @@ export class DiagnosticsSystem {
       }
 
     } catch (error) {
-      log(`Error analyzing telegram logs: ${error}`, 'ERROR');
+      log(`❌ Error analyzing telegram logs: ${error}`, 'ERROR');
     }
 
     return issues;
@@ -367,13 +389,15 @@ export class DiagnosticsSystem {
     };
 
     try {
+      log(`💾 Writing diagnostics to: ${this.diagnosticsLogPath}`);
       fs.appendFileSync(
         this.diagnosticsLogPath, 
         JSON.stringify(logEntry) + '\n', 
         'utf8'
       );
+      log(`✅ Diagnostics log written successfully`);
     } catch (error) {
-      log(`Failed to write diagnostics log: ${error}`, 'ERROR');
+      log(`❌ Failed to write diagnostics log: ${error}`, 'ERROR');
     }
   }
 } 
