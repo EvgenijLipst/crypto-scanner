@@ -111,7 +111,7 @@ console.log(`[DB] Connecting to: ${DATABASE_URL}`);
 let isPoolActive = true;
 
 async function safeQuery(...args) {
-    if (!isPoolActive) throw new Error("Attempted query after pool closed");
+    if (!isPoolActive) throw new Error("Tradebot shutting down gracefully");
     return pool.query(...args);
 }
 
@@ -324,7 +324,7 @@ async function findTokenBalance(connection, wallet, mint, botInstanceId) {
             );
             if (attempt === MAX_RETRIES) {
                 await notify(
-                    `🚨 **CRITICAL RPC ERROR**\n` +
+                                            `⚠️ **RPC Connection Issue**\n` +
                     `Failed to get wallet balance after ${MAX_RETRIES} attempts. Skipping signal.`,
                     botInstanceId
                 );
@@ -442,7 +442,7 @@ async function checkRugPullRisk(outputMint, botInstanceId) {
             `[Safety L2] CRITICAL: Could not perform rug pull check. SKIPPING TOKEN. Error: ${error.message}`
         );
         await notify(
-            `🚨 **Safety L2 CRITICAL**\n` +
+            `⚠️ **Safety Check Unavailable**\n` +
             `Could not perform rug pull check for \`${outputMint.toBase58()}\`. **Skipping token as a precaution.**`,
             botInstanceId
         );
@@ -528,7 +528,7 @@ async function sendTradingActivityReport(botInstanceId) {
             outputDecimals = tokenInfo.value.data.parsed.info.decimals;
         }
     } catch (e) {
-        await notify(`🚨 **mint: Не удалось получить decimals** для ${mintAddress}`, botInstanceId);
+        await notify(`⚠️ **Token Info**: Could not get decimals for ${mintAddress}`, botInstanceId);
     }
 
     // Основные переменные мониторинга
@@ -1077,7 +1077,13 @@ async function main() {
             
         } catch (error) {
             console.error(`[Main] Critical error in main loop:`, error.message);
-            await notify(`🚨 **Critical Error**: ${error.message}`, botInstanceId);
+            
+            // Если это просто graceful shutdown, не отправляем страшное сообщение
+            if (error.message.includes("shutting down gracefully")) {
+                console.log(`[Main] Graceful shutdown detected, not sending alarm notification`);
+            } else {
+                await notify(`⚠️ **System Notice**: ${error.message}`, botInstanceId);
+            }
             
             // Ждем перед повторной попыткой
             await new Promise(resolve => setTimeout(resolve, SIGNAL_CHECK_INTERVAL_MS));
