@@ -4,7 +4,8 @@ const path = require('path');
 const DIAGNOSTICS_LOG_FILE = 'tradebot-diagnostics.log';
 
 function readTradebotDiagnostics() {
-  console.log('🔧 === TRADEBOT DIAGNOSTICS REPORT === 🔧\n');
+  console.log('🔧 === TRADEBOT DIAGNOSTICS REPORT === 🔧');
+  console.log('⏱️  Частота диагностики: каждую минуту\n');
 
   if (!fs.existsSync(DIAGNOSTICS_LOG_FILE)) {
     console.log('❌ Файл диагностических логов трейдбота не найден');

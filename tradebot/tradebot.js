@@ -788,13 +788,14 @@ async function main() {
             } else if (health.overallStatus === 'WARNING') {
                 console.log(`⚠️ [Tradebot] System warnings detected: ${health.issues.length} issues`);
                 
-                // Отправляем предупреждения в Telegram только если их много
-                if (health.issues.length > 3) {
+                // При частых проверках (каждую минуту) отправляем предупреждения только если много критических проблем
+                const criticalIssues = health.issues.filter(i => i.severity === 'CRITICAL' || i.severity === 'HIGH');
+                if (criticalIssues.length > 2) {
                     const message = 
-                        `⚠️ **TRADEBOT WARNINGS** ⚠️\n\n` +
-                        `Issues found: ${health.issues.length}\n\n` +
-                        health.issues.slice(0, 3).map(i => `• ${i.issue}: ${i.description}`).join('\n') +
-                        (health.issues.length > 3 ? `\n... и еще ${health.issues.length - 3} проблем` : '');
+                        `⚠️ **TRADEBOT HIGH PRIORITY WARNINGS** ⚠️\n\n` +
+                        `Critical/High issues: ${criticalIssues.length}\n\n` +
+                        criticalIssues.slice(0, 3).map(i => `• ${i.issue}: ${i.description}`).join('\n') +
+                        (criticalIssues.length > 3 ? `\n... и еще ${criticalIssues.length - 3} проблем` : '');
                     
                     await notify(message, botInstanceId);
                 }
@@ -807,11 +808,11 @@ async function main() {
         }
     }
     
-    // Запускаем диагностику каждые 10 минут
-    setInterval(runDiagnostics, 10 * 60 * 1000);
+    // Запускаем диагностику каждую минуту
+    setInterval(runDiagnostics, 60 * 1000);
     
-    // Первая диагностика через 1 минуту после запуска
-    setTimeout(runDiagnostics, 60_000);
+    // Первая диагностика через 30 секунд после запуска
+    setTimeout(runDiagnostics, 30_000);
     
     // Основной цикл проверки сигналов
     while (true) {
