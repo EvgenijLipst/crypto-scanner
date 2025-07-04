@@ -20,6 +20,18 @@ const { TradebotDiagnostics } = require("./diagnostics");
 // Генерируем уникальный ID для этого запуска бота
 let diagnostics;
 
+// Статистика торговой активности
+let tradingStats = {
+    startTime: Date.now(),
+    signalsProcessed: 0,
+    tradesExecuted: 0,
+    successfulTrades: 0,
+    failedTrades: 0,
+    totalVolumeUSD: 0,
+    currentOpenPositions: 0,
+    errorsEncountered: 0,
+    lastActivity: Date.now()
+};
 
 let isHalted = false;
 let haltedMintAddress = null;
@@ -459,6 +471,57 @@ async function notify(text, botInstanceId = 'global') {
     }
   }
 
+// Функция отправки отчета о торговой активности
+async function sendTradingActivityReport(botInstanceId) {
+    try {
+        const uptime = Math.floor((Date.now() - tradingStats.startTime) / 1000);
+        const uptimeMinutes = Math.floor(uptime / 60);
+        const uptimeHours = Math.floor(uptimeMinutes / 60);
+        
+        // Получаем актуальную статистику из базы данных
+        const openPositionsResult = await safeQuery(
+            `SELECT COUNT(*) as count FROM trades WHERE closed_at IS NULL`
+        );
+        const currentOpenPositions = parseInt(openPositionsResult.rows[0].count);
+        
+        const todayTradesResult = await safeQuery(
+            `SELECT COUNT(*) as count, COALESCE(SUM(spent_usdc), 0) as volume 
+             FROM trades 
+             WHERE created_at >= CURRENT_DATE`
+        );
+        const todayTrades = parseInt(todayTradesResult.rows[0].count);
+        const todayVolume = parseFloat(todayTradesResult.rows[0].volume);
+        
+        const lastActivity = Math.floor((Date.now() - tradingStats.lastActivity) / 1000);
+        
+        const report = 
+            `🤖 **Trading Activity Report** 🔥\n\n` +
+            `📊 **System Status**: ${currentOpenPositions > 0 ? 'TRADING' : 'MONITORING'}\n` +
+            `⏱️ **Uptime**: ${uptimeHours}h ${uptimeMinutes % 60}m\n` +
+            `🎯 **Last Activity**: ${lastActivity}s ago\n\n` +
+            `📈 **Today's Stats**:\n` +
+            `• Trades Executed: ${todayTrades}\n` +
+            `• Volume Traded: $${todayVolume.toFixed(2)}\n` +
+            `• Open Positions: ${currentOpenPositions}\n\n` +
+            `🔧 **Session Stats**:\n` +
+            `• Signals Processed: ${tradingStats.signalsProcessed}\n` +
+            `• Successful Trades: ${tradingStats.successfulTrades}\n` +
+            `• Failed Trades: ${tradingStats.failedTrades}\n` +
+            `• Errors Encountered: ${tradingStats.errorsEncountered}\n\n` +
+            `💰 **Config**:\n` +
+            `• Trade Size: $${AMOUNT_TO_SWAP_USD}\n` +
+            `• Trailing Stop: ${TRAILING_STOP_PERCENTAGE}%\n` +
+            `• Max Hold Time: ${MAX_HOLDING_TIME_HOURS}h`;
+        
+        await notify(report, botInstanceId);
+        
+        console.log(`[Report] Trading activity report sent`);
+        
+    } catch (error) {
+        console.error(`[Report] Error sending trading activity report: ${error.message}`);
+    }
+}
+
   async function mint(connection, wallet, trade, botInstanceId) {
     // Получаем параметры из trade
     const mint = new PublicKey(trade.mint);
@@ -814,6 +877,12 @@ async function main() {
     // Первая диагностика через 30 секунд после запуска
     setTimeout(runDiagnostics, 30_000);
     
+    // Запускаем отчет о торговой активности каждые 15 минут
+    setInterval(() => sendTradingActivityReport(botInstanceId), 15 * 60 * 1000);
+    
+    // Первый отчет через 3 минуты после запуска
+    setTimeout(() => sendTradingActivityReport(botInstanceId), 3 * 60 * 1000);
+    
     // Основной цикл проверки сигналов
     while (true) {
         try {
@@ -907,6 +976,10 @@ async function main() {
             console.log(`[Main] Processing signal for token: ${mintAddress}`);
             await notify(`🎯 **Processing Signal** for \`${mintAddress}\``, botInstanceId);
             
+            // Обновляем статистику
+            tradingStats.signalsProcessed++;
+            tradingStats.lastActivity = Date.now();
+            
             try {
                 // Проверяем, есть ли уже трейд для этого токена (только недавние)
                 const existingTrade = await safeQuery(
@@ -962,6 +1035,11 @@ async function main() {
                 
                 const tradeId = insertResult.rows[0].id;
                 
+                // Обновляем статистику успешной сделки
+                tradingStats.tradesExecuted++;
+                tradingStats.successfulTrades++;
+                tradingStats.totalVolumeUSD += AMOUNT_TO_SWAP_USD;
+                
                 await notify(
                     `🟢 **BUY EXECUTED** for \`${mintAddress}\`\n` +
                     `💰 Spent: $${AMOUNT_TO_SWAP_USD} USDC\n` +
@@ -985,6 +1063,11 @@ async function main() {
                 
             } catch (error) {
                 console.error(`[Main] Error processing signal for ${mintAddress}:`, error.message);
+                
+                // Обновляем статистику неудачной сделки
+                tradingStats.failedTrades++;
+                tradingStats.errorsEncountered++;
+                
                 await notify(`❌ **Buy Failed** for \`${mintAddress}\`: ${error.message}`, botInstanceId);
             }
             
