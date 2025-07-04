@@ -88,14 +88,14 @@ async function safeQuery(...args) {
 async function fetchAllPendingSignals() {
     const ONE_MINUTE_AGO = new Date(Date.now() - 60 * 1000).toISOString();
     const res = await safeQuery(
-      `SELECT id, token_mint
+      `SELECT id, mint
          FROM signals
         WHERE processed = false
           AND created_at > $1
         ORDER BY created_at;`,
       [ONE_MINUTE_AGO]
     );
-    return res.rows.map(row => ({ id: row.id, mint: new PublicKey(row.token_mint) }));
+    return res.rows.map(row => ({ id: row.id, mint: new PublicKey(row.mint) }));
 }
 
   
@@ -687,7 +687,7 @@ const onchainLamports = await findTokenBalance(
             
                 while (balance > 0) {
                     // перед каждой итерацией проверяем manual sale / dust
-                    balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
+                    balance = await findTokenBalance(connection, wallet, mint, botInstanceId);
                     if (balance === 0 || balance <= dustLamports) {
                         await notify(`✅ **Manual sale detected or DUST cleared**. Resuming new signals.`, botInstanceId);
                         break;
@@ -701,8 +701,8 @@ const onchainLamports = await findTokenBalance(
             
                         for (let sellTry = 1; sellTry <= 3; sellTry++) {
                             try {
-                                await approveToken(connection, wallet, outputMint, amountSell);
-                                const sellQuote = await getQuote(outputMint, USDC_MINT, amountSell);
+                                await approveToken(connection, wallet, mint, amountSell);
+                                const sellQuote = await getQuote(mint, USDC_MINT, amountSell);
                                 const { swapTransaction, lastValidBlockHeight } = await getSwapTransaction(
                                     sellQuote,
                                     wallet.publicKey.toBase58()
@@ -724,7 +724,7 @@ const onchainLamports = await findTokenBalance(
                                 );
                                 await new Promise(r => setTimeout(r, 5000));
             
-                                balance = await findTokenBalance(connection, wallet, outputMint, botInstanceId);
+                                balance = await findTokenBalance(connection, wallet, mint, botInstanceId);
                                 break;
                             } catch (e) {
                                 errorLog.push(
@@ -758,9 +758,9 @@ const onchainLamports = await findTokenBalance(
                 }
             
                 // финальная ревокация, если остался dust
-                if (await findTokenBalance(connection, wallet, outputMint, botInstanceId) > 0) {
+                if (await findTokenBalance(connection, wallet, mint, botInstanceId) > 0) {
                     console.log("[Sale] Final revoke for remaining balance");
-                    await revokeToken(connection, wallet, outputMint);
+                    await revokeToken(connection, wallet, mint);
                 }
             
                 const pnl = totalUSDC - initialSpent;
@@ -1020,7 +1020,7 @@ async function setupDatabase() {
             await client.query(`
                 CREATE TABLE signals (
                     id SERIAL PRIMARY KEY,
-                    token_mint TEXT NOT NULL,
+                    mint TEXT NOT NULL,
                     processed BOOLEAN DEFAULT false,
                     created_at TIMESTAMPTZ DEFAULT NOW()
                 );
