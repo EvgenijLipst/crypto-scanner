@@ -748,3 +748,238 @@ const onchainLamports = await findTokenBalance(
         } // end try/catch
     } // end while (true)
 } // end async function mint
+
+// ========================= ОСНОВНАЯ ЛОГИКА ЗАПУСКА =========================
+
+async function main() {
+    console.log("🚀 Tradebot starting...");
+    
+    // Генерируем уникальный ID для этого запуска бота
+    const botInstanceId = `TB-${Date.now()}`;
+    console.log(`Bot Instance ID: ${botInstanceId}`);
+    
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
+    const wallet = Keypair.fromSecretKey(bs58.decode(WALLET_PRIVATE_KEY));
+    
+    console.log(`[Wallet] ${wallet.publicKey.toBase58()}`);
+    await notify(`🤖 **Tradebot Started** - Instance: \`${botInstanceId}\``, botInstanceId);
+    
+    // Основной цикл проверки сигналов
+    while (true) {
+        try {
+            // 1. Очистка старых сигналов
+            await cleanupOldSignals();
+            
+            // 2. Проверяем открытые позиции (только недавние - не старше 1 минуты)
+            const ONE_MINUTE_AGO = new Date(Date.now() - 60 * 1000).toISOString();
+            const openTrades = await safeQuery(
+                `SELECT id, mint, bought_amount, spent_usdc, created_at 
+                 FROM trades 
+                 WHERE closed_at IS NULL 
+                 AND created_at > $1
+                 ORDER BY created_at ASC`,
+                [ONE_MINUTE_AGO]
+            );
+            
+            if (openTrades.rows.length > 0) {
+                console.log(`[Main] Found ${openTrades.rows.length} recent open position(s). Monitoring...`);
+                
+                // Запускаем мониторинг для каждой открытой позиции
+                const monitoringPromises = openTrades.rows.map(trade => 
+                    mint(connection, wallet, trade, botInstanceId)
+                        .catch(error => {
+                            console.error(`[Main] Error monitoring trade ${trade.id}:`, error.message);
+                            return notify(`❌ **Error monitoring trade ${trade.id}**: ${error.message}`, botInstanceId);
+                        })
+                );
+                
+                // Ждем завершения всех мониторингов или таймаут
+                await Promise.race([
+                    Promise.all(monitoringPromises),
+                    new Promise(resolve => setTimeout(resolve, SIGNAL_CHECK_INTERVAL_MS))
+                ]);
+                
+                // Если есть открытые позиции, не ищем новые сигналы
+                continue;
+            }
+            
+            // Проверяем, есть ли старые открытые позиции, которые нужно закрыть
+            const oldOpenTrades = await safeQuery(
+                `SELECT id, mint, created_at 
+                 FROM trades 
+                 WHERE closed_at IS NULL 
+                 AND created_at <= $1`,
+                [ONE_MINUTE_AGO]
+            );
+            
+            if (oldOpenTrades.rows.length > 0) {
+                console.log(`[Main] Found ${oldOpenTrades.rows.length} old open position(s). Marking as abandoned...`);
+                
+                for (const trade of oldOpenTrades.rows) {
+                    const createdAt = new Date(trade.created_at);
+                    const minutesAgo = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60));
+                    
+                    console.log(`[Main] Abandoning trade ${trade.id} for ${trade.mint} (${minutesAgo} minutes old)`);
+                    
+                    await safeQuery(
+                        `UPDATE trades 
+                         SET sell_tx = 'ABANDONED_OLD_POSITION', 
+                             closed_at = NOW() 
+                         WHERE id = $1`,
+                        [trade.id]
+                    );
+                    
+                    await notify(
+                        `⏰ **Position Abandoned** - Trade ${trade.id}\n` +
+                        `Token: \`${trade.mint}\`\n` +
+                        `Reason: Position older than 1 minute (${minutesAgo}m)`,
+                        botInstanceId
+                    );
+                }
+            }
+            
+            // 3. Если нет открытых позиций, ищем новые сигналы
+            console.log(`[Main] No open positions. Checking for new signals...`);
+            const pendingSignals = await fetchAllPendingSignals();
+            
+            if (pendingSignals.length === 0) {
+                console.log(`[Main] No pending signals found. Waiting ${SIGNAL_CHECK_INTERVAL_MS}ms...`);
+                await new Promise(resolve => setTimeout(resolve, SIGNAL_CHECK_INTERVAL_MS));
+                continue;
+            }
+            
+            console.log(`[Main] Found ${pendingSignals.length} pending signal(s)`);
+            
+            // 4. Обрабатываем первый сигнал
+            const signal = pendingSignals[0];
+            const mintAddress = signal.mint.toBase58();
+            
+            console.log(`[Main] Processing signal for token: ${mintAddress}`);
+            await notify(`🎯 **Processing Signal** for \`${mintAddress}\``, botInstanceId);
+            
+            try {
+                // Проверяем, есть ли уже трейд для этого токена (только недавние)
+                const existingTrade = await safeQuery(
+                    `SELECT id FROM trades 
+                     WHERE mint = $1 
+                     AND closed_at IS NULL 
+                     AND created_at > $2`,
+                    [mintAddress, ONE_MINUTE_AGO]
+                );
+                
+                if (existingTrade.rows.length > 0) {
+                    console.log(`[Main] Recent trade already exists for ${mintAddress}, skipping...`);
+                    continue;
+                }
+                
+                // Safety checks
+                const { ok: priceImpactOk } = await runPriceImpactCheck(connection, signal.mint, 9);
+                if (!priceImpactOk) {
+                    console.log(`[Main] Price impact check failed for ${mintAddress}`);
+                    continue;
+                }
+                
+                const rugCheckOk = await checkRugPullRisk(signal.mint, botInstanceId);
+                if (!rugCheckOk) {
+                    console.log(`[Main] Rug pull check failed for ${mintAddress}`);
+                    continue;
+                }
+                
+                // Выполняем покупку
+                console.log(`[Main] Executing buy for ${mintAddress}...`);
+                const amountUSDC = Math.round(AMOUNT_TO_SWAP_USD * (10 ** USDC_DECIMALS));
+                
+                const buyQuote = await getQuote(USDC_MINT, signal.mint, amountUSDC);
+                const { swapTransaction, lastValidBlockHeight } = await getSwapTransaction(
+                    buyQuote, 
+                    wallet.publicKey.toBase58()
+                );
+                
+                const buyTxid = await executeTransaction(connection, swapTransaction, wallet, lastValidBlockHeight);
+                
+                // Сохраняем трейд в базу
+                const boughtAmount = Number(buyQuote.outAmount);
+                const tokenInfo = await connection.getParsedAccountInfo(signal.mint);
+                const decimals = tokenInfo.value?.data?.parsed?.info?.decimals || 9;
+                const boughtAmountHuman = boughtAmount / (10 ** decimals);
+                
+                const insertResult = await safeQuery(
+                    `INSERT INTO trades (mint, buy_tx, bought_amount, spent_usdc, created_at)
+                     VALUES ($1, $2, $3, $4, NOW())
+                     RETURNING id`,
+                    [mintAddress, buyTxid, boughtAmountHuman, AMOUNT_TO_SWAP_USD]
+                );
+                
+                const tradeId = insertResult.rows[0].id;
+                
+                await notify(
+                    `🟢 **BUY EXECUTED** for \`${mintAddress}\`\n` +
+                    `💰 Spent: $${AMOUNT_TO_SWAP_USD} USDC\n` +
+                    `🪙 Received: ${boughtAmountHuman.toFixed(6)} tokens\n` +
+                    `📋 Trade ID: ${tradeId}\n` +
+                    `🔗 TX: \`${buyTxid}\``,
+                    botInstanceId
+                );
+                
+                // Начинаем мониторинг этой позиции
+                const trade = {
+                    id: tradeId,
+                    mint: mintAddress,
+                    bought_amount: boughtAmountHuman,
+                    spent_usdc: AMOUNT_TO_SWAP_USD,
+                    created_at: new Date().toISOString()
+                };
+                
+                // Запускаем мониторинг в следующей итерации цикла
+                console.log(`[Main] Buy successful. Will start monitoring in next cycle.`);
+                
+            } catch (error) {
+                console.error(`[Main] Error processing signal for ${mintAddress}:`, error.message);
+                await notify(`❌ **Buy Failed** for \`${mintAddress}\`: ${error.message}`, botInstanceId);
+            }
+            
+        } catch (error) {
+            console.error(`[Main] Critical error in main loop:`, error.message);
+            await notify(`🚨 **Critical Error**: ${error.message}`, botInstanceId);
+            
+            // Ждем перед повторной попыткой
+            await new Promise(resolve => setTimeout(resolve, SIGNAL_CHECK_INTERVAL_MS));
+        }
+    }
+}
+
+// Обработка завершения процесса
+process.on('SIGINT', async () => {
+    console.log('\n[Main] Received SIGINT, shutting down gracefully...');
+    isPoolActive = false;
+    try {
+        await pool.end();
+        console.log('[Main] Database pool closed.');
+    } catch (e) {
+        console.error('[Main] Error closing database pool:', e.message);
+    }
+    process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+    console.log('\n[Main] Received SIGTERM, shutting down gracefully...');
+    isPoolActive = false;
+    try {
+        await pool.end();
+        console.log('[Main] Database pool closed.');
+    } catch (e) {
+        console.error('[Main] Error closing database pool:', e.message);
+    }
+    process.exit(0);
+});
+
+// Запуск
+main().catch(async (error) => {
+    console.error('[Main] Fatal error:', error);
+    try {
+        await pool.end();
+    } catch (e) {
+        console.error('[Main] Error closing pool during fatal error:', e.message);
+    }
+    process.exit(1);
+});
