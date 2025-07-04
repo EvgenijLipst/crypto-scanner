@@ -125,6 +125,18 @@ async function runDiagnostics() {
         await tg.sendErrorMessage(`Diagnostics Error: ${e}`);
     }
 }
+async function sendWebSocketActivityReport() {
+    try {
+        (0, utils_1.log)('📊 Sending WebSocket Activity Report...');
+        const stats = helius.getActivityStats();
+        await tg.sendActivityReport(stats);
+        (0, utils_1.log)('✅ WebSocket Activity Report sent successfully');
+    }
+    catch (e) {
+        (0, utils_1.log)(`Error sending WebSocket Activity Report: ${e}`, 'ERROR');
+        await tg.sendErrorMessage(`WebSocket Activity Report Error: ${e}`);
+    }
+}
 async function main() {
     await db.initialize();
     // Инициализируем диагностику после базы данных
@@ -136,8 +148,12 @@ async function main() {
     setInterval(notifySweep, 20000);
     // Диагностика каждые 5 минут
     setInterval(runDiagnostics, 5 * 60 * 1000);
+    // WebSocket Activity Report каждые 10 минут
+    setInterval(sendWebSocketActivityReport, 10 * 60 * 1000);
     // Первая диагностика через 30 секунд после запуска
     setTimeout(runDiagnostics, 30000);
+    // Первый отчет о WebSocket активности через 2 минуты
+    setTimeout(sendWebSocketActivityReport, 2 * 60 * 1000);
     // Очистка логов каждые 6 часов
     setInterval(() => {
         try {

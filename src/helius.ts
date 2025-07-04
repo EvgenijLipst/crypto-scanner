@@ -16,6 +16,18 @@ export class HeliusWebSocket {
   private isConnected = false;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private pingInterval: NodeJS.Timeout | null = null;
+  
+  // Статистика активности
+  private stats = {
+    startTime: Date.now(),
+    lastActivity: Date.now(),
+    messagesReceived: 0,
+    programNotifications: 0,
+    swapEventsProcessed: 0,
+    poolEventsProcessed: 0,
+    otherMessages: 0,
+    errorsEncountered: 0
+  };
 
   constructor(apiKey: string, database: Database) {
     this.apiKey = apiKey;
@@ -31,6 +43,7 @@ export class HeliusWebSocket {
       this.ws.on('open', () => {
         log('Helius WebSocket connected');
         this.isConnected = true;
+        this.stats.startTime = Date.now();
         this.startPing();
         this.subscribeToLogs();
         resolve();
@@ -43,6 +56,7 @@ export class HeliusWebSocket {
       this.ws.on('error', (error) => {
         log(`WebSocket error: ${error.message}`, 'ERROR');
         this.isConnected = false;
+        this.stats.errorsEncountered++;
         reject(error);
       });
 
@@ -82,12 +96,24 @@ export class HeliusWebSocket {
 
   private async handleMessage(data: Buffer): Promise<void> {
     try {
+      this.stats.messagesReceived++;
+      this.stats.lastActivity = Date.now();
+      
       const msg = JSON.parse(data.toString('utf8'));
       if (msg.method === 'logsNotification') {
+        this.stats.programNotifications++;
+        log(`📨 Received programNotification, total program notifications: ${this.stats.programNotifications}`);
         await this.handleLogsNotification(msg.params);
+      } else if (msg.method === 'accountNotification') {
+        this.stats.otherMessages++;
+        log(`📈 Received accountNotification (SOL account update), total other: ${this.stats.otherMessages}`);
+      } else {
+        this.stats.otherMessages++;
+        log(`📊 Received other message type: ${msg.method || 'unknown'}, total other: ${this.stats.otherMessages}`);
       }
     } catch (error) {
       log(`Error parsing WebSocket message: ${error}`, 'ERROR');
+      this.stats.errorsEncountered++;
     }
   }
 
@@ -101,10 +127,17 @@ export class HeliusWebSocket {
         if (logLine.includes('InitializePool') || logLine.includes('initialize')) isInit = true;
         if (logLine.toLowerCase().includes('swap')) isSwap = true;
       }
-      if (isInit) await this.handlePoolInit(signature, logs);
-      if (isSwap) await this.handleSwap(signature, logs);
+      if (isInit) {
+        await this.handlePoolInit(signature, logs);
+        this.stats.poolEventsProcessed++;
+      }
+      if (isSwap) {
+        await this.handleSwap(signature, logs);
+        this.stats.swapEventsProcessed++;
+      }
     } catch (error) {
       log(`Error handling logs notification: ${error}`, 'ERROR');
+      this.stats.errorsEncountered++;
     }
   }
 
@@ -122,6 +155,7 @@ export class HeliusWebSocket {
       log(`🏊 Pool init: ${mint} @ ${ts}`);
     } catch (error) {
       log(`Error in handlePoolInit: ${error}`, 'ERROR');
+      this.stats.errorsEncountered++;
     }
   }
 
@@ -159,6 +193,7 @@ export class HeliusWebSocket {
       log(`💱 Swap: ${targetMint} $${priceUsd.toFixed(6)} x${amount}`);
     } catch (error) {
       log(`Error in handleSwap: ${error}`, 'ERROR');
+      this.stats.errorsEncountered++;
     }
   }
 
@@ -175,6 +210,7 @@ export class HeliusWebSocket {
       return arr[0];
     } catch (error) {
       log(`Error fetching tx: ${error}`, 'ERROR');
+      this.stats.errorsEncountered++;
       return null;
     }
   }
@@ -187,6 +223,29 @@ export class HeliusWebSocket {
         log('Ping sent to WebSocket');
       }
     }, 30000);
+  }
+
+  /**
+   * Получить статистику WebSocket активности
+   */
+  getActivityStats() {
+    const now = Date.now();
+    const uptimeMs = now - this.stats.startTime;
+    const lastActivityMs = now - this.stats.lastActivity;
+    
+    return {
+      messagesReceived: this.stats.messagesReceived,
+      programNotifications: this.stats.programNotifications,
+      logsNotifications: this.stats.programNotifications, // Для совместимости со старым API
+      swapEventsProcessed: this.stats.swapEventsProcessed,
+      poolEventsProcessed: this.stats.poolEventsProcessed,
+      otherMessages: this.stats.otherMessages,
+      errorsEncountered: this.stats.errorsEncountered,
+      uptimeMinutes: Math.floor(uptimeMs / 60000),
+      lastActivityMinutes: Math.floor(lastActivityMs / 60000),
+      isConnected: this.isConnected,
+      messagesPerMinute: uptimeMs > 0 ? (this.stats.messagesReceived / (uptimeMs / 60000)).toFixed(1) : '0.0'
+    };
   }
 
   close(): void {
