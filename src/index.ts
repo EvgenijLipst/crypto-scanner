@@ -58,8 +58,20 @@ async function main() {
   await db.initialize();
   await tg.sendMessage('🚀 Signal Bot запущен!');
   await helius.connect();
+  
+  // Основные интервалы
   setInterval(indicatorSweep, 60_000);
   setInterval(notifySweep, 20_000);
+  
+  // Очистка логов каждые 6 часов
+  setInterval(() => {
+    try {
+      tg.cleanupTelegramLogs();
+    } catch (e) {
+      log(`Error cleaning telegram logs: ${e}`, 'ERROR');
+    }
+  }, 6 * 60 * 60 * 1000); // 6 hours
+  
   log('Signal bot started.');
 }
 

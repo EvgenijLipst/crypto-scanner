@@ -1,6 +1,8 @@
 // telegram.ts - Уведомления в Telegram
 
 import fetch from 'cross-fetch';
+import fs from 'fs';
+import path from 'path';
 import { SignalRow } from './types';
 import { formatNumber, escapeMarkdown, createBirdeyeLink, log } from './utils';
 
@@ -8,6 +10,7 @@ export class TelegramBot {
   private token: string;
   private chatId: number;
   private baseUrl: string;
+  private logFilePath: string;
 
   constructor(token: string, chatId: string) {
     this.token = token;
@@ -24,7 +27,24 @@ export class TelegramBot {
     this.chatId = parsedChatId || 0;
     this.baseUrl = `https://api.telegram.org/bot${token}`;
     
+    // Настройка файла логов
+    this.logFilePath = path.join(process.cwd(), 'telegram.log');
+    
     log(`TelegramBot initialized with final chat_id: ${this.chatId}, token: ${token.substring(0, 10)}...`);
+    log(`Telegram logs will be saved to: ${this.logFilePath}`);
+  }
+
+  /**
+   * Логирование сообщения в файл
+   */
+  private logToFile(message: string, status: 'SENT' | 'ERROR'): void {
+    try {
+      const timestamp = new Date().toISOString();
+      const logEntry = `[${timestamp}] [${status}] ${message}\n`;
+      fs.appendFileSync(this.logFilePath, logEntry, 'utf8');
+    } catch (error) {
+      log(`Failed to write to telegram log file: ${error}`, 'ERROR');
+    }
   }
 
   /**
@@ -62,10 +82,12 @@ export class TelegramBot {
       if (!response.ok) {
         const error = await response.text();
         log(`Telegram API error: ${response.status} ${error}`, 'ERROR');
+        this.logToFile(`ERROR: ${response.status} ${error} | Message: ${text}`, 'ERROR');
         return false;
       }
 
       log('Telegram message sent successfully');
+      this.logToFile(text, 'SENT');
       return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -73,10 +95,13 @@ export class TelegramBot {
       
       if (errorName === 'AbortError' || errorMessage.includes('timeout')) {
         log('Telegram message timeout - network issue, will retry later', 'WARN');
+        this.logToFile(`TIMEOUT: ${errorMessage} | Message: ${text}`, 'ERROR');
       } else if (errorMessage.includes('Connection terminated')) {
         log('Telegram connection terminated - network issue, will retry later', 'WARN');
+        this.logToFile(`CONNECTION_ERROR: ${errorMessage} | Message: ${text}`, 'ERROR');
       } else {
         log(`Error sending Telegram message: ${errorMessage}`, 'ERROR');
+        this.logToFile(`SEND_ERROR: ${errorMessage} | Message: ${text}`, 'ERROR');
       }
       return false;
     }
@@ -186,5 +211,46 @@ ${stats.messagesReceived === 0 ? '⚠️ **WARNING**: Нет входящих с
 ⏰ ${new Date().toLocaleString()}`;
     
     await this.sendMessage(message);
+  }
+
+  /**
+   * Получить последние записи из лог-файла Telegram
+   */
+  getRecentTelegramLogs(limit: number = 50): string[] {
+    try {
+      if (!fs.existsSync(this.logFilePath)) {
+        return ['Log file does not exist yet'];
+      }
+      
+      const content = fs.readFileSync(this.logFilePath, 'utf8');
+      const lines = content.trim().split('\n').filter(line => line.length > 0);
+      
+      // Возвращаем последние N строк
+      return lines.slice(-limit);
+    } catch (error) {
+      return [`Error reading log file: ${error}`];
+    }
+  }
+
+  /**
+   * Очистить лог-файл Telegram (оставить только последние 1000 записей)
+   */
+  cleanupTelegramLogs(): void {
+    try {
+      if (!fs.existsSync(this.logFilePath)) {
+        return;
+      }
+      
+      const content = fs.readFileSync(this.logFilePath, 'utf8');
+      const lines = content.trim().split('\n').filter(line => line.length > 0);
+      
+      if (lines.length > 1000) {
+        const recentLines = lines.slice(-1000);
+        fs.writeFileSync(this.logFilePath, recentLines.join('\n') + '\n', 'utf8');
+        log(`Cleaned up telegram log file, kept last 1000 entries`);
+      }
+    } catch (error) {
+      log(`Error cleaning up telegram log file: ${error}`, 'ERROR');
+    }
   }
 } 
