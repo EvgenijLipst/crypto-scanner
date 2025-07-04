@@ -88,14 +88,13 @@ async function safeQuery(...args) {
 async function fetchAllPendingSignals() {
     const ONE_MINUTE_AGO = new Date(Date.now() - 60 * 1000).toISOString();
     const res = await safeQuery(
-      `SELECT id, mint
+      `SELECT mint
          FROM signals
-        WHERE processed = false
-          AND created_at > $1
-        ORDER BY created_at;`,
+        WHERE signal_ts > $1
+        ORDER BY signal_ts;`,
       [ONE_MINUTE_AGO]
     );
-    return res.rows.map(row => ({ id: row.id, mint: new PublicKey(row.mint) }));
+    return res.rows.map(row => ({ mint: new PublicKey(row.mint) }));
 }
 
   
@@ -106,7 +105,7 @@ async function cleanupOldSignals() {
     // Удаляем сигналы старше 1 часа (processed=true или false — неважно)
     const ONE_HOUR_AGO = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const res = await safeQuery(
-      `DELETE FROM signals WHERE created_at < $1 RETURNING id;`,
+      `DELETE FROM signals WHERE signal_ts < $1 RETURNING mint;`,
       [ONE_HOUR_AGO]
     );
     if (res.rowCount > 0) {
@@ -847,15 +846,15 @@ const onchainLamports = await findTokenBalance(
 
 
   async function processSignal(connection, wallet, signal, botInstanceId) {
-    const { id: signalId, mint: outputMint } = signal;
+    const { mint: outputMint } = signal;
     const mintAddress = outputMint.toBase58();
     console.log(`\n=== Processing ${mintAddress} ===`);
   
     const activePositionRes = await safeQuery(`SELECT id FROM trades WHERE mint = $1 AND closed_at IS NULL LIMIT 1`, [mintAddress]);
     if (activePositionRes.rows.length > 0) {
       console.log(`[Validation] Position for ${mintAddress} is already active (trade id ${activePositionRes.rows[0].id}). Skipping signal.`);
-      await safeQuery(`UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
-  [signalId, "ACTIVE_POSITION"]);
+      await safeQuery(`UPDATE signals SET error_reason = $2 WHERE mint = $1;`,
+  [mintAddress, "ACTIVE_POSITION"]);
       return;
     }
   
@@ -865,8 +864,8 @@ const onchainLamports = await findTokenBalance(
         const hoursSinceClose = (new Date() - lastClosed) / 3600000;
         if (hoursSinceClose < COOLDOWN_HOURS) {
             console.log(`[Validation] Cooldown period for ${mintAddress} is active (last sale ${hoursSinceClose.toFixed(2)}h ago). Skipping signal.`);
-            await safeQuery(`UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
-  [signalId, "COOLDOWN_ACTIVE"]);
+            await safeQuery(`UPDATE signals SET error_reason = $2 WHERE mint = $1;`,
+  [mintAddress, "COOLDOWN_ACTIVE"]);
             return;
         }
     }
@@ -881,8 +880,8 @@ const onchainLamports = await findTokenBalance(
                             `Required: \`${AMOUNT_TO_SWAP_USD}\` USDC.`;
       await notify(notifyMessage, botInstanceId);
       await safeQuery(
-        `UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
-        [signalId, "NO_BALANCE"]
+        `UPDATE signals SET error_reason = $2 WHERE mint = $1;`,
+        [mintAddress, "NO_BALANCE"]
       );
       return;
     }
@@ -896,8 +895,8 @@ const onchainLamports = await findTokenBalance(
     } catch(e) {
       await notify(`🚨 **Error**\nCould not fetch token info for \`${mintAddress}\`. Skipping.`, botInstanceId);
 await safeQuery(
-  `UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
-  [signalId, "TOKEN_INFO_FETCH_FAIL"]);
+  `UPDATE signals SET error_reason = $2 WHERE mint = $1;`,
+  [mintAddress, "TOKEN_INFO_FETCH_FAIL"]);
       return;
     }
   
@@ -905,16 +904,16 @@ await safeQuery(
     if (!ok) {
         await notify(`⚠️ **Safety Check L1 Failed**\nToken: \`${mintAddress}\`\nImpact: \`${impactPct.toFixed(2)}%\` > \`${SAFE_PRICE_IMPACT_PERCENT}%\``, botInstanceId);
         await safeQuery(
-          `UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
-          [signalId, "HIGH_PRICE_IMPACT"]
+          `UPDATE signals SET error_reason = $2 WHERE mint = $1;`,
+          [mintAddress, "HIGH_PRICE_IMPACT"]
         );
         return;
     }
   
     const isNotRugPull = await checkRugPullRisk(outputMint, botInstanceId);
     if (!isNotRugPull) {
-      await safeQuery(`UPDATE signals SET processed = true, error_reason = $2 WHERE id = $1;`,
-  [signalId, "RUGCHECK_FAIL"]);
+      await safeQuery(`UPDATE signals SET error_reason = $2 WHERE mint = $1;`,
+  [mintAddress, "RUGCHECK_FAIL"]);
       return;
     }
     
@@ -972,7 +971,7 @@ await safeQuery(
       console.log(`[DB] Inserted trade id=${tradeId}`);
       
       // ВАЖНО: Отмечаем сигнал как обработанный, чтобы он не повторялся
-      await safeQuery(`UPDATE signals SET processed = true WHERE id = $1;`, [signalId]);
+      await safeQuery(`UPDATE signals SET error_reason = $2 WHERE mint = $1;`, [mintAddress, "PROCESSED"]);
       
       await notify(
         `✅ **Purchase Complete** \`${mintAddress}\`\n` +
@@ -1019,10 +1018,12 @@ async function setupDatabase() {
         if (res.rows[0].to_regclass === null) {
             await client.query(`
                 CREATE TABLE signals (
-                    id SERIAL PRIMARY KEY,
-                    mint TEXT NOT NULL,
-                    processed BOOLEAN DEFAULT false,
-                    created_at TIMESTAMPTZ DEFAULT NOW()
+                    mint TEXT PRIMARY KEY,
+                    signal_ts TIMESTAMPTZ DEFAULT NOW(),
+                    ema_cross BOOLEAN,
+                    vol_spike BOOLEAN,
+                    rsi DOUBLE PRECISION,
+                    notified BOOLEAN DEFAULT false
                 );
             `);
         }
