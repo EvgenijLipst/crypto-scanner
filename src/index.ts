@@ -65,14 +65,14 @@ let apiUsageStats = {
 };
 
 /**
- * Ежедневное обновление списка токенов (сначала база, потом CoinGecko)
+ * Обновление списка токенов каждые 48 часов (сначала база, потом CoinGecko)
  */
-async function dailyTokenRefresh() {
+async function tokenRefresh() {
   try {
-    log('🔄 Daily token refresh starting...');
+    log('🔄 Token refresh starting (48h cycle)...');
     
-    // Сначала очищаем старые данные из coin_data
-    await db.cleanupOldCoinData(48);
+    // Сначала очищаем старые данные из coin_data (старше 72 часов)
+    await db.cleanupOldCoinData(72);
     
     // Проверяем лимиты CoinGecko
     const today = new Date().toDateString();
@@ -95,7 +95,7 @@ async function dailyTokenRefresh() {
     log(`✅ Token refresh complete: ${tokens.length} tokens ready for monitoring`);
     
     // Отправляем отчет
-    await sendDailyReport(tokens.length);
+    await sendTokenRefreshReport(tokens.length);
     
   } catch (error) {
     log(`❌ Error in token refresh: ${error}`, 'ERROR');
@@ -164,11 +164,11 @@ async function sendSignalNotification(signal: any) {
 }
 
 /**
- * Ежедневный отчет
+ * Отчет об обновлении токенов (каждые 48 часов)
  */
-async function sendDailyReport(tokensCount: number) {
+async function sendTokenRefreshReport(tokensCount: number) {
   try {
-    const message = `📊 **Daily Token Analysis Report**
+    const message = `📊 **Token Refresh Report (48h cycle)**
 
 🔄 **System Status:**
 • Monitored Tokens: ${tokensCount}
@@ -176,7 +176,7 @@ async function sendDailyReport(tokensCount: number) {
 • Status: Active 🟢
 
 📈 **API Usage:**
-• CoinGecko: ${apiUsageStats.coingecko.dailyUsage}/333 daily
+• CoinGecko: ${apiUsageStats.coingecko.dailyUsage}/280 daily
 • Helius: ${apiUsageStats.helius.dailyUsage}/33,333 daily
 
 ⚙️ **Configuration:**
@@ -188,7 +188,8 @@ async function sendDailyReport(tokensCount: number) {
 • Max Price Impact: ${analysisConfig.maxPriceImpactPercent}%
 • Test Amount: $${analysisConfig.priceImpactTestAmount}
 
-🎯 **Next daily refresh in ~24 hours**`;
+🎯 **Next token refresh in ~48 hours**
+💡 **Optimization:** Top-2000 tokens updated every 48h (more stable, saves API credits)`;
 
     await tg.sendMessage(message);
     
@@ -227,7 +228,7 @@ async function initialize() {
     log(`✅ Jupiter API working - got quote: ${testQuote ? 'success' : 'failed'}`);
     
     // Первоначальная загрузка токенов
-    await dailyTokenRefresh();
+    await tokenRefresh();
     
     // Настройка Helius WebSocket с обработчиком сигналов
     helius.onSwap = handleHeliusSignal;
@@ -240,11 +241,11 @@ async function initialize() {
     await tg.sendMessage(`🚀 **Hybrid Solana Signal Bot Started!**
 
 📊 **Analysis Mode:** CoinGecko + Helius
-🎯 **Strategy:** Daily token refresh + Real-time monitoring
+🎯 **Strategy:** 48h token refresh + Real-time monitoring
 ⚙️ **Monitoring:** ${tokenAnalyzer.getMonitoredTokens().length} tokens
 
 💡 **API Optimization:**
-• CoinGecko: Once daily refresh (saves credits)
+• CoinGecko: 48h refresh cycle (saves credits)
 • Helius: Real-time monitoring (uses available credits)
 
 🔍 **Ready for signal detection!**`);
@@ -264,17 +265,17 @@ async function start() {
   try {
     await initialize();
     
-    // Планируем ежедневное обновление токенов (раз в 24 часа)
-    setInterval(dailyTokenRefresh, 24 * 60 * 60 * 1000);
+    // Планируем обновление токенов каждые 48 часов
+    setInterval(tokenRefresh, 48 * 60 * 60 * 1000);
     
-    // Планируем очистку старых данных (каждые 12 часов)
+    // Планируем очистку старых данных (каждые 24 часа)
     setInterval(async () => {
       try {
-        await db.cleanupOldCoinData(48);
+        await db.cleanupOldCoinData(72); // Очищаем данные старше 72 часов
       } catch (error) {
         log(`Error in cleanup: ${error}`, 'ERROR');
       }
-    }, 12 * 60 * 60 * 1000);
+    }, 24 * 60 * 60 * 1000);
     
     // Планируем диагностику (каждые 10 минут)
     setInterval(async () => {
@@ -285,15 +286,15 @@ async function start() {
       }
     }, 10 * 60 * 1000);
     
-    // Планируем отчеты об активности (каждые 6 часов)
+    // Планируем отчеты об активности (каждые 12 часов)
     setInterval(async () => {
       try {
         const monitoredCount = tokenAnalyzer.getMonitoredTokens().length;
-        await sendDailyReport(monitoredCount);
+        await sendTokenRefreshReport(monitoredCount);
       } catch (error) {
         log(`Error in activity report: ${error}`, 'ERROR');
       }
-    }, 6 * 60 * 60 * 1000);
+    }, 12 * 60 * 60 * 1000);
     
     // Планируем WebSocket отчеты (каждые 10 минут)
     setInterval(async () => {

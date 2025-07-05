@@ -8,11 +8,11 @@ class TokenAnalyzer {
         // Оптимизация API лимитов
         this.topTokensCache = [];
         this.topTokensCacheTime = 0;
-        this.topTokensCacheTimeout = 24 * 60 * 60 * 1000; // 24 часа для CoinGecko
+        this.topTokensCacheTimeout = 48 * 60 * 60 * 1000; // 48 часов для CoinGecko (топ-2000 стабильны)
         // Helius мониторинг
         this.monitoredTokens = new Set();
         this.lastFullRefresh = 0;
-        this.fullRefreshInterval = 24 * 60 * 60 * 1000; // 24 часа
+        this.fullRefreshInterval = 48 * 60 * 60 * 1000; // 48 часов
         this.batchSize = 20; // Уменьшаем размер батча для экономии CoinGecko
         this.analysisInterval = 10 * 60 * 1000; // 10 минут между анализами
         this.lastAnalysisTime = 0;
@@ -34,8 +34,8 @@ class TokenAnalyzer {
                 return this.topTokensCache;
             }
             (0, utils_1.log)('🔄 Token refresh: Checking database first...');
-            // Сначала проверяем базу данных - есть ли свежие токены
-            const hasFreshTokens = await this.database.hasFreshTokens('Solana', 500, 24);
+            // Сначала проверяем базу данных - есть ли свежие токены (48 часов)
+            const hasFreshTokens = await this.database.hasFreshTokens('Solana', 1500, 48);
             if (hasFreshTokens) {
                 (0, utils_1.log)('✅ Found fresh tokens in database, using them instead of CoinGecko');
                 const tokens = await this.loadTokensFromDatabase();
@@ -85,7 +85,7 @@ class TokenAnalyzer {
      */
     async loadTokensFromDatabase() {
         try {
-            const freshTokens = await this.database.getFreshTokensFromCoinData('Solana', 24);
+            const freshTokens = await this.database.getFreshTokensFromCoinData('Solana', 48);
             // Преобразуем данные из базы в формат SolanaToken
             const tokens = freshTokens.map(row => ({
                 mint: row.mint || `${row.coin_id}_mint_placeholder`, // Используем реальный mint или placeholder

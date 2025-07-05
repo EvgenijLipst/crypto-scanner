@@ -15,7 +15,7 @@ class CoinGeckoAPI {
         this.cache = new Map();
         this.solanaTokensCache = [];
         this.solanaTokensCacheTime = 0;
-        this.solanaTokensCacheTimeout = 24 * 60 * 60 * 1000; // 24 часа для списка токенов
+        this.solanaTokensCacheTimeout = 48 * 60 * 60 * 1000; // 48 часов для списка токенов (топ-2000 редко меняются)
         // Минимальные rate limits
         this.lastRequestTime = 0;
         this.requestDelay = 3000; // 3 секунды между запросами (очень консервативно)
@@ -118,18 +118,18 @@ class CoinGeckoAPI {
         }
     }
     /**
-     * Получить все токены Solana (кэш на 24 часа)
+     * Получить все токены Solana (кэш на 48 часов)
      */
     async getAllSolanaTokens() {
         try {
-            // Проверяем кэш с 24-часовым временем жизни
+            // Проверяем кэш с 48-часовым временем жизни
             const now = Date.now();
             if (this.solanaTokensCache.length > 0 &&
                 now - this.solanaTokensCacheTime < this.solanaTokensCacheTimeout) {
-                (0, utils_1.log)('Using cached Solana tokens list (24h cache)');
+                (0, utils_1.log)('Using cached Solana tokens list (48h cache)');
                 return this.solanaTokensCache;
             }
-            (0, utils_1.log)('Fetching complete coins list (once per day)...');
+            (0, utils_1.log)('Fetching complete coins list (once per 48 hours)...');
             const url = `${this.baseUrl}/coins/list`;
             const params = new URLSearchParams({
                 include_platform: 'true'
@@ -142,7 +142,7 @@ class CoinGeckoAPI {
             // Фильтруем только Solana токены
             const solanaTokens = allCoins.filter(coin => coin.platforms?.solana);
             (0, utils_1.log)(`Found ${solanaTokens.length} Solana tokens`);
-            // Кэшируем результат на 24 часа
+            // Кэшируем результат на 48 часов
             this.solanaTokensCache = solanaTokens;
             this.solanaTokensCacheTime = now;
             return solanaTokens;

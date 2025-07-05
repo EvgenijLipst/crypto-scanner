@@ -47,12 +47,12 @@ export class TokenAnalyzer {
   // Оптимизация API лимитов
   private topTokensCache: SolanaToken[] = [];
   private topTokensCacheTime = 0;
-  private topTokensCacheTimeout = 24 * 60 * 60 * 1000; // 24 часа для CoinGecko
+  private topTokensCacheTimeout = 48 * 60 * 60 * 1000; // 48 часов для CoinGecko (топ-2000 стабильны)
   
   // Helius мониторинг
   private monitoredTokens: Set<string> = new Set();
   private lastFullRefresh = 0;
-  private fullRefreshInterval = 24 * 60 * 60 * 1000; // 24 часа
+  private fullRefreshInterval = 48 * 60 * 60 * 1000; // 48 часов
   
   private batchSize = 20; // Уменьшаем размер батча для экономии CoinGecko
   private analysisInterval = 10 * 60 * 1000; // 10 минут между анализами
@@ -86,8 +86,8 @@ export class TokenAnalyzer {
 
       log('🔄 Token refresh: Checking database first...');
       
-      // Сначала проверяем базу данных - есть ли свежие токены
-      const hasFreshTokens = await this.database.hasFreshTokens('Solana', 500, 24);
+      // Сначала проверяем базу данных - есть ли свежие токены (48 часов)
+      const hasFreshTokens = await this.database.hasFreshTokens('Solana', 1500, 48);
       
       if (hasFreshTokens) {
         log('✅ Found fresh tokens in database, using them instead of CoinGecko');
@@ -151,7 +151,7 @@ export class TokenAnalyzer {
    */
   private async loadTokensFromDatabase(): Promise<SolanaToken[]> {
     try {
-      const freshTokens = await this.database.getFreshTokensFromCoinData('Solana', 24);
+      const freshTokens = await this.database.getFreshTokensFromCoinData('Solana', 48);
       
       // Преобразуем данные из базы в формат SolanaToken
       const tokens: SolanaToken[] = freshTokens.map(row => ({

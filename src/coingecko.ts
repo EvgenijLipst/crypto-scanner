@@ -67,7 +67,7 @@ export class CoinGeckoAPI {
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
   private solanaTokensCache: CoinListItem[] = [];
   private solanaTokensCacheTime = 0;
-  private solanaTokensCacheTimeout = 24 * 60 * 60 * 1000; // 24 часа для списка токенов
+  private solanaTokensCacheTimeout = 48 * 60 * 60 * 1000; // 48 часов для списка токенов (топ-2000 редко меняются)
   
   // Минимальные rate limits
   private lastRequestTime = 0;
@@ -196,19 +196,19 @@ export class CoinGeckoAPI {
   }
 
   /**
-   * Получить все токены Solana (кэш на 24 часа)
+   * Получить все токены Solana (кэш на 48 часов)
    */
   private async getAllSolanaTokens(): Promise<CoinListItem[]> {
     try {
-      // Проверяем кэш с 24-часовым временем жизни
+      // Проверяем кэш с 48-часовым временем жизни
       const now = Date.now();
       if (this.solanaTokensCache.length > 0 && 
           now - this.solanaTokensCacheTime < this.solanaTokensCacheTimeout) {
-        log('Using cached Solana tokens list (24h cache)');
+        log('Using cached Solana tokens list (48h cache)');
         return this.solanaTokensCache;
       }
 
-      log('Fetching complete coins list (once per day)...');
+      log('Fetching complete coins list (once per 48 hours)...');
       
       const url = `${this.baseUrl}/coins/list`;
       const params = new URLSearchParams({
@@ -226,7 +226,7 @@ export class CoinGeckoAPI {
       const solanaTokens = allCoins.filter(coin => coin.platforms?.solana);
       log(`Found ${solanaTokens.length} Solana tokens`);
 
-      // Кэшируем результат на 24 часа
+      // Кэшируем результат на 48 часов
       this.solanaTokensCache = solanaTokens;
       this.solanaTokensCacheTime = now;
       
