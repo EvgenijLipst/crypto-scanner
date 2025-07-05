@@ -22,8 +22,7 @@ const requiredEnvVars = [
   'DATABASE_URL',
   'TELEGRAM_TOKEN', 
   'TELEGRAM_CHAT_ID',
-  'COINGECKO_API_KEY',
-  'HELIUS_API_KEY'
+  'COINGECKO_API_KEY'
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -35,13 +34,26 @@ for (const envVar of requiredEnvVars) {
 
 console.log('✅ All required environment variables present');
 
+// Проверяем опциональные переменные
+if (!process.env.HELIUS_API_KEY) {
+  console.log('⚠️ HELIUS_API_KEY not provided - Helius WebSocket will be disabled');
+}
+
 // Инициализация компонентов
 console.log('🔄 Initializing components...');
 const db = new Database(process.env.DATABASE_URL!);
 const tg = new TelegramBot(process.env.TELEGRAM_TOKEN!, process.env.TELEGRAM_CHAT_ID!);
 const jupiter = new JupiterAPI();
 const coingecko = new CoinGeckoAPI(process.env.COINGECKO_API_KEY!);
-const helius = new HeliusWebSocket(process.env.HELIUS_API_KEY!, db, tg);
+
+// Условная инициализация Helius
+let helius: HeliusWebSocket | null = null;
+if (process.env.HELIUS_API_KEY) {
+  helius = new HeliusWebSocket(process.env.HELIUS_API_KEY, db, tg);
+  console.log('✅ Helius WebSocket initialized');
+} else {
+  console.log('⚠️ Helius WebSocket disabled - no API key provided');
+}
 
 console.log('✅ Components initialized');
 
@@ -285,18 +297,21 @@ async function initialize() {
       tokenStatus = `❌ Error: ${error}`;
     }
     
-    // Настройка Helius WebSocket с обработчиком сигналов
-    helius.onSwap = handleHeliusSignal;
-    
-    // Запуск Helius WebSocket
-    let heliusStatus = '❌ Failed';
-    try {
-      await helius.connect();
-      heliusStatus = '✅ Connected';
-      log('✅ Helius WebSocket connected');
-    } catch (error) {
-      log(`❌ Helius WebSocket failed: ${error}`, 'ERROR');
-      heliusStatus = `❌ Error: ${error}`;
+    // Настройка и запуск Helius WebSocket (если доступен)
+    let heliusStatus = '❌ Disabled';
+    if (helius) {
+      helius.onSwap = handleHeliusSignal;
+      
+      try {
+        await helius.connect();
+        heliusStatus = '✅ Connected';
+        log('✅ Helius WebSocket connected');
+      } catch (error) {
+        log(`❌ Helius WebSocket failed: ${error}`, 'ERROR');
+        heliusStatus = `❌ Error: ${error}`;
+      }
+    } else {
+      log('⚠️ Helius WebSocket disabled - no API key provided');
     }
     
     // Отправляем детальное уведомление о статусе запуска
@@ -383,14 +398,16 @@ async function start() {
       }
     }, 12 * 60 * 60 * 1000);
     
-    // Планируем WebSocket отчеты (каждые 10 минут)
-    setInterval(async () => {
-      try {
-        await helius.sendWebSocketActivityReport();
-      } catch (error) {
-        log(`Error in WebSocket activity report: ${error}`, 'ERROR');
-      }
-    }, 10 * 60 * 1000);
+    // Планируем WebSocket отчеты (каждые 10 минут) - только если Helius доступен
+    if (helius) {
+      setInterval(async () => {
+        try {
+          await helius!.sendWebSocketActivityReport();
+        } catch (error) {
+          log(`Error in WebSocket activity report: ${error}`, 'ERROR');
+        }
+      }, 10 * 60 * 1000);
+    }
     
     log('🎯 Hybrid Signal Bot is running...');
     
@@ -421,7 +438,9 @@ process.on('SIGINT', async () => {
     log(`Error sending shutdown notification: ${error}`, 'ERROR');
   }
   
-  await helius.disconnect();
+  if (helius) {
+    await helius.disconnect();
+  }
   await db.close();
   process.exit(0);
 });
@@ -446,7 +465,9 @@ process.on('SIGTERM', async () => {
     log(`Error sending shutdown notification: ${error}`, 'ERROR');
   }
   
-  await helius.disconnect();
+  if (helius) {
+    await helius.disconnect();
+  }
   await db.close();
   process.exit(0);
 });
