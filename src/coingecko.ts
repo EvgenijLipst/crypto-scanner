@@ -74,8 +74,37 @@ export class CoinGeckoAPI {
         return cached.data;
       }
 
+      // Пробуем сначала получить через категорию
+      let tokens = await this.fetchSolanaTokensByCategory(limit);
+      
+      // Если не получилось, используем fallback метод
+      if (tokens.length === 0) {
+        log('Category method failed, trying fallback method...');
+        tokens = await this.fetchSolanaTokensFallback(limit);
+      }
+      
+      // Cache the result
+      this.cache.set(cacheKey, {
+        data: tokens,
+        timestamp: Date.now()
+      });
+
+      log(`Successfully fetched ${tokens.length} Solana tokens`);
+      return tokens;
+      
+    } catch (error) {
+      log(`Error fetching top Solana tokens: ${error}`, 'ERROR');
+      return [];
+    }
+  }
+
+  /**
+   * Попытка получить через категорию
+   */
+  private async fetchSolanaTokensByCategory(limit: number): Promise<SolanaToken[]> {
+    try {
       const tokens: SolanaToken[] = [];
-      const perPage = 250; // Maximum per request
+      const perPage = 250;
       const pages = Math.ceil(limit / perPage);
 
       for (let page = 1; page <= pages; page++) {
@@ -84,23 +113,68 @@ export class CoinGeckoAPI {
         
         if (tokens.length >= limit) break;
         
-        // Rate limiting - wait between requests
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
-      const solanaTokens = tokens.slice(0, limit);
-      
-      // Cache the result
-      this.cache.set(cacheKey, {
-        data: solanaTokens,
-        timestamp: Date.now()
-      });
+      return tokens.slice(0, limit);
+    } catch (error) {
+      log(`Category method error: ${error}`, 'ERROR');
+      return [];
+    }
+  }
 
-      log(`Successfully fetched ${solanaTokens.length} Solana tokens`);
-      return solanaTokens;
+  /**
+   * Fallback метод - получить известные Solana токены
+   */
+  private async fetchSolanaTokensFallback(limit: number): Promise<SolanaToken[]> {
+    try {
+      // Список известных Solana токенов
+      const knownSolanaTokens = [
+        'solana', 'serum', 'raydium', 'orca', 'marinade', 'mercurial', 
+        'saber', 'step-finance', 'rope-token', 'bonfida', 'oxygen',
+        'tulip', 'sunny-aggregator', 'jet', 'apricot', 'friktion',
+        'hedge', 'port-finance', 'larix', 'quarry', 'cashio',
+        'star-atlas', 'star-atlas-dao', 'genopets', 'aurory',
+        'defi-land', 'grape-2', 'media-network', 'maps', 'only1',
+        'synthetify-token', 'cope', 'fida', 'kin', 'hxro'
+      ];
+
+      const tokens: SolanaToken[] = [];
+      
+      // Получаем данные по каждому токену
+      for (let i = 0; i < Math.min(knownSolanaTokens.length, limit); i++) {
+        try {
+          const tokenId = knownSolanaTokens[i];
+          const tokenData = await this.getTokenDetails(tokenId);
+          
+          if (tokenData && tokenData.platforms?.solana) {
+            tokens.push({
+              mint: tokenData.platforms.solana,
+              symbol: tokenData.symbol?.toUpperCase() || 'UNKNOWN',
+              name: tokenData.name || 'Unknown Token',
+              marketCap: tokenData.market_data?.market_cap?.usd || 0,
+              fdv: tokenData.market_data?.fully_diluted_valuation?.usd || 0,
+              volume24h: tokenData.market_data?.total_volume?.usd || 0,
+              priceUsd: tokenData.market_data?.current_price?.usd || 0,
+              priceChange24h: tokenData.market_data?.price_change_percentage_24h || 0,
+              age: this.calculateTokenAge(tokenData.market_data?.ath_date?.usd || new Date().toISOString()),
+              lastUpdated: tokenData.last_updated || new Date().toISOString()
+            });
+          }
+          
+          // Rate limiting
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+        } catch (error) {
+          log(`Error fetching token ${knownSolanaTokens[i]}: ${error}`, 'ERROR');
+        }
+      }
+
+      log(`Fallback method found ${tokens.length} Solana tokens`);
+      return tokens;
       
     } catch (error) {
-      log(`Error fetching top Solana tokens: ${error}`, 'ERROR');
+      log(`Fallback method error: ${error}`, 'ERROR');
       return [];
     }
   }
