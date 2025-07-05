@@ -216,7 +216,7 @@ async function initialize() {
     log('🧪 Testing Jupiter API...');
     const testQuote = await jupiter.getQuote(
       'So11111111111111111111111111111111111111112', // SOL
-      'EPjFWdd5AufqSSqeM2qA9G4KJ9b9wiG9vG7bG6wGw7bS', // USDC
+      'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC (правильный адрес)
       1000000000 // 1 SOL
     );
     log(`✅ Jupiter API working - got quote: ${testQuote ? 'success' : 'failed'}`);
