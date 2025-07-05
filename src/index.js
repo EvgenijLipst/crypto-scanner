@@ -58,11 +58,13 @@ let apiUsageStats = {
     }
 };
 /**
- * Ежедневное обновление списка токенов (CoinGecko - минимум)
+ * Ежедневное обновление списка токенов (сначала база, потом CoinGecko)
  */
 async function dailyTokenRefresh() {
     try {
         (0, utils_1.log)('🔄 Daily token refresh starting...');
+        // Сначала очищаем старые данные из coin_data
+        await db.cleanupOldCoinData(48);
         // Проверяем лимиты CoinGecko
         const today = new Date().toDateString();
         if (apiUsageStats.coingecko.lastReset !== today) {
@@ -73,16 +75,17 @@ async function dailyTokenRefresh() {
             (0, utils_1.log)('⚠️ CoinGecko daily limit reached, skipping refresh');
             return;
         }
-        // Получаем топ токены для мониторинга
+        // Получаем топ токены для мониторинга (сначала из базы, потом из CoinGecko)
         const tokens = await tokenAnalyzer.getTopTokensForMonitoring();
-        apiUsageStats.coingecko.dailyUsage += 5; // Примерно 5 запросов на обновление
-        (0, utils_1.log)(`✅ Daily refresh complete: ${tokens.length} tokens ready for monitoring`);
+        // Увеличиваем счетчик только если реально использовали CoinGecko
+        // (TokenAnalyzer сам решает - база или CoinGecko)
+        (0, utils_1.log)(`✅ Token refresh complete: ${tokens.length} tokens ready for monitoring`);
         // Отправляем отчет
         await sendDailyReport(tokens.length);
     }
     catch (error) {
-        (0, utils_1.log)(`❌ Error in daily token refresh: ${error}`, 'ERROR');
-        await tg.sendErrorMessage(`Daily Token Refresh Error: ${error}`);
+        (0, utils_1.log)(`❌ Error in token refresh: ${error}`, 'ERROR');
+        await tg.sendErrorMessage(`Token Refresh Error: ${error}`);
     }
 }
 /**
@@ -224,6 +227,15 @@ async function start() {
         await initialize();
         // Планируем ежедневное обновление токенов (раз в 24 часа)
         setInterval(dailyTokenRefresh, 24 * 60 * 60 * 1000);
+        // Планируем очистку старых данных (каждые 12 часов)
+        setInterval(async () => {
+            try {
+                await db.cleanupOldCoinData(48);
+            }
+            catch (error) {
+                (0, utils_1.log)(`Error in cleanup: ${error}`, 'ERROR');
+            }
+        }, 12 * 60 * 60 * 1000);
         // Планируем диагностику (каждые 10 минут)
         setInterval(async () => {
             try {

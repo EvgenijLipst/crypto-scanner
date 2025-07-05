@@ -206,6 +206,69 @@ export class Database {
   }
 
   /**
+   * Получить все свежие токены из coin_data (не старше 24 часов)
+   */
+  async getFreshTokensFromCoinData(network: string = 'Solana', maxAgeHours: number = 24): Promise<any[]> {
+    try {
+      const res = await this.pool.query(`
+        SELECT coin_id, network, price, volume, timestamp 
+        FROM coin_data 
+        WHERE network = $1 
+        AND timestamp > NOW() - INTERVAL '${maxAgeHours} hours'
+        ORDER BY volume DESC
+      `, [network]);
+      
+      log(`📊 Found ${res.rows.length} fresh tokens in coin_data (last ${maxAgeHours} hours)`);
+      return res.rows;
+    } catch (error) {
+      log(`Error getting fresh tokens from coin_data: ${error}`, 'ERROR');
+      return [];
+    }
+  }
+
+  /**
+   * Проверить, есть ли достаточно свежих токенов в базе
+   */
+  async hasFreshTokens(network: string = 'Solana', minCount: number = 500, maxAgeHours: number = 24): Promise<boolean> {
+    try {
+      const res = await this.pool.query(`
+        SELECT COUNT(*) as count
+        FROM coin_data 
+        WHERE network = $1 
+        AND timestamp > NOW() - INTERVAL '${maxAgeHours} hours'
+      `, [network]);
+      
+      const count = parseInt(res.rows[0].count);
+      log(`🔍 Database check: ${count} fresh tokens found (need ${minCount})`);
+      return count >= minCount;
+    } catch (error) {
+      log(`Error checking fresh tokens: ${error}`, 'ERROR');
+      return false;
+    }
+  }
+
+  /**
+   * Очистить старые данные из coin_data (старше 48 часов)
+   */
+  async cleanupOldCoinData(maxAgeHours: number = 48): Promise<void> {
+    try {
+      const res = await this.pool.query(`
+        DELETE FROM coin_data 
+        WHERE timestamp < NOW() - INTERVAL '${maxAgeHours} hours'
+      `);
+      
+      const deletedCount = res.rowCount || 0;
+      if (deletedCount > 0) {
+        log(`🧹 Cleaned up ${deletedCount} old coin_data records (older than ${maxAgeHours} hours)`);
+      } else {
+        log(`🧹 No old coin_data records to clean up`);
+      }
+    } catch (error) {
+      log(`Error cleaning up old coin_data: ${error}`, 'ERROR');
+    }
+  }
+
+  /**
    * Получить информацию о пуле
    */
   async getPool(mint: string): Promise<PoolRow | null> {

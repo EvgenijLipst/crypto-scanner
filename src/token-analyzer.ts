@@ -71,20 +71,48 @@ export class TokenAnalyzer {
   }
 
   /**
-   * Главный метод - получить топ токены один раз в день из CoinGecko
+   * Главный метод - получить топ токены (сначала из базы, потом из CoinGecko)
    */
   async getTopTokensForMonitoring(): Promise<SolanaToken[]> {
     try {
       const now = Date.now();
       
-      // Проверяем кэш (обновляем только раз в день)
+      // Проверяем кэш в памяти (быстрая проверка)
       if (this.topTokensCache.length > 0 && 
           now - this.topTokensCacheTime < this.topTokensCacheTimeout) {
-        log('Using cached top tokens list (daily refresh)');
+        log('Using cached top tokens list (memory cache)');
         return this.topTokensCache;
       }
 
-      log('🔄 Daily refresh: Fetching top tokens from CoinGecko...');
+      log('🔄 Token refresh: Checking database first...');
+      
+      // Сначала проверяем базу данных - есть ли свежие токены
+      const hasFreshTokens = await this.database.hasFreshTokens('Solana', 500, 24);
+      
+      if (hasFreshTokens) {
+        log('✅ Found fresh tokens in database, using them instead of CoinGecko');
+        const tokens = await this.loadTokensFromDatabase();
+        
+        if (tokens.length > 0) {
+          // Применяем базовые фильтры
+          const filteredTokens = this.applyBasicFilters(tokens);
+          log(`Database refresh: ${filteredTokens.length} tokens after basic filters`);
+
+          // Кэшируем результат
+          this.topTokensCache = filteredTokens;
+          this.topTokensCacheTime = now;
+          this.lastFullRefresh = now;
+
+          // Обновляем список для мониторинга
+          this.updateMonitoredTokens(filteredTokens);
+
+          log(`✅ Database refresh complete: ${filteredTokens.length} tokens cached for monitoring`);
+          return filteredTokens;
+        }
+      }
+
+      // Если в базе нет свежих токенов - запрашиваем CoinGecko
+      log('🔄 No fresh tokens in database, fetching from CoinGecko...');
       
       // Получаем только топ-500 токенов (экономим CoinGecko кредиты)
       const tokens = await this.coingecko.getTopSolanaTokens(500);
@@ -96,7 +124,7 @@ export class TokenAnalyzer {
 
       // Применяем базовые фильтры
       const filteredTokens = this.applyBasicFilters(tokens);
-      log(`Daily refresh: ${filteredTokens.length} tokens after basic filters`);
+      log(`CoinGecko refresh: ${filteredTokens.length} tokens after basic filters`);
 
       // Сохраняем все токены в coin_data таблицу
       await this.saveTokensToCoinData(tokens);
@@ -109,12 +137,41 @@ export class TokenAnalyzer {
       // Обновляем список для мониторинга
       this.updateMonitoredTokens(filteredTokens);
 
-      log(`✅ Daily refresh complete: ${filteredTokens.length} tokens cached for monitoring`);
+      log(`✅ CoinGecko refresh complete: ${filteredTokens.length} tokens cached for monitoring`);
       return filteredTokens;
       
     } catch (error) {
-      log(`Error in daily tokens refresh: ${error}`, 'ERROR');
+      log(`Error in tokens refresh: ${error}`, 'ERROR');
       return this.topTokensCache; // Возвращаем старый кэш при ошибке
+    }
+  }
+
+  /**
+   * Загрузить токены из базы данных coin_data
+   */
+  private async loadTokensFromDatabase(): Promise<SolanaToken[]> {
+    try {
+      const freshTokens = await this.database.getFreshTokensFromCoinData('Solana', 24);
+      
+      // Преобразуем данные из базы в формат SolanaToken
+      const tokens: SolanaToken[] = freshTokens.map(row => ({
+        mint: `${row.coin_id}_mint_placeholder`, // Нет mint в coin_data, используем placeholder
+        symbol: row.coin_id.toUpperCase(),
+        name: row.coin_id,
+        marketCap: row.price * 1000000, // Примерная оценка
+        fdv: row.price * 1000000,
+        volume24h: row.volume,
+        priceUsd: row.price,
+        priceChange24h: 0,
+        age: 15, // Предполагаем что токены достаточно старые
+        lastUpdated: row.timestamp
+      }));
+
+      log(`📊 Loaded ${tokens.length} tokens from coin_data table`);
+      return tokens;
+    } catch (error) {
+      log(`Error loading tokens from database: ${error}`, 'ERROR');
+      return [];
     }
   }
 

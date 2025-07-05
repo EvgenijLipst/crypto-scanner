@@ -22,18 +22,39 @@ class TokenAnalyzer {
         this.config = config;
     }
     /**
-     * Главный метод - получить топ токены один раз в день из CoinGecko
+     * Главный метод - получить топ токены (сначала из базы, потом из CoinGecko)
      */
     async getTopTokensForMonitoring() {
         try {
             const now = Date.now();
-            // Проверяем кэш (обновляем только раз в день)
+            // Проверяем кэш в памяти (быстрая проверка)
             if (this.topTokensCache.length > 0 &&
                 now - this.topTokensCacheTime < this.topTokensCacheTimeout) {
-                (0, utils_1.log)('Using cached top tokens list (daily refresh)');
+                (0, utils_1.log)('Using cached top tokens list (memory cache)');
                 return this.topTokensCache;
             }
-            (0, utils_1.log)('🔄 Daily refresh: Fetching top tokens from CoinGecko...');
+            (0, utils_1.log)('🔄 Token refresh: Checking database first...');
+            // Сначала проверяем базу данных - есть ли свежие токены
+            const hasFreshTokens = await this.database.hasFreshTokens('Solana', 500, 24);
+            if (hasFreshTokens) {
+                (0, utils_1.log)('✅ Found fresh tokens in database, using them instead of CoinGecko');
+                const tokens = await this.loadTokensFromDatabase();
+                if (tokens.length > 0) {
+                    // Применяем базовые фильтры
+                    const filteredTokens = this.applyBasicFilters(tokens);
+                    (0, utils_1.log)(`Database refresh: ${filteredTokens.length} tokens after basic filters`);
+                    // Кэшируем результат
+                    this.topTokensCache = filteredTokens;
+                    this.topTokensCacheTime = now;
+                    this.lastFullRefresh = now;
+                    // Обновляем список для мониторинга
+                    this.updateMonitoredTokens(filteredTokens);
+                    (0, utils_1.log)(`✅ Database refresh complete: ${filteredTokens.length} tokens cached for monitoring`);
+                    return filteredTokens;
+                }
+            }
+            // Если в базе нет свежих токенов - запрашиваем CoinGecko
+            (0, utils_1.log)('🔄 No fresh tokens in database, fetching from CoinGecko...');
             // Получаем только топ-500 токенов (экономим CoinGecko кредиты)
             const tokens = await this.coingecko.getTopSolanaTokens(500);
             if (tokens.length === 0) {
@@ -42,7 +63,7 @@ class TokenAnalyzer {
             }
             // Применяем базовые фильтры
             const filteredTokens = this.applyBasicFilters(tokens);
-            (0, utils_1.log)(`Daily refresh: ${filteredTokens.length} tokens after basic filters`);
+            (0, utils_1.log)(`CoinGecko refresh: ${filteredTokens.length} tokens after basic filters`);
             // Сохраняем все токены в coin_data таблицу
             await this.saveTokensToCoinData(tokens);
             // Кэшируем результат
@@ -51,12 +72,39 @@ class TokenAnalyzer {
             this.lastFullRefresh = now;
             // Обновляем список для мониторинга
             this.updateMonitoredTokens(filteredTokens);
-            (0, utils_1.log)(`✅ Daily refresh complete: ${filteredTokens.length} tokens cached for monitoring`);
+            (0, utils_1.log)(`✅ CoinGecko refresh complete: ${filteredTokens.length} tokens cached for monitoring`);
             return filteredTokens;
         }
         catch (error) {
-            (0, utils_1.log)(`Error in daily tokens refresh: ${error}`, 'ERROR');
+            (0, utils_1.log)(`Error in tokens refresh: ${error}`, 'ERROR');
             return this.topTokensCache; // Возвращаем старый кэш при ошибке
+        }
+    }
+    /**
+     * Загрузить токены из базы данных coin_data
+     */
+    async loadTokensFromDatabase() {
+        try {
+            const freshTokens = await this.database.getFreshTokensFromCoinData('Solana', 24);
+            // Преобразуем данные из базы в формат SolanaToken
+            const tokens = freshTokens.map(row => ({
+                mint: `${row.coin_id}_mint_placeholder`, // Нет mint в coin_data, используем placeholder
+                symbol: row.coin_id.toUpperCase(),
+                name: row.coin_id,
+                marketCap: row.price * 1000000, // Примерная оценка
+                fdv: row.price * 1000000,
+                volume24h: row.volume,
+                priceUsd: row.price,
+                priceChange24h: 0,
+                age: 15, // Предполагаем что токены достаточно старые
+                lastUpdated: row.timestamp
+            }));
+            (0, utils_1.log)(`📊 Loaded ${tokens.length} tokens from coin_data table`);
+            return tokens;
+        }
+        catch (error) {
+            (0, utils_1.log)(`Error loading tokens from database: ${error}`, 'ERROR');
+            return [];
         }
     }
     /**
