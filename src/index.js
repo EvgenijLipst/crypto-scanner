@@ -17,7 +17,7 @@ const requiredEnvVars = [
     'TELEGRAM_TOKEN',
     'TELEGRAM_CHAT_ID',
     'COINGECKO_API_KEY',
-    'HELIUS_KEY'
+    'HELIUS_API_KEY'
 ];
 for (const envVar of requiredEnvVars) {
     if (!process.env[envVar]) {
@@ -30,7 +30,7 @@ const db = new database_1.Database(process.env.DATABASE_URL);
 const tg = new telegram_1.TelegramBot(process.env.TELEGRAM_TOKEN, process.env.TELEGRAM_CHAT_ID);
 const jupiter = new jupiter_1.JupiterAPI();
 const coingecko = new coingecko_1.CoinGeckoAPI(process.env.COINGECKO_API_KEY);
-const helius = new helius_1.HeliusWebSocket(process.env.HELIUS_KEY, db, tg);
+const helius = new helius_1.HeliusWebSocket(process.env.HELIUS_API_KEY, db, tg);
 // Конфигурация анализа из переменных окружения
 const analysisConfig = {
     minTokenAgeDays: parseInt(process.env.MIN_TOKEN_AGE_DAYS || '14'),

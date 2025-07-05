@@ -53,6 +53,9 @@ CREATE TABLE IF NOT EXISTS coin_data (
   timestamp TIMESTAMP DEFAULT NOW()
 );
 
+-- Уникальное ограничение для предотвращения дублирования токенов
+ALTER TABLE coin_data ADD CONSTRAINT coin_data_coin_network_uidx UNIQUE (coin_id, network);
+
 -- Индексы для оптимизации
 CREATE INDEX IF NOT EXISTS idx_pools_first_seen ON pools (first_seen_ts);
 CREATE INDEX IF NOT EXISTS idx_ohlcv_mint_ts ON ohlcv (mint, ts DESC);
@@ -60,4 +63,5 @@ CREATE INDEX IF NOT EXISTS idx_signals_notified ON signals (notified, signal_ts)
 CREATE INDEX IF NOT EXISTS idx_trades_mint ON trades (mint);
 CREATE INDEX IF NOT EXISTS idx_trades_closed_at ON trades (closed_at);
 CREATE INDEX IF NOT EXISTS idx_coin_data_mint ON coin_data (mint);
-CREATE INDEX IF NOT EXISTS idx_coin_data_updated_at ON coin_data (updated_at); 
+CREATE INDEX IF NOT EXISTS idx_coin_data_network_timestamp ON coin_data (network, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_coin_data_timestamp ON coin_data (timestamp DESC); 
