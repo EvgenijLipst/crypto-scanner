@@ -65,9 +65,81 @@ export class CoinGeckoAPI {
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
   private cacheTimeout = 5 * 60 * 1000; // 5 minutes
   private solanaTokensCache: CoinListItem[] = [];
+  private solanaTokensCacheTime = 0;
+  private solanaTokensCacheTimeout = 30 * 60 * 1000; // 30 minutes for tokens list
+  
+  // Rate limiting для бесплатного API
+  private lastRequestTime = 0;
+  private requestDelay = 2000; // 2 секунды между запросами для бесплатного API
+  private maxRetries = 3;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
+    // Если есть API ключ, уменьшаем задержку
+    if (apiKey && apiKey.length > 0) {
+      this.requestDelay = 1000; // 1 секунда для API с ключом
+    }
+  }
+
+  /**
+   * Ожидание для соблюдения rate limiting
+   */
+  private async waitForRateLimit(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    
+    if (timeSinceLastRequest < this.requestDelay) {
+      const waitTime = this.requestDelay - timeSinceLastRequest;
+      log(`Rate limiting: waiting ${waitTime}ms before next request`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    
+    this.lastRequestTime = Date.now();
+  }
+
+  /**
+   * Выполнить запрос с retry логикой
+   */
+  private async makeRequest(url: string, params: URLSearchParams, headers: Record<string, string>): Promise<any> {
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        await this.waitForRateLimit();
+        
+        const response = await fetch(`${url}?${params}`, { headers });
+
+        if (response.status === 429) {
+          // Rate limit exceeded
+          const retryAfter = response.headers.get('retry-after');
+          const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 60000; // Default 1 minute
+          log(`Rate limit exceeded. Waiting ${waitTime}ms before retry ${attempt}/${this.maxRetries}`, 'WARN');
+          
+          if (attempt < this.maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            continue;
+          }
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`CoinGecko API error: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        return await response.json();
+        
+      } catch (error) {
+        log(`Request attempt ${attempt}/${this.maxRetries} failed: ${error}`, 'WARN');
+        
+        if (attempt === this.maxRetries) {
+          throw error;
+        }
+        
+        // Exponential backoff
+        const backoffDelay = Math.min(1000 * Math.pow(2, attempt), 30000);
+        await new Promise(resolve => setTimeout(resolve, backoffDelay));
+      }
+    }
+    
+    throw new Error('Max retries exceeded');
   }
 
   /**
@@ -93,8 +165,9 @@ export class CoinGeckoAPI {
         return [];
       }
 
-      // Шаг 2: Получить рыночные данные для топ токенов
-      const topTokens = await this.getMarketDataForTokens(solanaTokens, limit);
+      // Шаг 2: Получить рыночные данные для топ токенов (ограничиваем до разумного количества)
+      const tokensToAnalyze = Math.min(solanaTokens.length, limit, 500); // Максимум 500 токенов за раз
+      const topTokens = await this.getMarketDataForTokens(solanaTokens.slice(0, tokensToAnalyze), tokensToAnalyze);
       
       // Cache the result
       this.cache.set(cacheKey, {
@@ -116,8 +189,10 @@ export class CoinGeckoAPI {
    */
   private async getAllSolanaTokens(): Promise<CoinListItem[]> {
     try {
-      // Проверяем кэш
-      if (this.solanaTokensCache.length > 0) {
+      // Проверяем кэш с более длительным временем жизни
+      const now = Date.now();
+      if (this.solanaTokensCache.length > 0 && 
+          now - this.solanaTokensCacheTime < this.solanaTokensCacheTimeout) {
         log('Using cached Solana tokens list');
         return this.solanaTokensCache;
       }
@@ -144,22 +219,16 @@ export class CoinGeckoAPI {
       //   }
       // }
 
-      const response = await fetch(`${url}?${params}`, { headers });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`CoinGecko API error: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-
-      const allCoins: CoinListItem[] = await response.json();
+      const allCoins: CoinListItem[] = await this.makeRequest(url, params, headers);
       log(`Retrieved ${allCoins.length} total coins`);
 
       // Фильтруем только Solana токены
       const solanaTokens = allCoins.filter(coin => coin.platforms?.solana);
       log(`Found ${solanaTokens.length} Solana tokens`);
 
-      // Кэшируем результат
+      // Кэшируем результат с таймстампом
       this.solanaTokensCache = solanaTokens;
+      this.solanaTokensCacheTime = now;
       
       return solanaTokens;
       
@@ -177,15 +246,17 @@ export class CoinGeckoAPI {
       log(`Getting market data for ${Math.min(tokens.length, limit)} tokens...`);
       
       const results: SolanaToken[] = [];
-      const batchSize = 100; // Получаем цены по 100 токенов за раз
+      const batchSize = 50; // Уменьшаем размер батча для бесплатного API
       
       // Разбиваем на батчи
-      for (let i = 0; i < Math.min(tokens.length, limit); i += batchSize) {
-        const batch = tokens.slice(i, i + batchSize);
+      const tokensToProcess = tokens.slice(0, Math.min(tokens.length, limit));
+      
+      for (let i = 0; i < tokensToProcess.length; i += batchSize) {
+        const batch = tokensToProcess.slice(i, i + batchSize);
         const batchIds = batch.map(token => token.id).join(',');
         
         try {
-          log(`Fetching batch ${Math.floor(i / batchSize) + 1}: tokens ${i + 1}-${Math.min(i + batchSize, tokens.length)}`);
+          log(`Fetching batch ${Math.floor(i / batchSize) + 1}: tokens ${i + 1}-${Math.min(i + batchSize, tokensToProcess.length)}`);
           
           // Используем бесплатный API для стабильности
           const url = `${this.baseUrl}/simple/price`;
@@ -212,14 +283,7 @@ export class CoinGeckoAPI {
           //   }
           // }
 
-          const response = await fetch(`${url}?${params}`, { headers });
-
-          if (!response.ok) {
-            log(`Error fetching batch ${Math.floor(i / batchSize) + 1}: ${response.status} ${response.statusText}`, 'ERROR');
-            continue;
-          }
-
-          const priceData = await response.json();
+          const priceData = await this.makeRequest(url, params, headers);
           
           // Обрабатываем результаты
           for (const token of batch) {
@@ -242,11 +306,20 @@ export class CoinGeckoAPI {
           
           log(`Batch ${Math.floor(i / batchSize) + 1} completed: ${results.length} tokens with price data`);
           
-          // Rate limiting
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Дополнительная пауза между батчами для бесплатного API
+          if (i + batchSize < tokensToProcess.length) {
+            log(`Waiting 3 seconds before next batch...`);
+            await new Promise(resolve => setTimeout(resolve, 3000));
+          }
           
         } catch (error) {
           log(`Error processing batch ${Math.floor(i / batchSize) + 1}: ${error}`, 'ERROR');
+          
+          // При ошибке rate limit делаем большую паузу
+          if (error instanceof Error && error.toString().includes('429')) {
+            log('Rate limit error detected, waiting 60 seconds...', 'WARN');
+            await new Promise(resolve => setTimeout(resolve, 60000));
+          }
         }
       }
 
