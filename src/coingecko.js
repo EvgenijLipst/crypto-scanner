@@ -111,11 +111,12 @@ class CoinGeckoAPI {
             if (solanaTokens.length === 0) {
                 return [];
             }
-            // Шаг 2: Получить рыночные данные для первых N токенов (ограничиваем до 500 для избежания rate limit)
-            const maxTokensPerRequest = Math.min(500, limit); // Ограничиваем до 500 токенов за раз
+            // Шаг 2: Получить рыночные данные для первых N токенов (до 2000)
+            const maxTokensPerRequest = Math.min(2000, limit); // Увеличиваем лимит до 2000
             const tokensToAnalyze = Math.min(solanaTokens.length, maxTokensPerRequest);
+            (0, utils_1.log)(`Preparing to fetch market data for ${tokensToAnalyze} tokens`);
             const topTokens = await this.getMarketDataForTokens(solanaTokens.slice(0, tokensToAnalyze));
-            (0, utils_1.log)(`✅ Successfully fetched ${topTokens.length} Solana tokens (used ${this.dailyUsage}/${this.dailyLimit} daily credits)`);
+            (0, utils_1.log)(`✅ Successfully fetched market data for ${topTokens.length} Solana tokens (used ${this.dailyUsage}/${this.dailyLimit} daily credits)`);
             return topTokens;
         }
         catch (error) {
@@ -165,6 +166,7 @@ class CoinGeckoAPI {
         try {
             (0, utils_1.log)(`Getting market data for ${tokens.length} tokens...`);
             const results = [];
+            const loadedSymbols = [];
             const batchSize = 50; // Увеличиваем батч для получения большего количества токенов
             for (let i = 0; i < tokens.length; i += batchSize) {
                 // Проверяем лимит перед каждым батчем
@@ -207,6 +209,7 @@ class CoinGeckoAPI {
                                 lastUpdated: data.last_updated_at ? new Date(data.last_updated_at * 1000).toISOString() : new Date().toISOString()
                             };
                             results.push(solanaToken);
+                            loadedSymbols.push(`${solanaToken.symbol}:${solanaToken.mint}`);
                             // Логируем каждый токен детально
                             (0, utils_1.log)(`📊 Token loaded: ${solanaToken.symbol} (${solanaToken.name})`);
                             (0, utils_1.log)(`   • Mint: ${solanaToken.mint}`);
@@ -242,6 +245,8 @@ class CoinGeckoAPI {
             // Сортируем по market cap
             results.sort((a, b) => b.marketCap - a.marketCap);
             (0, utils_1.log)(`Successfully retrieved market data for ${results.length} Solana tokens`);
+            (0, utils_1.log)(`LOADED SYMBOLS COUNT: ${loadedSymbols.length}`);
+            (0, utils_1.log)(`LOADED SYMBOLS SAMPLE: ${loadedSymbols.slice(0, 10).join(', ')}`);
             // Итоговая сводка всех токенов
             (0, utils_1.log)(`\n📋 === FINAL TOKEN SUMMARY ===`);
             (0, utils_1.log)(`Total tokens loaded: ${results.length}`);

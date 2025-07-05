@@ -1,4 +1,7 @@
 console.log('=== SIGNAL BOT STARTED ===');
+console.log('🔄 Starting initialization process...');
+console.log(`⏰ Start time: ${new Date().toISOString()}`);
+
 // index.ts - Гибридная система: CoinGecko (минимум) + Helius (активно)
 import { config } from 'dotenv';
 import { Database } from './database';
@@ -11,6 +14,8 @@ import { DiagnosticsSystem } from './diagnostics';
 import { log } from './utils';
 
 config();
+
+console.log('✅ Environment variables loaded');
 
 // Проверяем обязательные переменные окружения
 const requiredEnvVars = [
@@ -28,12 +33,17 @@ for (const envVar of requiredEnvVars) {
   }
 }
 
+console.log('✅ All required environment variables present');
+
 // Инициализация компонентов
+console.log('🔄 Initializing components...');
 const db = new Database(process.env.DATABASE_URL!);
 const tg = new TelegramBot(process.env.TELEGRAM_TOKEN!, process.env.TELEGRAM_CHAT_ID!);
 const jupiter = new JupiterAPI();
 const coingecko = new CoinGeckoAPI(process.env.COINGECKO_API_KEY!);
 const helius = new HeliusWebSocket(process.env.HELIUS_API_KEY!, db, tg);
+
+console.log('✅ Components initialized');
 
 // Конфигурация анализа из переменных окружения
 const analysisConfig: AnalysisConfig = {
@@ -46,7 +56,11 @@ const analysisConfig: AnalysisConfig = {
   priceImpactTestAmount: parseFloat(process.env.PRICE_IMPACT_TEST_AMOUNT || '10')
 };
 
+console.log('✅ Analysis config loaded');
+
 const tokenAnalyzer = new TokenAnalyzer(coingecko, jupiter, db, analysisConfig);
+
+console.log('✅ TokenAnalyzer created');
 
 // Инициализируем систему диагностики
 let diagnostics: DiagnosticsSystem;
@@ -65,15 +79,20 @@ let apiUsageStats = {
   }
 };
 
+console.log('✅ API stats initialized');
+
 /**
  * Обновление списка токенов каждые 48 часов (сначала база, потом CoinGecko)
  */
 async function tokenRefresh() {
   try {
+    console.log('🔄 === TOKEN REFRESH STARTED ===');
     log('🔄 Token refresh starting (48h cycle)...');
     
     // Сначала очищаем старые данные из coin_data (старше 72 часов)
+    console.log('🔄 Cleaning up old coin data...');
     await db.cleanupOldCoinData(72);
+    console.log('✅ Old coin data cleanup completed');
     
     // Проверяем лимиты CoinGecko
     const today = new Date().toDateString();
@@ -87,18 +106,22 @@ async function tokenRefresh() {
       return;
     }
     
+    console.log('🔄 Calling tokenAnalyzer.getTopTokensForMonitoring()...');
     // Получаем топ токены для мониторинга (сначала из базы, потом из CoinGecko)
     const tokens = await tokenAnalyzer.getTopTokensForMonitoring();
+    console.log(`✅ getTopTokensForMonitoring completed, returned ${tokens.length} tokens`);
     
     // Увеличиваем счетчик только если реально использовали CoinGecko
     // (TokenAnalyzer сам решает - база или CoinGecko)
     
     log(`✅ Token refresh complete: ${tokens.length} tokens ready for monitoring`);
+    console.log(`✅ Token refresh complete: ${tokens.length} tokens ready for monitoring`);
     
     // Отправляем отчет
     await sendTokenRefreshReport(tokens.length);
     
   } catch (error) {
+    console.error(`❌ Error in token refresh: ${error}`);
     log(`❌ Error in token refresh: ${error}`, 'ERROR');
     await tg.sendErrorMessage(`Token Refresh Error: ${error}`);
   }

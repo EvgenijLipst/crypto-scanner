@@ -1,0 +1,39 @@
+
+> solana-signal-bot@1.0.0 start
+> node start-signal-bot.js
+
+=== SIGNAL BOT STARTED ===
+🔄 Starting initialization process...
+⏰ Start time: 2025-07-05T22:33:04.148Z
+[dotenv@17.0.1] injecting env (19) from .env – [tip] encrypt with dotenvx: https://dotenvx.com
+✅ Environment variables loaded
+✅ All required environment variables present
+🔄 Initializing components...
+[2025-07-05T22:33:04.195Z] [INFO] Connecting to database: postgresql://[credentials]@ballast.proxy.rlwy.net:44046/railway
+[2025-07-05T22:33:04.196Z] [INFO] TelegramBot constructor received chatId: "331249739" (type: string, length: 9)
+[2025-07-05T22:33:04.196Z] [INFO] Cleaned chatId: "331249739"
+[2025-07-05T22:33:04.196Z] [INFO] parseInt("331249739") = 331249739 (isNaN: false)
+[2025-07-05T22:33:04.196Z] [INFO] TelegramBot initialized with final chat_id: 331249739, token: 8100857719...
+[2025-07-05T22:33:04.196Z] [INFO] Telegram logs will be saved to: /Users/evgenijlipst/Desktop/crypto-scanner/telegram.log
+✅ Components initialized
+✅ Analysis config loaded
+✅ TokenAnalyzer created
+✅ API stats initialized
+[2025-07-05T22:33:04.196Z] [INFO] 🚀 Initializing Hybrid Solana Signal Bot...
+[2025-07-05T22:33:04.196Z] [INFO] Attempting to send message to chat_id: 331249739 with token: 8100857719...
+[2025-07-05T22:33:04.196Z] [INFO] Payload: {"chat_id":331249739,"text":"🚀 **Signal Bot Starting...**\n\n⚙️ **Initialization in progress...**\n• Database connection: Connecting...\n• API testing: Starting...\n• Token loading: Preparing...\n\n📡 **Status:** Initializing services...","parse_mode":"Markdown","disable_web_page_preview":true}
+[2025-07-05T22:33:04.462Z] [INFO] Telegram message sent successfully
+[2025-07-05T22:33:04.463Z] [INFO] Database connection attempt (1/3)...
+[2025-07-05T22:33:05.756Z] [ERROR] Database initialization error (attempts left: 2):
+[2025-07-05T22:33:05.756Z] [ERROR] Error: read ECONNRESET
+[2025-07-05T22:33:07.756Z] [INFO] Database connection attempt (2/3)...
+[2025-07-05T22:33:08.865Z] [ERROR] Database initialization error (attempts left: 1):
+[2025-07-05T22:33:08.866Z] [ERROR] Error: Connection terminated unexpectedly
+[2025-07-05T22:33:10.867Z] [INFO] Database connection attempt (3/3)...
+[2025-07-05T22:33:12.108Z] [ERROR] Database initialization error (attempts left: 0):
+[2025-07-05T22:33:12.110Z] [ERROR] Error: read ECONNRESET
+[2025-07-05T22:33:12.110Z] [ERROR] ❌ Initialization failed: Error: read ECONNRESET
+[2025-07-05T22:33:12.150Z] [INFO] Attempting to send message to chat_id: 331249739 with token: 8100857719...
+[2025-07-05T22:33:12.150Z] [INFO] Payload: {"chat_id":331249739,"text":"🚨 **Signal Bot Initialization Failed!**\n\n❌ **Error:** Error: read ECONNRESET\n\n🔧 **Status:** System failed to start properly\n⚠️ **Action Required:** Check logs and restart\n\n⏰ Failed at: 7/6/2025, 12:33:12 AM","parse_mode":"Markdown","disable_web_page_preview":true}
+[2025-07-05T22:33:12.317Z] [INFO] Telegram message sent successfully
+[2025-07-05T22:33:12.318Z] [ERROR] ❌ Failed to start: Error: read ECONNRESET

@@ -1,0 +1,2642 @@
+
+> solana-signal-bot@1.0.0 start
+> node start-signal-bot.js
+
+=== SIGNAL BOT STARTED ===
+🔄 Starting initialization process...
+⏰ Start time: 2025-07-05T22:55:17.935Z
+[dotenv@17.0.1] injecting env (19) from .env – [tip] encrypt with dotenvx: https://dotenvx.com
+✅ Environment variables loaded
+✅ All required environment variables present
+🔄 Initializing components...
+[2025-07-05T22:55:17.971Z] [INFO] Connecting to database: postgresql://[credentials]@mainline.proxy.rlwy.net:17147/railway
+[2025-07-05T22:55:17.971Z] [INFO] TelegramBot constructor received chatId: "331249739" (type: string, length: 9)
+[2025-07-05T22:55:17.971Z] [INFO] Cleaned chatId: "331249739"
+[2025-07-05T22:55:17.971Z] [INFO] parseInt("331249739") = 331249739 (isNaN: false)
+[2025-07-05T22:55:17.972Z] [INFO] TelegramBot initialized with final chat_id: 331249739, token: 8100857719...
+[2025-07-05T22:55:17.972Z] [INFO] Telegram logs will be saved to: /Users/evgenijlipst/Desktop/crypto-scanner/telegram.log
+✅ Components initialized
+✅ Analysis config loaded
+✅ TokenAnalyzer created
+✅ API stats initialized
+[2025-07-05T22:55:17.972Z] [INFO] 🚀 Initializing Hybrid Solana Signal Bot...
+[2025-07-05T22:55:17.972Z] [INFO] Attempting to send message to chat_id: 331249739 with token: 8100857719...
+[2025-07-05T22:55:17.972Z] [INFO] Payload: {"chat_id":331249739,"text":"🚀 **Signal Bot Starting...**\n\n⚙️ **Initialization in progress...**\n• Database connection: Connecting...\n• API testing: Starting...\n• Token loading: Preparing...\n\n📡 **Status:** Initializing services...","parse_mode":"Markdown","disable_web_page_preview":true}
+[2025-07-05T22:55:18.231Z] [INFO] Telegram message sent successfully
+[2025-07-05T22:55:18.232Z] [INFO] Database connection attempt (1/3)...
+[2025-07-05T22:55:19.689Z] [INFO] Database client connected
+[2025-07-05T22:55:19.690Z] [INFO] Connected to database, creating tables...
+[2025-07-05T22:55:19.690Z] [INFO] Creating pools table...
+[2025-07-05T22:55:19.745Z] [INFO] Creating ohlcv table...
+[2025-07-05T22:55:19.810Z] [INFO] Ensuring coin_data table compatibility...
+[2025-07-05T22:55:19.925Z] [INFO] ✅ Unique constraint already exists
+[2025-07-05T22:55:20.046Z] [INFO] Recreating signals table with correct structure...
+[2025-07-05T22:55:20.181Z] [INFO] Successfully recreated signals table with mint field
+[2025-07-05T22:55:20.181Z] [INFO] Creating indexes...
+[2025-07-05T22:55:20.360Z] [INFO] Database initialized successfully
+[2025-07-05T22:55:20.367Z] [INFO] ✅ Database initialized
+[2025-07-05T22:55:20.367Z] [INFO] 🔧 Diagnostics system initialized with auto-repair capabilities
+[2025-07-05T22:55:20.367Z] [INFO] ✅ Diagnostics system initialized
+[2025-07-05T22:55:20.367Z] [INFO] 🧪 Testing CoinGecko API...
+[2025-07-05T22:55:20.367Z] [INFO] 🔄 Fetching top 10 Solana tokens (optimized)...
+[2025-07-05T22:55:20.367Z] [INFO] Fetching complete coins list (once per 48 hours)...
+[2025-07-05T22:55:20.627Z] [INFO] Retrieved 17595 total coins
+[2025-07-05T22:55:20.628Z] [INFO] Found 4467 Solana tokens
+[2025-07-05T22:55:20.628Z] [INFO] Found 4467 total Solana tokens
+[2025-07-05T22:55:20.628Z] [INFO] Preparing to fetch market data for 10 tokens
+[2025-07-05T22:55:20.628Z] [INFO] Getting market data for 10 tokens...
+[2025-07-05T22:55:20.628Z] [INFO] Fetching batch 1: tokens 1-10
+[2025-07-05T22:55:20.628Z] [INFO] Rate limiting: waiting 2739ms before next request
+[2025-07-05T22:55:23.813Z] [INFO] 📊 Token loaded: 000 (000 Capital)
+[2025-07-05T22:55:23.813Z] [INFO]    • Mint: CVU6QRwpHz94UGyPFFehm1G1sFYRH7xDk9UhZ9RApump
+[2025-07-05T22:55:23.813Z] [INFO]    • Price: $0.00019585
+[2025-07-05T22:55:23.850Z] [INFO]    • Market Cap: $195,852.453
+[2025-07-05T22:55:23.850Z] [INFO]    • Volume 24h: $109.679
+[2025-07-05T22:55:23.850Z] [INFO] 📊 Token loaded: FIGS (10 figs)
+[2025-07-05T22:55:23.850Z] [INFO]    • Mint: DpeJ6CkihBJzSNvgMcB9e56NT6Qiu2HL3nAGwYWUJESt
+[2025-07-05T22:55:23.850Z] [INFO]    • Price: $6309.84
+[2025-07-05T22:55:23.850Z] [INFO]    • Market Cap: $63,171.863
+[2025-07-05T22:55:23.850Z] [INFO]    • Volume 24h: $67.879
+[2025-07-05T22:55:23.850Z] [INFO] 📊 Token loaded: $1 ($1)
+[2025-07-05T22:55:23.850Z] [INFO]    • Mint: 4UTEFQjNMvfQF5NT8mVfXdMAKoL7hS7i9U4mMVAzpump
+[2025-07-05T22:55:23.850Z] [INFO]    • Price: $0.00002349
+[2025-07-05T22:55:23.850Z] [INFO]    • Market Cap: $23,515.111
+[2025-07-05T22:55:23.850Z] [INFO]    • Volume 24h: $1.409
+[2025-07-05T22:55:23.850Z] [INFO] 📊 Token loaded: 1HUB (1Hub.ai)
+[2025-07-05T22:55:23.850Z] [INFO]    • Mint: 1HubD1oE9D8L5FQuSBs8r8NTgL3BgMqK1nkDx6Bjch4
+[2025-07-05T22:55:23.850Z] [INFO]    • Price: $0.0000365
+[2025-07-05T22:55:23.850Z] [INFO]    • Market Cap: $15,891.464
+[2025-07-05T22:55:23.850Z] [INFO]    • Volume 24h: $2.72
+[2025-07-05T22:55:23.850Z] [INFO] 📊 Token loaded: CHEF (CoinChef)
+[2025-07-05T22:55:23.850Z] [INFO]    • Mint: CHEFTKSZVv6rgUAR8EZVirSVX685HHiEnihvEsdz77LP
+[2025-07-05T22:55:23.850Z] [INFO]    • Price: $0.00039419
+[2025-07-05T22:55:23.850Z] [INFO]    • Market Cap: $113,328.879
+[2025-07-05T22:55:23.850Z] [INFO]    • Volume 24h: $5.369
+[2025-07-05T22:55:23.850Z] [INFO] 📊 Token loaded: 1% (1%)
+[2025-07-05T22:55:23.850Z] [INFO]    • Mint: 3dwu2tw7kBFZvWEdJMbPCGm7MBwgziABChLV1kGspump
+[2025-07-05T22:55:23.850Z] [INFO]    • Price: $0.00006346
+[2025-07-05T22:55:23.850Z] [INFO]    • Market Cap: $63,572.78
+[2025-07-05T22:55:23.850Z] [INFO]    • Volume 24h: $189.096
+[2025-07-05T22:55:23.850Z] [INFO] 📊 Token loaded: PEANUT (OG Peanut)
+[2025-07-05T22:55:23.850Z] [INFO]    • Mint: bGxHNbsacaVL35pkYWae5PYQDZXSpuQb3QDyW31pump
+[2025-07-05T22:55:23.850Z] [INFO]    • Price: $0.00044498
+[2025-07-05T22:55:23.850Z] [INFO]    • Market Cap: $444,842.244
+[2025-07-05T22:55:23.850Z] [INFO]    • Volume 24h: $169,405.147
+[2025-07-05T22:55:23.850Z] [INFO] 📊 Token loaded: 2025 (2025 TOKEN)
+[2025-07-05T22:55:23.850Z] [INFO]    • Mint: J5ELogmzrdKiuSZxvKSKtfs8JRXMoR7YQEBHebr7pump
+[2025-07-05T22:55:23.850Z] [INFO]    • Price: $0.00001443
+[2025-07-05T22:55:23.850Z] [INFO]    • Market Cap: $14,427.885
+[2025-07-05T22:55:23.850Z] [INFO]    • Volume 24h: $82.12
+[2025-07-05T22:55:23.850Z] [INFO] 📊 Token loaded: 2077 (2077 CODE)
+[2025-07-05T22:55:23.850Z] [INFO]    • Mint: HNi43Ue8Qz8XegA9q8AWbV9DxzJxcexm8czE1fhppump
+[2025-07-05T22:55:23.850Z] [INFO]    • Price: $0.00005287
+[2025-07-05T22:55:23.850Z] [INFO]    • Market Cap: $33,698.855
+[2025-07-05T22:55:23.850Z] [INFO]    • Volume 24h: $37.624
+[2025-07-05T22:55:23.850Z] [INFO] 📊 Token loaded: 2080 (2080)
+[2025-07-05T22:55:23.850Z] [INFO]    • Mint: Dwri1iuy5pDFf2u2GwwsH2MxjR6dATyDv9En9Jk8Fkof
+[2025-07-05T22:55:23.850Z] [INFO]    • Price: $0.00118688
+[2025-07-05T22:55:23.850Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:23.850Z] [INFO]    • Volume 24h: $2.986
+[2025-07-05T22:55:23.850Z] [INFO] Batch completed: 10 tokens with price data
+[2025-07-05T22:55:23.851Z] [INFO] Successfully retrieved market data for 10 Solana tokens
+[2025-07-05T22:55:23.851Z] [INFO] LOADED SYMBOLS COUNT: 10
+[2025-07-05T22:55:23.851Z] [INFO] LOADED SYMBOLS SAMPLE: 000:CVU6QRwpHz94UGyPFFehm1G1sFYRH7xDk9UhZ9RApump, FIGS:DpeJ6CkihBJzSNvgMcB9e56NT6Qiu2HL3nAGwYWUJESt, $1:4UTEFQjNMvfQF5NT8mVfXdMAKoL7hS7i9U4mMVAzpump, 1HUB:1HubD1oE9D8L5FQuSBs8r8NTgL3BgMqK1nkDx6Bjch4, CHEF:CHEFTKSZVv6rgUAR8EZVirSVX685HHiEnihvEsdz77LP, 1%:3dwu2tw7kBFZvWEdJMbPCGm7MBwgziABChLV1kGspump, PEANUT:bGxHNbsacaVL35pkYWae5PYQDZXSpuQb3QDyW31pump, 2025:J5ELogmzrdKiuSZxvKSKtfs8JRXMoR7YQEBHebr7pump, 2077:HNi43Ue8Qz8XegA9q8AWbV9DxzJxcexm8czE1fhppump, 2080:Dwri1iuy5pDFf2u2GwwsH2MxjR6dATyDv9En9Jk8Fkof
+[2025-07-05T22:55:23.851Z] [INFO] 
+📋 === FINAL TOKEN SUMMARY ===
+[2025-07-05T22:55:23.851Z] [INFO] Total tokens loaded: 10
+[2025-07-05T22:55:23.851Z] [INFO] Top 10 tokens by market cap:
+[2025-07-05T22:55:23.851Z] [INFO] 1. PEANUT - $0.00044498 - MC: $444,842.244
+[2025-07-05T22:55:23.851Z] [INFO]    Mint: bGxHNbsacaVL35pkYWae5PYQDZXSpuQb3QDyW31pump
+[2025-07-05T22:55:23.851Z] [INFO] 2. 000 - $0.00019585 - MC: $195,852.453
+[2025-07-05T22:55:23.851Z] [INFO]    Mint: CVU6QRwpHz94UGyPFFehm1G1sFYRH7xDk9UhZ9RApump
+[2025-07-05T22:55:23.851Z] [INFO] 3. CHEF - $0.00039419 - MC: $113,328.879
+[2025-07-05T22:55:23.851Z] [INFO]    Mint: CHEFTKSZVv6rgUAR8EZVirSVX685HHiEnihvEsdz77LP
+[2025-07-05T22:55:23.851Z] [INFO] 4. 1% - $0.00006346 - MC: $63,572.78
+[2025-07-05T22:55:23.851Z] [INFO]    Mint: 3dwu2tw7kBFZvWEdJMbPCGm7MBwgziABChLV1kGspump
+[2025-07-05T22:55:23.851Z] [INFO] 5. FIGS - $6309.84 - MC: $63,171.863
+[2025-07-05T22:55:23.851Z] [INFO]    Mint: DpeJ6CkihBJzSNvgMcB9e56NT6Qiu2HL3nAGwYWUJESt
+[2025-07-05T22:55:23.851Z] [INFO] 6. 2077 - $0.00005287 - MC: $33,698.855
+[2025-07-05T22:55:23.851Z] [INFO]    Mint: HNi43Ue8Qz8XegA9q8AWbV9DxzJxcexm8czE1fhppump
+[2025-07-05T22:55:23.851Z] [INFO] 7. $1 - $0.00002349 - MC: $23,515.111
+[2025-07-05T22:55:23.851Z] [INFO]    Mint: 4UTEFQjNMvfQF5NT8mVfXdMAKoL7hS7i9U4mMVAzpump
+[2025-07-05T22:55:23.851Z] [INFO] 8. 1HUB - $0.0000365 - MC: $15,891.464
+[2025-07-05T22:55:23.851Z] [INFO]    Mint: 1HubD1oE9D8L5FQuSBs8r8NTgL3BgMqK1nkDx6Bjch4
+[2025-07-05T22:55:23.851Z] [INFO] 9. 2025 - $0.00001443 - MC: $14,427.885
+[2025-07-05T22:55:23.851Z] [INFO]    Mint: J5ELogmzrdKiuSZxvKSKtfs8JRXMoR7YQEBHebr7pump
+[2025-07-05T22:55:23.851Z] [INFO] 10. 2080 - $0.00118688 - MC: $0
+[2025-07-05T22:55:23.851Z] [INFO]    Mint: Dwri1iuy5pDFf2u2GwwsH2MxjR6dATyDv9En9Jk8Fkof
+[2025-07-05T22:55:23.851Z] [INFO] 
+Tokens with real mint addresses: 10
+[2025-07-05T22:55:23.851Z] [INFO] Tokens without mint: 0
+[2025-07-05T22:55:23.851Z] [INFO] === END SUMMARY ===
+
+[2025-07-05T22:55:23.851Z] [INFO] ✅ Successfully fetched market data for 10 Solana tokens (used 2/280 daily credits)
+[2025-07-05T22:55:23.851Z] [INFO] ✅ CoinGecko API working - fetched 10 test tokens
+[2025-07-05T22:55:23.851Z] [INFO] 🧪 Testing Jupiter API...
+[2025-07-05T22:55:23.984Z] [INFO] ✅ Jupiter API working - got quote: success
+🔄 === TOKEN REFRESH STARTED ===
+[2025-07-05T22:55:23.984Z] [INFO] 🔄 Token refresh starting (48h cycle)...
+🔄 Cleaning up old coin data...
+[2025-07-05T22:55:24.041Z] [INFO] 🧹 No old coin_data records to clean up
+✅ Old coin data cleanup completed
+🔄 Calling tokenAnalyzer.getTopTokensForMonitoring()...
+[2025-07-05T22:55:24.041Z] [INFO] 🔄 FORCE REFRESH MODE: Skipping cache and database, fetching fresh tokens from CoinGecko...
+[2025-07-05T22:55:24.041Z] [INFO] 🔄 Fetching top 2000 Solana tokens (optimized)...
+[2025-07-05T22:55:24.041Z] [INFO] Using cached Solana tokens list (48h cache)
+[2025-07-05T22:55:24.041Z] [INFO] Found 4467 total Solana tokens
+[2025-07-05T22:55:24.042Z] [INFO] Preparing to fetch market data for 2000 tokens
+[2025-07-05T22:55:24.042Z] [INFO] Getting market data for 2000 tokens...
+[2025-07-05T22:55:24.042Z] [INFO] Fetching batch 1: tokens 1-50
+[2025-07-05T22:55:24.042Z] [INFO] Rate limiting: waiting 2327ms before next request
+[2025-07-05T22:55:26.593Z] [INFO] 📊 Token loaded: 000 (000 Capital)
+[2025-07-05T22:55:26.593Z] [INFO]    • Mint: CVU6QRwpHz94UGyPFFehm1G1sFYRH7xDk9UhZ9RApump
+[2025-07-05T22:55:26.593Z] [INFO]    • Price: $0.00019585
+[2025-07-05T22:55:26.593Z] [INFO]    • Market Cap: $195,852.453
+[2025-07-05T22:55:26.593Z] [INFO]    • Volume 24h: $109.679
+[2025-07-05T22:55:26.593Z] [INFO] 📊 Token loaded: FIGS (10 figs)
+[2025-07-05T22:55:26.593Z] [INFO]    • Mint: DpeJ6CkihBJzSNvgMcB9e56NT6Qiu2HL3nAGwYWUJESt
+[2025-07-05T22:55:26.593Z] [INFO]    • Price: $6309.84
+[2025-07-05T22:55:26.593Z] [INFO]    • Market Cap: $63,171.863
+[2025-07-05T22:55:26.593Z] [INFO]    • Volume 24h: $67.879
+[2025-07-05T22:55:26.594Z] [INFO] 📊 Token loaded: $1 ($1)
+[2025-07-05T22:55:26.594Z] [INFO]    • Mint: 4UTEFQjNMvfQF5NT8mVfXdMAKoL7hS7i9U4mMVAzpump
+[2025-07-05T22:55:26.594Z] [INFO]    • Price: $0.00002349
+[2025-07-05T22:55:26.594Z] [INFO]    • Market Cap: $23,515.111
+[2025-07-05T22:55:26.594Z] [INFO]    • Volume 24h: $1.409
+[2025-07-05T22:55:26.594Z] [INFO] 📊 Token loaded: 1HUB (1Hub.ai)
+[2025-07-05T22:55:26.594Z] [INFO]    • Mint: 1HubD1oE9D8L5FQuSBs8r8NTgL3BgMqK1nkDx6Bjch4
+[2025-07-05T22:55:26.594Z] [INFO]    • Price: $0.0000365
+[2025-07-05T22:55:26.594Z] [INFO]    • Market Cap: $15,891.464
+[2025-07-05T22:55:26.594Z] [INFO]    • Volume 24h: $2.72
+[2025-07-05T22:55:26.594Z] [INFO] 📊 Token loaded: CHEF (CoinChef)
+[2025-07-05T22:55:26.594Z] [INFO]    • Mint: CHEFTKSZVv6rgUAR8EZVirSVX685HHiEnihvEsdz77LP
+[2025-07-05T22:55:26.594Z] [INFO]    • Price: $0.00039419
+[2025-07-05T22:55:26.594Z] [INFO]    • Market Cap: $113,328.879
+[2025-07-05T22:55:26.594Z] [INFO]    • Volume 24h: $5.369
+[2025-07-05T22:55:26.594Z] [INFO] 📊 Token loaded: 1% (1%)
+[2025-07-05T22:55:26.594Z] [INFO]    • Mint: 3dwu2tw7kBFZvWEdJMbPCGm7MBwgziABChLV1kGspump
+[2025-07-05T22:55:26.594Z] [INFO]    • Price: $0.00006346
+[2025-07-05T22:55:26.595Z] [INFO]    • Market Cap: $63,572.78
+[2025-07-05T22:55:26.595Z] [INFO]    • Volume 24h: $189.096
+[2025-07-05T22:55:26.595Z] [INFO] 📊 Token loaded: PEANUT (OG Peanut)
+[2025-07-05T22:55:26.595Z] [INFO]    • Mint: bGxHNbsacaVL35pkYWae5PYQDZXSpuQb3QDyW31pump
+[2025-07-05T22:55:26.595Z] [INFO]    • Price: $0.00044498
+[2025-07-05T22:55:26.595Z] [INFO]    • Market Cap: $444,842.244
+[2025-07-05T22:55:26.595Z] [INFO]    • Volume 24h: $169,405.147
+[2025-07-05T22:55:26.595Z] [INFO] 📊 Token loaded: 2025 (2025 TOKEN)
+[2025-07-05T22:55:26.595Z] [INFO]    • Mint: J5ELogmzrdKiuSZxvKSKtfs8JRXMoR7YQEBHebr7pump
+[2025-07-05T22:55:26.595Z] [INFO]    • Price: $0.00001443
+[2025-07-05T22:55:26.595Z] [INFO]    • Market Cap: $14,427.885
+[2025-07-05T22:55:26.595Z] [INFO]    • Volume 24h: $82.12
+[2025-07-05T22:55:26.595Z] [INFO] 📊 Token loaded: 2077 (2077 CODE)
+[2025-07-05T22:55:26.595Z] [INFO]    • Mint: HNi43Ue8Qz8XegA9q8AWbV9DxzJxcexm8czE1fhppump
+[2025-07-05T22:55:26.596Z] [INFO]    • Price: $0.00005287
+[2025-07-05T22:55:26.596Z] [INFO]    • Market Cap: $33,698.855
+[2025-07-05T22:55:26.596Z] [INFO]    • Volume 24h: $37.624
+[2025-07-05T22:55:26.596Z] [INFO] 📊 Token loaded: 2080 (2080)
+[2025-07-05T22:55:26.596Z] [INFO]    • Mint: Dwri1iuy5pDFf2u2GwwsH2MxjR6dATyDv9En9Jk8Fkof
+[2025-07-05T22:55:26.596Z] [INFO]    • Price: $0.00118688
+[2025-07-05T22:55:26.596Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:26.596Z] [INFO]    • Volume 24h: $2.986
+[2025-07-05T22:55:26.596Z] [INFO] 📊 Token loaded: 21X (21X Diamonds)
+[2025-07-05T22:55:26.596Z] [INFO]    • Mint: 6r4PCVaX4rYN9WdbXwVWAQL4djFoUaeBMsq8Cxc6NApZ
+[2025-07-05T22:55:26.596Z] [INFO]    • Price: $8.01302e-7
+[2025-07-05T22:55:26.596Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:26.596Z] [INFO]    • Volume 24h: $436.753
+[2025-07-05T22:55:26.596Z] [INFO] 📊 Token loaded: AI23T (23 Turtles)
+[2025-07-05T22:55:26.596Z] [INFO]    • Mint: G63cwb95F2Bq34jFwwyUpYqLb5YCMF9XgJ4gJVJTpump
+[2025-07-05T22:55:26.596Z] [INFO]    • Price: $0.00001284
+[2025-07-05T22:55:26.596Z] [INFO]    • Market Cap: $12,835.767
+[2025-07-05T22:55:26.596Z] [INFO]    • Volume 24h: $17.316
+[2025-07-05T22:55:26.596Z] [INFO] 📊 Token loaded: MLG (360noscope420blazeit)
+[2025-07-05T22:55:26.596Z] [INFO]    • Mint: 7XJiwLDrjzxDYdZipnJXzpr1iDTmK55XixSFAa7JgNEL
+[2025-07-05T22:55:26.597Z] [INFO]    • Price: $0.00827164
+[2025-07-05T22:55:26.597Z] [INFO]    • Market Cap: $8,246,242.909
+[2025-07-05T22:55:26.597Z] [INFO]    • Volume 24h: $531,873.607
+[2025-07-05T22:55:26.597Z] [INFO] 📊 Token loaded: 39A (39a.fun)
+[2025-07-05T22:55:26.597Z] [INFO]    • Mint: GL3wQ5ADspXbAG3E8hUfSkWY884jSKfgFS6Fk9Npump
+[2025-07-05T22:55:26.597Z] [INFO]    • Price: $0.00002854
+[2025-07-05T22:55:26.597Z] [INFO]    • Market Cap: $28,114.549
+[2025-07-05T22:55:26.597Z] [INFO]    • Volume 24h: $1,530.4
+[2025-07-05T22:55:26.597Z] [INFO] 📊 Token loaded: 🤡 (🤡)
+[2025-07-05T22:55:26.597Z] [INFO]    • Mint: CGvA4rngdetvEVDsuyRUWsYAxU434cqfCRRLFrgJ9gJT
+[2025-07-05T22:55:26.597Z] [INFO]    • Price: $0.00003702
+[2025-07-05T22:55:26.597Z] [INFO]    • Market Cap: $32,328.481
+[2025-07-05T22:55:26.597Z] [INFO]    • Volume 24h: $109.578
+[2025-07-05T22:55:26.597Z] [INFO] 📊 Token loaded: 401K (401K)
+[2025-07-05T22:55:26.597Z] [INFO]    • Mint: ACyP5VHmSYhixsHwFXh8BTqypPGBTjHGcJZjYdBvPKaE
+[2025-07-05T22:55:26.597Z] [INFO]    • Price: $0.00290223
+[2025-07-05T22:55:26.597Z] [INFO]    • Market Cap: $2,849,032.923
+[2025-07-05T22:55:26.597Z] [INFO]    • Volume 24h: $1,605,457.771
+[2025-07-05T22:55:26.597Z] [INFO] 📊 Token loaded: 42069COIN (42069COIN)
+[2025-07-05T22:55:26.597Z] [INFO]    • Mint: 5CxtvaR1SskwLxfzHGurx8Enu8bgSTPyWF3YP4sWpump
+[2025-07-05T22:55:26.597Z] [INFO]    • Price: $0.00001777
+[2025-07-05T22:55:26.597Z] [INFO]    • Market Cap: $17,762.568
+[2025-07-05T22:55:26.597Z] [INFO]    • Volume 24h: $55.499
+[2025-07-05T22:55:26.597Z] [INFO] 📊 Token loaded: DOPAMINE (4-(2-Aminoethyl)benzene-1,2-diol)
+[2025-07-05T22:55:26.597Z] [INFO]    • Mint: 5X742twtV5sf8ZnSWSZ3WhxHgR9wmVeQmvzpnK7Gpump
+[2025-07-05T22:55:26.597Z] [INFO]    • Price: $0.00001445
+[2025-07-05T22:55:26.597Z] [INFO]    • Market Cap: $14,437.335
+[2025-07-05T22:55:26.597Z] [INFO]    • Volume 24h: $2.684
+[2025-07-05T22:55:26.597Z] [INFO] 📊 Token loaded: 42 (42-coin)
+[2025-07-05T22:55:26.597Z] [INFO]    • Mint: 42c846hyuCL5vMfqWifNvddUqHSqAFeJX7rDQBEBpKmM
+[2025-07-05T22:55:26.597Z] [INFO]    • Price: $84353
+[2025-07-05T22:55:26.597Z] [INFO]    • Market Cap: $3,542,827.267
+[2025-07-05T22:55:26.597Z] [INFO]    • Volume 24h: $2.069
+[2025-07-05T22:55:26.597Z] [INFO] 📊 Token loaded: 4547 (4547)
+[2025-07-05T22:55:26.597Z] [INFO]    • Mint: Pj3sX83x2gsxwwfzhUuszdA8EWcJvkJ4g3k3LCfpump
+[2025-07-05T22:55:26.597Z] [INFO]    • Price: $0.00003176
+[2025-07-05T22:55:26.598Z] [INFO]    • Market Cap: $31,778.646
+[2025-07-05T22:55:26.598Z] [INFO]    • Volume 24h: $2,357.541
+[2025-07-05T22:55:26.598Z] [INFO] 📊 Token loaded: 4TOOL (4TOOL.ai)
+[2025-07-05T22:55:26.598Z] [INFO]    • Mint: 3dhk95qAjdJVQgBdiWUY9uCytWqukRUJ7RAgpG8Emoon
+[2025-07-05T22:55:26.598Z] [INFO]    • Price: $0.00020852
+[2025-07-05T22:55:26.598Z] [INFO]    • Market Cap: $206,144.145
+[2025-07-05T22:55:26.598Z] [INFO]    • Volume 24h: $23.473
+[2025-07-05T22:55:26.598Z] [INFO] 📊 Token loaded: 4WIN (4TRUMP)
+[2025-07-05T22:55:26.598Z] [INFO]    • Mint: 4TRUMPJwguiFjfY6PLpwT6SZ5BZmCuzfqWWeJAdR6xP3
+[2025-07-05T22:55:26.598Z] [INFO]    • Price: $0.00037136
+[2025-07-05T22:55:26.598Z] [INFO]    • Market Cap: $17,471.362
+[2025-07-05T22:55:26.598Z] [INFO]    • Volume 24h: $5.055
+[2025-07-05T22:55:26.598Z] [INFO] 📊 Token loaded: 🟥🟩 (🟥🟪🟦🟩🟨🟧)
+[2025-07-05T22:55:26.598Z] [INFO]    • Mint: HwPtbFpd3VTe3tfyosoVtPf9WPuSk5gAKkN5xp6Npump
+[2025-07-05T22:55:26.598Z] [INFO]    • Price: $0.00139887
+[2025-07-05T22:55:26.598Z] [INFO]    • Market Cap: $1,397,913.329
+[2025-07-05T22:55:26.598Z] [INFO]    • Volume 24h: $75,147.415
+[2025-07-05T22:55:26.598Z] [INFO] 📊 Token loaded: PAPER ($500M piece of paper)
+[2025-07-05T22:55:26.598Z] [INFO]    • Mint: b37NMA81bSgVmC6E5TXyrUndRzwdYycxoLFsG3gpump
+[2025-07-05T22:55:26.598Z] [INFO]    • Price: $0.00006172
+[2025-07-05T22:55:26.598Z] [INFO]    • Market Cap: $61,645.102
+[2025-07-05T22:55:26.598Z] [INFO]    • Volume 24h: $9,050.232
+[2025-07-05T22:55:26.598Z] [INFO] 📊 Token loaded: "　" ("　")
+[2025-07-05T22:55:26.598Z] [INFO]    • Mint: 9qriMjPPAJTMCtfQnz7Mo9BsV2jAWTr2ff7yc3JWpump
+[2025-07-05T22:55:26.598Z] [INFO]    • Price: $0.00455684
+[2025-07-05T22:55:26.598Z] [INFO]    • Market Cap: $2,859,674.883
+[2025-07-05T22:55:26.598Z] [INFO]    • Volume 24h: $29,659.676
+[2025-07-05T22:55:26.598Z] [INFO] 📊 Token loaded: ∅ (∅)
+[2025-07-05T22:55:26.598Z] [INFO]    • Mint: J2bUGZDxRDpsVfjZqKwn6yYCUKFmqzHgt8UajhGtpump
+[2025-07-05T22:55:26.598Z] [INFO]    • Price: $0.00112644
+[2025-07-05T22:55:26.598Z] [INFO]    • Market Cap: $1,071,332.945
+[2025-07-05T22:55:26.598Z] [INFO]    • Volume 24h: $156,977.754
+[2025-07-05T22:55:26.598Z] [INFO] 📊 Token loaded: FIW (777FuckIlluminatiWorldwid)
+[2025-07-05T22:55:26.598Z] [INFO]    • Mint: FeKmTunVrXDKEoDJbuTwZi8vfFFw3MHzpPB79JD8ARYU
+[2025-07-05T22:55:26.598Z] [INFO]    • Price: $0.00017463
+[2025-07-05T22:55:26.598Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:26.598Z] [INFO]    • Volume 24h: $2,779.632
+[2025-07-05T22:55:26.598Z] [INFO] 📊 Token loaded: 8008 (8008)
+[2025-07-05T22:55:26.598Z] [INFO]    • Mint: 5puhwnyz2Tv8jSmmBD5DSqCwFVXwwPGZacymM7DQpump
+[2025-07-05T22:55:26.598Z] [INFO]    • Price: $0.00002542
+[2025-07-05T22:55:26.598Z] [INFO]    • Market Cap: $25,405.612
+[2025-07-05T22:55:26.598Z] [INFO]    • Volume 24h: $50.849
+[2025-07-05T22:55:26.598Z] [INFO] 📊 Token loaded: 發發發 (888Coin)
+[2025-07-05T22:55:26.598Z] [INFO]    • Mint: BzzPPSVod9sckAa4hSgpRFsTWZkQzYmJagRywpaUbonk
+[2025-07-05T22:55:26.598Z] [INFO]    • Price: $0.00007004
+[2025-07-05T22:55:26.598Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:26.598Z] [INFO]    • Volume 24h: $813,533.325
+[2025-07-05T22:55:26.598Z] [INFO] 📊 Token loaded: 888 (888)
+[2025-07-05T22:55:26.598Z] [INFO]    • Mint: 888R77WmcLJKyGeJjk1WktFAB5u5fkvmokHYsAu6Spyd
+[2025-07-05T22:55:26.598Z] [INFO]    • Price: $0.01180295
+[2025-07-05T22:55:26.598Z] [INFO]    • Market Cap: $1,044,955.235
+[2025-07-05T22:55:26.598Z] [INFO]    • Volume 24h: $17,223.179
+[2025-07-05T22:55:26.598Z] [INFO] 📊 Token loaded: COIN (8-Bit Coin)
+[2025-07-05T22:55:26.598Z] [INFO]    • Mint: 3xvLSHrLcM7246X1vu34cM9gNX741kQrzqj6T2HhLvXp
+[2025-07-05T22:55:26.598Z] [INFO]    • Price: $0.00007212
+[2025-07-05T22:55:26.599Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:26.599Z] [INFO]    • Volume 24h: $554.021
+[2025-07-05T22:55:26.599Z] [INFO] 📊 Token loaded: 8CHAN (8chan)
+[2025-07-05T22:55:26.599Z] [INFO]    • Mint: 9fcfqnpSW3ifkZeaRS19uHeovDRBLy57V89zh2rtpump
+[2025-07-05T22:55:26.599Z] [INFO]    • Price: $0.00020168
+[2025-07-05T22:55:26.599Z] [INFO]    • Market Cap: $200,816.01
+[2025-07-05T22:55:26.599Z] [INFO]    • Volume 24h: $90.21
+[2025-07-05T22:55:26.599Z] [INFO] 📊 Token loaded: 9TO5 (9to5io)
+[2025-07-05T22:55:26.599Z] [INFO]    • Mint: 2fNexKk1XFVRqRmuak4hFcgfpTSJf3HE6BH6f6bjkxz7
+[2025-07-05T22:55:26.599Z] [INFO]    • Price: $0.00001746
+[2025-07-05T22:55:26.599Z] [INFO]    • Market Cap: $17,433.844
+[2025-07-05T22:55:26.599Z] [INFO]    • Volume 24h: $49.634
+[2025-07-05T22:55:26.599Z] [INFO] 📊 Token loaded: A16G (a16gems)
+[2025-07-05T22:55:26.599Z] [INFO]    • Mint: 2QQVZpiCicFZM7wKHRvBtnvTxVBLxMtD1SJWbKSLpump
+[2025-07-05T22:55:26.599Z] [INFO]    • Price: $0.00001489
+[2025-07-05T22:55:26.599Z] [INFO]    • Market Cap: $14,882.655
+[2025-07-05T22:55:26.599Z] [INFO]    • Volume 24h: $7.729
+[2025-07-05T22:55:26.599Z] [INFO] 📊 Token loaded: TILLY (a16z AI Dog)
+[2025-07-05T22:55:26.599Z] [INFO]    • Mint: HuiVprCHCucHUb5bX6EXFJd7wuwvdASFzzge4ahXpump
+[2025-07-05T22:55:26.599Z] [INFO]    • Price: $0.00002517
+[2025-07-05T22:55:26.599Z] [INFO]    • Market Cap: $25,136.187
+[2025-07-05T22:55:26.599Z] [INFO]    • Volume 24h: $22.985
+[2025-07-05T22:55:26.599Z] [INFO] 📊 Token loaded: AABL (Abble)
+[2025-07-05T22:55:26.599Z] [INFO]    • Mint: ENoD8J2J6wNHkcJkvVBkwq5JMiR1oNBfBZRkoHCQogyT
+[2025-07-05T22:55:26.599Z] [INFO]    • Price: $0.00075051
+[2025-07-05T22:55:26.599Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:26.599Z] [INFO]    • Volume 24h: $36,538.392
+[2025-07-05T22:55:26.599Z] [INFO] ⚠️ No price data for token: abtx (abbott-xstock)
+[2025-07-05T22:55:26.599Z] [INFO] ⚠️ No price data for token: abbvx (abbvie-xstock)
+[2025-07-05T22:55:26.599Z] [INFO] 📊 Token loaded: ABCDE (abcde coin)
+[2025-07-05T22:55:26.599Z] [INFO]    • Mint: 6LRHCKvqCX9JuQj8Fkx8yEM3c1PpyrV9NuPujc9Qpump
+[2025-07-05T22:55:26.599Z] [INFO]    • Price: $0.00000717
+[2025-07-05T22:55:26.599Z] [INFO]    • Market Cap: $5,652.871
+[2025-07-05T22:55:26.599Z] [INFO]    • Volume 24h: $45.721
+[2025-07-05T22:55:26.599Z] [INFO] 📊 Token loaded: BURGIIR (Abdulrozik's Camel)
+[2025-07-05T22:55:26.599Z] [INFO]    • Mint: EXi1tEpKj8jLVQpD8u7WWvhYftkMkzV4Qqdtet5Spump
+[2025-07-05T22:55:26.599Z] [INFO]    • Price: $0.00000627
+[2025-07-05T22:55:26.599Z] [INFO]    • Market Cap: $6,260.689
+[2025-07-05T22:55:26.599Z] [INFO]    • Volume 24h: $1.096
+[2025-07-05T22:55:26.599Z] [INFO] 📊 Token loaded: ABI (Abi)
+[2025-07-05T22:55:26.599Z] [INFO]    • Mint: F2w7z5sVe72SXnkj5qc48KXgXY2Pzj1fNtJXarmGpump
+[2025-07-05T22:55:26.599Z] [INFO]    • Price: $0.0000165
+[2025-07-05T22:55:26.599Z] [INFO]    • Market Cap: $16,520.263
+[2025-07-05T22:55:26.599Z] [INFO]    • Volume 24h: $129.7
+[2025-07-05T22:55:26.599Z] [INFO] 📊 Token loaded: AAX (Academic Labs)
+[2025-07-05T22:55:26.599Z] [INFO]    • Mint: 8W3DbYbLY1zWXm6YDqfPYFpyKsjytD5vhhPN2AyNVdM9
+[2025-07-05T22:55:26.599Z] [INFO]    • Price: $0.00009521
+[2025-07-05T22:55:26.599Z] [INFO]    • Market Cap: $164,707.351
+[2025-07-05T22:55:26.599Z] [INFO]    • Volume 24h: $86,582.435
+[2025-07-05T22:55:26.599Z] [INFO] ⚠️ No price data for token: acnx (accenture-xstock)
+[2025-07-05T22:55:26.599Z] [INFO] 📊 Token loaded: ACS (Access Protocol)
+[2025-07-05T22:55:26.599Z] [INFO]    • Mint: 5MAYDfq5yxtudAhtfyuMBuHZjgAbaS9tbEyEQYAhDS5y
+[2025-07-05T22:55:26.599Z] [INFO]    • Price: $0.00146579
+[2025-07-05T22:55:26.599Z] [INFO]    • Market Cap: $61,302,998.422
+[2025-07-05T22:55:26.599Z] [INFO]    • Volume 24h: $16,706,535.848
+[2025-07-05T22:55:26.599Z] [INFO] 📊 Token loaded: $ACE (Ace Data Cloud)
+[2025-07-05T22:55:26.599Z] [INFO]    • Mint: GEuuznWpn6iuQAJxLKQDVGXPtrqXHNWTk3gZqqvJpump
+[2025-07-05T22:55:26.599Z] [INFO]    • Price: $0.00021504
+[2025-07-05T22:55:26.599Z] [INFO]    • Market Cap: $204,251.474
+[2025-07-05T22:55:26.599Z] [INFO]    • Volume 24h: $8,883.022
+[2025-07-05T22:55:26.599Z] [INFO] 📊 Token loaded: ACHI (achi)
+[2025-07-05T22:55:26.599Z] [INFO]    • Mint: 4rUfhWTRpjD1ECGjw1UReVhA8G63CrATuoFLRVRkkqhs
+[2025-07-05T22:55:26.599Z] [INFO]    • Price: $0.0003144
+[2025-07-05T22:55:26.599Z] [INFO]    • Market Cap: $313,052.22
+[2025-07-05T22:55:26.599Z] [INFO]    • Volume 24h: $2,939.021
+[2025-07-05T22:55:26.599Z] [INFO] 📊 Token loaded: ACHI (ACHI INU)
+[2025-07-05T22:55:26.599Z] [INFO]    • Mint: HvQKzBzp1YhXdqDUrUB8fqrfbJ6rU9CytzscMyG7EFAe
+[2025-07-05T22:55:26.599Z] [INFO]    • Price: $0.00001447
+[2025-07-05T22:55:26.599Z] [INFO]    • Market Cap: $14,473.226
+[2025-07-05T22:55:26.599Z] [INFO]    • Volume 24h: $21.78
+[2025-07-05T22:55:26.599Z] [INFO] 📊 Token loaded: ACHMED (ACHMED - HEART AND SOL)
+[2025-07-05T22:55:26.599Z] [INFO]    • Mint: HhBoQXVmcxs6BDrkNJeQe7etsW69tcASHwGsXSTr8UUf
+[2025-07-05T22:55:26.600Z] [INFO]    • Price: $0.00293299
+[2025-07-05T22:55:26.600Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:26.600Z] [INFO]    • Volume 24h: $16.545
+[2025-07-05T22:55:26.600Z] [INFO] 📊 Token loaded: ACID (Acid AI)
+[2025-07-05T22:55:26.600Z] [INFO]    • Mint: YN4U8xySzuyARUMTNCpMgkkek7nnh2VAkUMdMygpump
+[2025-07-05T22:55:26.600Z] [INFO]    • Price: $0.00196021
+[2025-07-05T22:55:26.600Z] [INFO]    • Market Cap: $1,960,122.404
+[2025-07-05T22:55:26.600Z] [INFO]    • Volume 24h: $71,278.313
+[2025-07-05T22:55:26.600Z] [INFO] 📊 Token loaded: ACOLYT (Acolyt)
+[2025-07-05T22:55:26.600Z] [INFO]    • Mint: EajMGPYVMzqUjXwnmyagVGDS2CW5xJitb17TpB4uDifD
+[2025-07-05T22:55:26.600Z] [INFO]    • Price: $0.00586061
+[2025-07-05T22:55:26.600Z] [INFO]    • Market Cap: $5,847,955.682
+[2025-07-05T22:55:26.600Z] [INFO]    • Volume 24h: $18,212.09
+[2025-07-05T22:55:26.600Z] [INFO] Batch completed: 47 tokens with price data
+[2025-07-05T22:55:26.600Z] [INFO] Waiting 5 seconds before next batch...
+[2025-07-05T22:55:31.601Z] [INFO] Fetching batch 2: tokens 51-100
+[2025-07-05T22:55:32.172Z] [INFO] 📊 Token loaded: ACTII (Act II : The AI Obesity)
+[2025-07-05T22:55:32.172Z] [INFO]    • Mint: E2W7B7mKQFyVoLq15uue45pZVXLgq3FjjerqmiYjpump
+[2025-07-05T22:55:32.173Z] [INFO]    • Price: $0.00000691
+[2025-07-05T22:55:32.173Z] [INFO]    • Market Cap: $6,900.578
+[2025-07-05T22:55:32.173Z] [INFO]    • Volume 24h: $10.989
+[2025-07-05T22:55:32.173Z] [INFO] 📊 Token loaded: ACTP (Act II: The Peanut Prophecy)
+[2025-07-05T22:55:32.173Z] [INFO]    • Mint: 6ofzqLnHhobh7cJ4C63rAf5qnKU8AoMxVBi7Kkm6n9wq
+[2025-07-05T22:55:32.173Z] [INFO]    • Price: $0.00000945
+[2025-07-05T22:55:32.173Z] [INFO]    • Market Cap: $9,443.443
+[2025-07-05T22:55:32.173Z] [INFO]    • Volume 24h: $24.774
+[2025-07-05T22:55:32.173Z] [INFO] 📊 Token loaded: FIGURE (Action Figure)
+[2025-07-05T22:55:32.173Z] [INFO]    • Mint: 7LSsEoJGhLeZzGvDofTdNg7M3JttxQqGWNLo6vWMpump
+[2025-07-05T22:55:32.173Z] [INFO]    • Price: $0.0000901
+[2025-07-05T22:55:32.173Z] [INFO]    • Market Cap: $90,050.97
+[2025-07-05T22:55:32.173Z] [INFO]    • Volume 24h: $57,150.808
+[2025-07-05T22:55:32.173Z] [INFO] 📊 Token loaded: ACT (Act I The AI Prophecy)
+[2025-07-05T22:55:32.173Z] [INFO]    • Mint: GJAFwWjJ3vnTsrQVabjBVK2TYB1YtRCQXRDfDgUnpump
+[2025-07-05T22:55:32.173Z] [INFO]    • Price: $0.03855314
+[2025-07-05T22:55:32.173Z] [INFO]    • Market Cap: $36,520,860.028
+[2025-07-05T22:55:32.173Z] [INFO]    • Volume 24h: $12,503,734.51
+[2025-07-05T22:55:32.173Z] [INFO] 📊 Token loaded: ADASOL (ADA)
+[2025-07-05T22:55:32.173Z] [INFO]    • Mint: E4Q5pLaEiejwEQHcM9GeYSQfMyGy8DJ4bPWgeYthn24v
+[2025-07-05T22:55:32.173Z] [INFO]    • Price: $0.00027408
+[2025-07-05T22:55:32.173Z] [INFO]    • Market Cap: $272,868.02
+[2025-07-05T22:55:32.173Z] [INFO]    • Volume 24h: $3,351.342
+[2025-07-05T22:55:32.173Z] [INFO] 📊 Token loaded: ADILLO (Adillo)
+[2025-07-05T22:55:32.174Z] [INFO]    • Mint: 4rVf66MSzyjpLLVnGEuFMuVikEfa4XLbrQq2Zuexpump
+[2025-07-05T22:55:32.174Z] [INFO]    • Price: $0.00005668
+[2025-07-05T22:55:32.174Z] [INFO]    • Market Cap: $55,946.175
+[2025-07-05T22:55:32.174Z] [INFO]    • Volume 24h: $54.319
+[2025-07-05T22:55:32.174Z] [INFO] 📊 Token loaded: MATRIX (A DOG IN THE MATRIX)
+[2025-07-05T22:55:32.174Z] [INFO]    • Mint: DjKXdLpTTJKRXmjWb2WWthUSyppHaxVbtLa3aq1XZJju
+[2025-07-05T22:55:32.174Z] [INFO]    • Price: $0.0000083
+[2025-07-05T22:55:32.174Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:32.174Z] [INFO]    • Volume 24h: $32.956
+[2025-07-05T22:55:32.174Z] [INFO] 📊 Token loaded: ADX (Adrena)
+[2025-07-05T22:55:32.174Z] [INFO]    • Mint: AuQaustGiaqxRvj2gtCdrd22PBzTn8kM3kEPEkZCtuDw
+[2025-07-05T22:55:32.174Z] [INFO]    • Price: $0.0205466
+[2025-07-05T22:55:32.174Z] [INFO]    • Market Cap: $6,092,691.332
+[2025-07-05T22:55:32.174Z] [INFO]    • Volume 24h: $5,241.695
+[2025-07-05T22:55:32.174Z] [INFO] 📊 Token loaded: AEJO (Aejo)
+[2025-07-05T22:55:32.174Z] [INFO]    • Mint: B16bhVYwE9zQVjbYpnnmvfN7qJFDe21nx5iQC5LJpump
+[2025-07-05T22:55:32.174Z] [INFO]    • Price: $0.00003464
+[2025-07-05T22:55:32.174Z] [INFO]    • Market Cap: $34,677.323
+[2025-07-05T22:55:32.174Z] [INFO]    • Volume 24h: $3.755
+[2025-07-05T22:55:32.174Z] [INFO] 📊 Token loaded: AESOPERATOR (Aesoperator)
+[2025-07-05T22:55:32.174Z] [INFO]    • Mint: CpEpquNgiGyeMeTBrJJCgMXL8vn1jCkWKVbSurhJpump
+[2025-07-05T22:55:32.174Z] [INFO]    • Price: $0.00001888
+[2025-07-05T22:55:32.174Z] [INFO]    • Market Cap: $18,883.917
+[2025-07-05T22:55:32.174Z] [INFO]    • Volume 24h: $23.478
+[2025-07-05T22:55:32.174Z] [INFO] 📊 Token loaded: AETHER (aether collective)
+[2025-07-05T22:55:32.174Z] [INFO]    • Mint: BEP6KhDwv7K211JtZnszNcztHBffSCgRjUuNhucopump
+[2025-07-05T22:55:32.174Z] [INFO]    • Price: $0.00004069
+[2025-07-05T22:55:32.174Z] [INFO]    • Market Cap: $39,919.725
+[2025-07-05T22:55:32.174Z] [INFO]    • Volume 24h: $185.489
+[2025-07-05T22:55:32.174Z] [INFO] 📊 Token loaded: AIC (Aetherius Infinite Chain)
+[2025-07-05T22:55:32.174Z] [INFO]    • Mint: BYt1GhZfiWzynKc7WWo7y8kz38FRkyZyuypWUs6qc4Ls
+[2025-07-05T22:55:32.174Z] [INFO]    • Price: $6.67178e-7
+[2025-07-05T22:55:32.174Z] [INFO]    • Market Cap: $66,716.084
+[2025-07-05T22:55:32.174Z] [INFO]    • Volume 24h: $200.153
+[2025-07-05T22:55:32.174Z] [INFO] 📊 Token loaded: ATH (Aethir)
+[2025-07-05T22:55:32.174Z] [INFO]    • Mint: Dm5BxyMetG3Aq5PaG1BrG7rBYqEMtnkjvPNMExfacVk7
+[2025-07-05T22:55:32.174Z] [INFO]    • Price: $0.02634297
+[2025-07-05T22:55:32.175Z] [INFO]    • Market Cap: $260,500,695.73
+[2025-07-05T22:55:32.175Z] [INFO]    • Volume 24h: $15,633,095.322
+[2025-07-05T22:55:32.175Z] [INFO] 📊 Token loaded: AEVUM (Aevum)
+[2025-07-05T22:55:32.175Z] [INFO]    • Mint: EsirN3orp85uyvZyDrZnbe9cyo7N1114ynLFdwMPCQce
+[2025-07-05T22:55:32.175Z] [INFO]    • Price: $0.00488455
+[2025-07-05T22:55:32.175Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:32.175Z] [INFO]    • Volume 24h: $11.139
+[2025-07-05T22:55:32.175Z] [INFO] 📊 Token loaded: AKIDS (Africa Kids Token)
+[2025-07-05T22:55:32.175Z] [INFO]    • Mint: 2z5VijfstyHnDsvGwMExtvjTgTB1TT3JSf29PRe9MvNG
+[2025-07-05T22:55:32.175Z] [INFO]    • Price: $0.00003789
+[2025-07-05T22:55:32.175Z] [INFO]    • Market Cap: $37,756.263
+[2025-07-05T22:55:32.175Z] [INFO]    • Volume 24h: $6.047
+[2025-07-05T22:55:32.175Z] [INFO] 📊 Token loaded: AH (AfterHour)
+[2025-07-05T22:55:32.175Z] [INFO]    • Mint: 6H7NbbGdn2Jo5qpJeHvVECnVMPgD32AfsjcDLK3zjfmt
+[2025-07-05T22:55:32.175Z] [INFO]    • Price: $0.00016795
+[2025-07-05T22:55:32.175Z] [INFO]    • Market Cap: $133,570.923
+[2025-07-05T22:55:32.175Z] [INFO]    • Volume 24h: $47.717
+[2025-07-05T22:55:32.175Z] [INFO] 📊 Token loaded: AGAWA (AGAWA)
+[2025-07-05T22:55:32.175Z] [INFO]    • Mint: DH4MqNmSR7rSY1zLiEaszx8cyDPCNgTWWTm4w8TMpump
+[2025-07-05T22:55:32.175Z] [INFO]    • Price: $0.00002647
+[2025-07-05T22:55:32.175Z] [INFO]    • Market Cap: $26,462.128
+[2025-07-05T22:55:32.175Z] [INFO]    • Volume 24h: $1,135.434
+[2025-07-05T22:55:32.175Z] [INFO] 📊 Token loaded: A47 (AGENDA 47)
+[2025-07-05T22:55:32.175Z] [INFO]    • Mint: CN162nCPpq3DxPCyKLbAvEJeB1aCxsnVTEG4ZU8vpump
+[2025-07-05T22:55:32.175Z] [INFO]    • Price: $0.02470467
+[2025-07-05T22:55:32.175Z] [INFO]    • Market Cap: $24,628,138.938
+[2025-07-05T22:55:32.175Z] [INFO]    • Volume 24h: $9,496,819.698
+[2025-07-05T22:55:32.175Z] [INFO] 📊 Token loaded: AGNS (Madness.fun (Agenius))
+[2025-07-05T22:55:32.175Z] [INFO]    • Mint: 9g78Mv7JGsGCmnf7gJiEvVJNAn7fRLqjvJLMRMHbpump
+[2025-07-05T22:55:32.175Z] [INFO]    • Price: $0.0014894
+[2025-07-05T22:55:32.175Z] [INFO]    • Market Cap: $1,452,157.787
+[2025-07-05T22:55:32.175Z] [INFO]    • Volume 24h: $17,752.856
+[2025-07-05T22:55:32.175Z] [INFO] 📊 Token loaded: AGENT (AgentAlgo)
+[2025-07-05T22:55:32.175Z] [INFO]    • Mint: BKgcrCw55yb1ocLS2MnQLT2dSkWtAPjxTanLoWB8oZso
+[2025-07-05T22:55:32.175Z] [INFO]    • Price: $0.211396
+[2025-07-05T22:55:32.175Z] [INFO]    • Market Cap: $4,429,801.744
+[2025-07-05T22:55:32.176Z] [INFO]    • Volume 24h: $53,483.042
+[2025-07-05T22:55:32.176Z] [INFO] 📊 Token loaded: AIDOGE (AGENT DOGE by Virtuals)
+[2025-07-05T22:55:32.176Z] [INFO]    • Mint: 6V1vZKRFfu6eimDNk6w4BzxR4UTYxJvt5emuJkxTcMJv
+[2025-07-05T22:55:32.176Z] [INFO]    • Price: $0.00005309
+[2025-07-05T22:55:32.176Z] [INFO]    • Market Cap: $53,252.799
+[2025-07-05T22:55:32.176Z] [INFO]    • Volume 24h: $173.271
+[2025-07-05T22:55:32.176Z] [INFO] 📊 Token loaded: AD (Agent DORA)
+[2025-07-05T22:55:32.176Z] [INFO]    • Mint: F4CRszGnLhwMRNXYsddV7aAXun9XTnbsYEGjTvdttUU2
+[2025-07-05T22:55:32.176Z] [INFO]    • Price: $0.0000145
+[2025-07-05T22:55:32.176Z] [INFO]    • Market Cap: $14,489.94
+[2025-07-05T22:55:32.176Z] [INFO]    • Volume 24h: $21.384
+[2025-07-05T22:55:32.176Z] [INFO] 📊 Token loaded: $DIRA (AgentHub)
+[2025-07-05T22:55:32.176Z] [INFO]    • Mint: CuXmQvh4DVTdWBdC2d3pNq8UXqbKJ3w9RPBTAALcKcTb
+[2025-07-05T22:55:32.176Z] [INFO]    • Price: $0.00009117
+[2025-07-05T22:55:32.176Z] [INFO]    • Market Cap: $90,985.561
+[2025-07-05T22:55:32.176Z] [INFO]    • Volume 24h: $11,286.022
+[2025-07-05T22:55:32.176Z] [INFO] 📊 Token loaded: APY (AgentiPy)
+[2025-07-05T22:55:32.176Z] [INFO]    • Mint: yLUD35WTiPLEY6DUqEj5W2JVXF2DfKB5arPkKJXpump
+[2025-07-05T22:55:32.176Z] [INFO]    • Price: $0.00118076
+[2025-07-05T22:55:32.176Z] [INFO]    • Market Cap: $1,175,676.184
+[2025-07-05T22:55:32.176Z] [INFO]    • Volume 24h: $4,893.533
+[2025-07-05T22:55:32.176Z] [INFO] 📊 Token loaded: CVAI (Agentlauncher)
+[2025-07-05T22:55:32.176Z] [INFO]    • Mint: 8TC4ZJA5cwB5gmLemBfPP95v1Mft82kHGF9a87kepNno
+[2025-07-05T22:55:32.176Z] [INFO]    • Price: $0.00074622
+[2025-07-05T22:55:32.176Z] [INFO]    • Market Cap: $111,357.295
+[2025-07-05T22:55:32.176Z] [INFO]    • Volume 24h: $186.226
+[2025-07-05T22:55:32.176Z] [INFO] 📊 Token loaded: USEDCAR (A Gently Used 2001 Honda)
+[2025-07-05T22:55:32.176Z] [INFO]    • Mint: 9gwTegFJJErDpWJKjPfLr2g2zrE3nL1v5zpwbtsk3c6P
+[2025-07-05T22:55:32.176Z] [INFO]    • Price: $0.00144004
+[2025-07-05T22:55:32.176Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:32.176Z] [INFO]    • Volume 24h: $5,237.651
+[2025-07-05T22:55:32.176Z] [INFO] 📊 Token loaded: $COUCH (A Gently Used Couch)
+[2025-07-05T22:55:32.176Z] [INFO]    • Mint: XrJs9cMt48poHWupQAFUXNGuzy41qt2hVKuRktBpump
+[2025-07-05T22:55:32.176Z] [INFO]    • Price: $0.00001032
+[2025-07-05T22:55:32.176Z] [INFO]    • Market Cap: $10,200.093
+[2025-07-05T22:55:32.176Z] [INFO]    • Volume 24h: $1.346
+[2025-07-05T22:55:32.176Z] [INFO] 📊 Token loaded: USEDPHONE (A Gently Used Nokia 3310)
+[2025-07-05T22:55:32.177Z] [INFO]    • Mint: E2x5XH8eHkZGiaA8mFicU5CoGUJxSRKiXjEW5Nybf8Nn
+[2025-07-05T22:55:32.177Z] [INFO]    • Price: $0.00001137
+[2025-07-05T22:55:32.177Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:32.177Z] [INFO]    • Volume 24h: $1.568
+[2025-07-05T22:55:32.177Z] [INFO] 📊 Token loaded: AGME (AgentMe)
+[2025-07-05T22:55:32.177Z] [INFO]    • Mint: CNK4foXBWtyvNDyh5dk5DsNjsNouiFzdaKD4kHJdpump
+[2025-07-05T22:55:32.177Z] [INFO]    • Price: $0.00002598
+[2025-07-05T22:55:32.178Z] [INFO]    • Market Cap: $25,848.853
+[2025-07-05T22:55:32.178Z] [INFO]    • Volume 24h: $47.37
+[2025-07-05T22:55:32.178Z] [INFO] 📊 Token loaded: ROGUE (Agent Rogue)
+[2025-07-05T22:55:32.178Z] [INFO]    • Mint: 27yzfJSNvYLBjgSNbMyXMMUWzx6T9q4B9TP8Jt8MZ9mL
+[2025-07-05T22:55:32.178Z] [INFO]    • Price: $0.00004962
+[2025-07-05T22:55:32.178Z] [INFO]    • Market Cap: $49,670.38
+[2025-07-05T22:55:32.178Z] [INFO]    • Volume 24h: $52.037
+[2025-07-05T22:55:32.178Z] [INFO] 📊 Token loaded: AGENT (Agents AI)
+[2025-07-05T22:55:32.178Z] [INFO]    • Mint: Ag5mMdBSxm8J893RazD9PGkxWKJ5o3UKdWW4ZmJAey9w
+[2025-07-05T22:55:32.178Z] [INFO]    • Price: $0.00042311
+[2025-07-05T22:55:32.178Z] [INFO]    • Market Cap: $421,466.87
+[2025-07-05T22:55:32.178Z] [INFO]    • Volume 24h: $337.36
+[2025-07-05T22:55:32.178Z] [INFO] 📊 Token loaded: TANK (AgentTank)
+[2025-07-05T22:55:32.178Z] [INFO]    • Mint: GAMwtMB6onAvBNBQJCJFuxoaqfPH8uCQ2dewNMVVpump
+[2025-07-05T22:55:32.178Z] [INFO]    • Price: $0.00276886
+[2025-07-05T22:55:32.178Z] [INFO]    • Market Cap: $2,767,097.794
+[2025-07-05T22:55:32.178Z] [INFO]    • Volume 24h: $466,920.95
+[2025-07-05T22:55:32.178Z] [INFO] 📊 Token loaded: TED (Agent Ted)
+[2025-07-05T22:55:32.178Z] [INFO]    • Mint: D8RaN4ZXKkemC7pyu2noMB8n6ptDPkzuMFp4KfZSpkin
+[2025-07-05T22:55:32.178Z] [INFO]    • Price: $0.00638761
+[2025-07-05T22:55:32.179Z] [INFO]    • Market Cap: $6,393,699.447
+[2025-07-05T22:55:32.179Z] [INFO]    • Volume 24h: $3,824.136
+[2025-07-05T22:55:32.179Z] [INFO] 📊 Token loaded: AWS (Agentwood)
+[2025-07-05T22:55:32.179Z] [INFO]    • Mint: EgGSqHYuysAEvtP1YxnjcBZNfucT7g4JWzdnURgKSXSr
+[2025-07-05T22:55:32.179Z] [INFO]    • Price: $0.00074189
+[2025-07-05T22:55:32.179Z] [INFO]    • Market Cap: $51,329.224
+[2025-07-05T22:55:32.179Z] [INFO]    • Volume 24h: $111,477.534
+[2025-07-05T22:55:32.179Z] [INFO] 📊 Token loaded: AGXBT (AgentXBT)
+[2025-07-05T22:55:32.179Z] [INFO]    • Mint: AeAYE1LytXEqX4L8SpLPmnHFePtwhAYSxex8f4gCmoon
+[2025-07-05T22:55:32.179Z] [INFO]    • Price: $0.0000138
+[2025-07-05T22:55:32.179Z] [INFO]    • Market Cap: $13,678.959
+[2025-07-05T22:55:32.179Z] [INFO]    • Volume 24h: $36.759
+[2025-07-05T22:55:32.179Z] [INFO] 📊 Token loaded: AGIALPHA (AGI ALPHA AGENT)
+[2025-07-05T22:55:32.179Z] [INFO]    • Mint: tWKHzXd5PRmxTF5cMfJkm2Ua3TcjwNNoSRUqx6Apump
+[2025-07-05T22:55:32.179Z] [INFO]    • Price: $0.02608722
+[2025-07-05T22:55:32.179Z] [INFO]    • Market Cap: $25,999,281.34
+[2025-07-05T22:55:32.179Z] [INFO]    • Volume 24h: $151,200.945
+[2025-07-05T22:55:32.179Z] [INFO] 📊 Token loaded: AGI (AGISTRY)
+[2025-07-05T22:55:32.179Z] [INFO]    • Mint: 8gUcEyfmuFvnK3byAzWALRaKSvgyzFbCwyU2eQ6tpump
+[2025-07-05T22:55:32.179Z] [INFO]    • Price: $0.00002184
+[2025-07-05T22:55:32.179Z] [INFO]    • Market Cap: $20,627.905
+[2025-07-05T22:55:32.179Z] [INFO]    • Volume 24h: $80.782
+[2025-07-05T22:55:32.179Z] [INFO] 📊 Token loaded: AGIXT (AGiXT)
+[2025-07-05T22:55:32.179Z] [INFO]    • Mint: F9TgEJLLRUKDRF16HgjUCdJfJ5BK6ucyiW8uJxVPpump
+[2025-07-05T22:55:32.179Z] [INFO]    • Price: $0.00221764
+[2025-07-05T22:55:32.179Z] [INFO]    • Market Cap: $2,216,917.868
+[2025-07-05T22:55:32.179Z] [INFO]    • Volume 24h: $1,127,199.464
+[2025-07-05T22:55:32.179Z] [INFO] 📊 Token loaded: AUSD (AUSD)
+[2025-07-05T22:55:32.179Z] [INFO]    • Mint: AUSD1jCcCyPLybk1YnvPWsHQSrZ46dxwoMniN4N2UEB9
+[2025-07-05T22:55:32.179Z] [INFO]    • Price: $0.999682
+[2025-07-05T22:55:32.179Z] [INFO]    • Market Cap: $130,230,878.72
+[2025-07-05T22:55:32.179Z] [INFO]    • Volume 24h: $52,842,969.151
+[2025-07-05T22:55:32.179Z] [INFO] 📊 Token loaded: AGA (AgoraHub)
+[2025-07-05T22:55:32.179Z] [INFO]    • Mint: AGAxefyrPTi63FGL2ukJUTBtLJStDpiXMdtLRWvzambv
+[2025-07-05T22:55:32.179Z] [INFO]    • Price: $0.00517564
+[2025-07-05T22:55:32.179Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:32.180Z] [INFO]    • Volume 24h: $1,383.701
+[2025-07-05T22:55:32.180Z] [INFO] 📊 Token loaded: AGRI (AgriDex)
+[2025-07-05T22:55:32.180Z] [INFO]    • Mint: AGRidUXLeDij9CJprkZx7WBXtTQC67jtfiwz293mVrJ
+[2025-07-05T22:55:32.180Z] [INFO]    • Price: $0.03097332
+[2025-07-05T22:55:32.180Z] [INFO]    • Market Cap: $7,206,553.423
+[2025-07-05T22:55:32.180Z] [INFO]    • Volume 24h: $585,478.289
+[2025-07-05T22:55:32.180Z] [INFO] 📊 Token loaded: AI16Z (ai16z)
+[2025-07-05T22:55:32.180Z] [INFO]    • Mint: HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC
+[2025-07-05T22:55:32.180Z] [INFO]    • Price: $0.151522
+[2025-07-05T22:55:32.180Z] [INFO]    • Market Cap: $166,599,125.815
+[2025-07-05T22:55:32.180Z] [INFO]    • Volume 24h: $99,144,373.963
+[2025-07-05T22:55:32.180Z] [INFO] 📊 Token loaded: ELIZA (ai16zeliza)
+[2025-07-05T22:55:32.180Z] [INFO]    • Mint: wUtwjNmjCP9TTTtoc5Xn5h5sZ2cYJm5w2w44b79yr2o
+[2025-07-05T22:55:32.180Z] [INFO]    • Price: $0.00047404
+[2025-07-05T22:55:32.180Z] [INFO]    • Market Cap: $455,337.633
+[2025-07-05T22:55:32.180Z] [INFO]    • Volume 24h: $503,431.995
+[2025-07-05T22:55:32.180Z] [INFO] 📊 Token loaded: GUDTEK (ai16zterminalfartARCzereLLMswarm)
+[2025-07-05T22:55:32.180Z] [INFO]    • Mint: CANKciNUFnuJfWPc4jxzrPyJaR7gBpuNSyRdd6ULpump
+[2025-07-05T22:55:32.180Z] [INFO]    • Price: $0.00002777
+[2025-07-05T22:55:32.180Z] [INFO]    • Market Cap: $26,927.33
+[2025-07-05T22:55:32.180Z] [INFO]    • Volume 24h: $21.255
+[2025-07-05T22:55:32.180Z] [INFO] 📊 Token loaded: AI69X (ai69x)
+[2025-07-05T22:55:32.180Z] [INFO]    • Mint: DvyxUPDrDSLLziu5YsTkyirRDTncqkrWTsUdNCuipump
+[2025-07-05T22:55:32.180Z] [INFO]    • Price: $0.0000569
+[2025-07-05T22:55:32.180Z] [INFO]    • Market Cap: $47,424.759
+[2025-07-05T22:55:32.180Z] [INFO]    • Volume 24h: $49,228.66
+[2025-07-05T22:55:32.180Z] [INFO] 📊 Token loaded: AI99X (ai99x)
+[2025-07-05T22:55:32.180Z] [INFO]    • Mint: DS6qJNTGJUz26tjC6G75hGXGA6dvEyyiupS7okhLpump
+[2025-07-05T22:55:32.180Z] [INFO]    • Price: $0.00001262
+[2025-07-05T22:55:32.180Z] [INFO]    • Market Cap: $11,988.875
+[2025-07-05T22:55:32.180Z] [INFO]    • Volume 24h: $5.127
+[2025-07-05T22:55:32.180Z] [INFO] 📊 Token loaded: KAIA (A.I Agent kAia)
+[2025-07-05T22:55:32.180Z] [INFO]    • Mint: 7bD1RTKSZSsneDXDoMincSswED3uBnzuRyHi5tJ7ZjwN
+[2025-07-05T22:55:32.180Z] [INFO]    • Price: $0.00001082
+[2025-07-05T22:55:32.180Z] [INFO]    • Market Cap: $10,422.448
+[2025-07-05T22:55:32.180Z] [INFO]    • Volume 24h: $32.614
+[2025-07-05T22:55:32.180Z] [INFO] 📊 Token loaded: AICAT (AICAT)
+[2025-07-05T22:55:32.180Z] [INFO]    • Mint: 6W34k5VBA68DXFZPfLz4o8yJgJoiiR4YoQfbtAAZpump
+[2025-07-05T22:55:32.180Z] [INFO]    • Price: $0.00001888
+[2025-07-05T22:55:32.180Z] [INFO]    • Market Cap: $18,810.791
+[2025-07-05T22:55:32.180Z] [INFO]    • Volume 24h: $94.383
+[2025-07-05T22:55:32.180Z] [INFO] 📊 Token loaded: AICC (Aiccelerate)
+[2025-07-05T22:55:32.180Z] [INFO]    • Mint: 3zQ1XAcbSejFZNdbTBGvFGQatvViYbcwgXZ5pQ3KRRaw
+[2025-07-05T22:55:32.181Z] [INFO]    • Price: $0.00095408
+[2025-07-05T22:55:32.181Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:32.181Z] [INFO]    • Volume 24h: $5,135.063
+[2025-07-05T22:55:32.181Z] [INFO] 📊 Token loaded: AI (AI Community)
+[2025-07-05T22:55:32.181Z] [INFO]    • Mint: 99ouK5YUK3JPGCPX9joNtHsMU7NPpU7w91JN4kdQ97po
+[2025-07-05T22:55:32.181Z] [INFO]    • Price: $0.00024014
+[2025-07-05T22:55:32.181Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:32.181Z] [INFO]    • Volume 24h: $248.219
+[2025-07-05T22:55:32.181Z] [INFO] Batch completed: 97 tokens with price data
+[2025-07-05T22:55:32.181Z] [INFO] Waiting 5 seconds before next batch...
+[2025-07-05T22:55:37.182Z] [INFO] Fetching batch 3: tokens 101-150
+[2025-07-05T22:55:37.670Z] [INFO] 📊 Token loaded: AICRYNODE (AI Crystal Node)
+[2025-07-05T22:55:37.671Z] [INFO]    • Mint: PD11M8MB8qQUAiWzyEK4JwfS8rt7Set6av6a5JYpump
+[2025-07-05T22:55:37.671Z] [INFO]    • Price: $0.00001701
+[2025-07-05T22:55:37.671Z] [INFO]    • Market Cap: $16,984.194
+[2025-07-05T22:55:37.671Z] [INFO]    • Volume 24h: $5.821
+[2025-07-05T22:55:37.671Z] [INFO] 📊 Token loaded: AIDAOVC (aiDAOvc)
+[2025-07-05T22:55:37.671Z] [INFO]    • Mint: AdJ7FFvw7Yo7LzKbcFuRpNqScLQr54FW9mE5ZatACvcJ
+[2025-07-05T22:55:37.671Z] [INFO]    • Price: $0.00000602
+[2025-07-05T22:55:37.671Z] [INFO]    • Market Cap: $6,015.531
+[2025-07-05T22:55:37.671Z] [INFO]    • Volume 24h: $29.082
+[2025-07-05T22:55:37.671Z] [INFO] 📊 Token loaded: $AIGCR (Ai GCR)
+[2025-07-05T22:55:37.671Z] [INFO]    • Mint: 9vtNLbN2qxPbrx666rP34s9PBGtyLrsupMGdVyqG7FzH
+[2025-07-05T22:55:37.671Z] [INFO]    • Price: $0.00001195
+[2025-07-05T22:55:37.671Z] [INFO]    • Market Cap: $11,937.367
+[2025-07-05T22:55:37.671Z] [INFO]    • Volume 24h: $1.876
+[2025-07-05T22:55:37.671Z] [INFO] 📊 Token loaded: OLIVIA (AIGOV)
+[2025-07-05T22:55:37.671Z] [INFO]    • Mint: 2fdtCHuvyLcD2q86XZGFmYbDux9ZbbUgMmFhzChqmoon
+[2025-07-05T22:55:37.671Z] [INFO]    • Price: $0.0004208
+[2025-07-05T22:55:37.671Z] [INFO]    • Market Cap: $390,987.658
+[2025-07-05T22:55:37.671Z] [INFO]    • Volume 24h: $680,036.327
+[2025-07-05T22:55:37.671Z] [INFO] 📊 Token loaded: AIINU (AI INU)
+[2025-07-05T22:55:37.671Z] [INFO]    • Mint: Bs7diZazUH2PgNyWh7qj3kgUFXqumZpkAjTGSzQKx4cV
+[2025-07-05T22:55:37.671Z] [INFO]    • Price: $0.00129483
+[2025-07-05T22:55:37.671Z] [INFO]    • Market Cap: $563,178.355
+[2025-07-05T22:55:37.671Z] [INFO]    • Volume 24h: $391.525
+[2025-07-05T22:55:37.671Z] [INFO] 📊 Token loaded: AIKI (Aiki)
+[2025-07-05T22:55:37.671Z] [INFO]    • Mint: aikiZ7nfvtnZh6gDqpeZ6LqURmqznY42eDPnU3GP18c
+[2025-07-05T22:55:37.671Z] [INFO]    • Price: $0.00492854
+[2025-07-05T22:55:37.671Z] [INFO]    • Market Cap: $492,843.653
+[2025-07-05T22:55:37.671Z] [INFO]    • Volume 24h: $13.835
+[2025-07-05T22:55:37.671Z] [INFO] 📊 Token loaded: AILIVE (ailive)
+[2025-07-05T22:55:37.671Z] [INFO]    • Mint: 3He53vyEdBSD3Pxx5vAJ4AzQz3GXLXYBvKcYiTJ2pump
+[2025-07-05T22:55:37.671Z] [INFO]    • Price: $0.00002753
+[2025-07-05T22:55:37.671Z] [INFO]    • Market Cap: $26,482.144
+[2025-07-05T22:55:37.671Z] [INFO]    • Volume 24h: $8.511
+[2025-07-05T22:55:37.671Z] [INFO] 📊 Token loaded: UAI (AIMERICA)
+[2025-07-05T22:55:37.671Z] [INFO]    • Mint: haahyN2RTafHNNySeXKoowgGF7DdX5b5nGNGmghpump
+[2025-07-05T22:55:37.671Z] [INFO]    • Price: $0.00013932
+[2025-07-05T22:55:37.671Z] [INFO]    • Market Cap: $138,474.555
+[2025-07-05T22:55:37.671Z] [INFO]    • Volume 24h: $7.827
+[2025-07-05T22:55:37.671Z] [INFO] 📊 Token loaded: AIMONICA (Aimonica Brands)
+[2025-07-05T22:55:37.671Z] [INFO]    • Mint: FVdo7CDJarhYoH6McyTFqx71EtzCPViinvdd1v86Qmy5
+[2025-07-05T22:55:37.671Z] [INFO]    • Price: $0.00311289
+[2025-07-05T22:55:37.671Z] [INFO]    • Market Cap: $3,058,112.026
+[2025-07-05T22:55:37.671Z] [INFO]    • Volume 24h: $5,830,694.854
+[2025-07-05T22:55:37.671Z] [INFO] 📊 Token loaded: AINAL (AInalyzr)
+[2025-07-05T22:55:37.671Z] [INFO]    • Mint: 2sCar1KWir81RBREWpyEpFSghcuog234GrZLfsxSpump
+[2025-07-05T22:55:37.671Z] [INFO]    • Price: $0.00000562
+[2025-07-05T22:55:37.671Z] [INFO]    • Market Cap: $5,289.595
+[2025-07-05T22:55:37.671Z] [INFO]    • Volume 24h: $55.191
+[2025-07-05T22:55:37.671Z] [INFO] 📊 Token loaded: AINTI (AIntivirus)
+[2025-07-05T22:55:37.671Z] [INFO]    • Mint: EiVMQrvdDYK77eK6N6cyh5sGBe5Y1MQWVA7YaURVpump
+[2025-07-05T22:55:37.671Z] [INFO]    • Price: $0.0337323
+[2025-07-05T22:55:37.671Z] [INFO]    • Market Cap: $33,728,677.314
+[2025-07-05T22:55:37.671Z] [INFO]    • Volume 24h: $0
+[2025-07-05T22:55:37.672Z] [INFO] 📊 Token loaded: AINTI (AIntivirus)
+[2025-07-05T22:55:37.672Z] [INFO]    • Mint: BAezfVmia8UYLt4rst6PCU4dvL2i2qHzqn4wGhytpNJW
+[2025-07-05T22:55:37.672Z] [INFO]    • Price: $0.03364925
+[2025-07-05T22:55:37.672Z] [INFO]    • Market Cap: $3,364,857.525
+[2025-07-05T22:55:37.672Z] [INFO]    • Volume 24h: $307,728.805
+[2025-07-05T22:55:37.672Z] [INFO] 📊 Token loaded: AIOS (AIOS Foundation)
+[2025-07-05T22:55:37.672Z] [INFO]    • Mint: 5QS7RcHfGUa2ZtrovPvEJMB9coqroiT7H48dPSwFpump
+[2025-07-05T22:55:37.672Z] [INFO]    • Price: $0.00252486
+[2025-07-05T22:55:37.672Z] [INFO]    • Market Cap: $842,512.81
+[2025-07-05T22:55:37.672Z] [INFO]    • Volume 24h: $647,693.048
+[2025-07-05T22:55:37.672Z] [INFO] 📊 Token loaded: AIPETS (Aipets)
+[2025-07-05T22:55:37.672Z] [INFO]    • Mint: 29BY5BHtLCG2mamRtC9hh9283U3QkbYLSCwXXmEJpump
+[2025-07-05T22:55:37.672Z] [INFO]    • Price: $0.00001257
+[2025-07-05T22:55:37.672Z] [INFO]    • Market Cap: $12,573.93
+[2025-07-05T22:55:37.672Z] [INFO]    • Volume 24h: $1.729
+[2025-07-05T22:55:37.672Z] [INFO] 📊 Token loaded: AICMP (AI-Powered CMP)
+[2025-07-05T22:55:37.672Z] [INFO]    • Mint: BAEXK4X6B3hkqmEkPuyyZQ5fZUb5iZ6SaJ7a9UDnpump
+[2025-07-05T22:55:37.672Z] [INFO]    • Price: $0.00013367
+[2025-07-05T22:55:37.672Z] [INFO]    • Market Cap: $124,312.091
+[2025-07-05T22:55:37.672Z] [INFO]    • Volume 24h: $84.278
+[2025-07-05T22:55:37.672Z] [INFO] 📊 Token loaded: ATMT (AiPTP)
+[2025-07-05T22:55:37.672Z] [INFO]    • Mint: 6tCvMBJiGSsDQghZ54HqaizvydBH6vaugxuxTE7wKUG8
+[2025-07-05T22:55:37.672Z] [INFO]    • Price: $0.00075633
+[2025-07-05T22:55:37.672Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:37.672Z] [INFO]    • Volume 24h: $23.602
+[2025-07-05T22:55:37.672Z] [INFO] 📊 Token loaded: AIPUMP (aiPump)
+[2025-07-05T22:55:37.672Z] [INFO]    • Mint: 2w3A2P5juwg234spHKfps7WReWoVmujtErqjaZm9VaiP
+[2025-07-05T22:55:37.672Z] [INFO]    • Price: $0.00051589
+[2025-07-05T22:55:37.672Z] [INFO]    • Market Cap: $215,972.496
+[2025-07-05T22:55:37.672Z] [INFO]    • Volume 24h: $259,204.683
+[2025-07-05T22:55:37.672Z] [INFO] 📊 Token loaded: AIR3 (AIR3 AIRewardrop)
+[2025-07-05T22:55:37.672Z] [INFO]    • Mint: 2jvsWRkT17ofmv9pkW7ofqAFWSCNyJYdykJ7kPKbmoon
+[2025-07-05T22:55:37.672Z] [INFO]    • Price: $0.00045805
+[2025-07-05T22:55:37.672Z] [INFO]    • Market Cap: $445,007.695
+[2025-07-05T22:55:37.672Z] [INFO]    • Volume 24h: $1,206.039
+[2025-07-05T22:55:37.672Z] [INFO] 📊 Token loaded: AIRENA (AIrena)
+[2025-07-05T22:55:37.672Z] [INFO]    • Mint: 6Hdt9Hj2fHfaY4E7Q24t9xExcUe89ivfScEmcAapump
+[2025-07-05T22:55:37.672Z] [INFO]    • Price: $0.00000558
+[2025-07-05T22:55:37.672Z] [INFO]    • Market Cap: $5,469.988
+[2025-07-05T22:55:37.672Z] [INFO]    • Volume 24h: $1.15
+[2025-07-05T22:55:37.672Z] [INFO] 📊 Token loaded: ARO (AI Research Orchestrator)
+[2025-07-05T22:55:37.672Z] [INFO]    • Mint: CBQxnbAbakVewBtZPDRQcQVLWZCfNcD5u6uJDDBJpump
+[2025-07-05T22:55:37.672Z] [INFO]    • Price: $0.00025154
+[2025-07-05T22:55:37.672Z] [INFO]    • Market Cap: $251,532.561
+[2025-07-05T22:55:37.672Z] [INFO]    • Volume 24h: $10.6
+[2025-07-05T22:55:37.672Z] [INFO] 📊 Token loaded: FRYER (Air Fryer Guy)
+[2025-07-05T22:55:37.672Z] [INFO]    • Mint: 7VCzW5jv4cTRmkJzwr1bE9hcA8PUCB1GWgFeS4mapump
+[2025-07-05T22:55:37.672Z] [INFO]    • Price: $0.00000831
+[2025-07-05T22:55:37.672Z] [INFO]    • Market Cap: $7,962.467
+[2025-07-05T22:55:37.672Z] [INFO]    • Volume 24h: $1.96
+[2025-07-05T22:55:37.672Z] [INFO] 📊 Token loaded: ARC (AI Rig Complex)
+[2025-07-05T22:55:37.672Z] [INFO]    • Mint: 61V8vBaqAGMpgDQi4JcAwo1dmBGHsyhzodcPqnEVpump
+[2025-07-05T22:55:37.672Z] [INFO]    • Price: $0.02673923
+[2025-07-05T22:55:37.672Z] [INFO]    • Market Cap: $26,717,069.985
+[2025-07-05T22:55:37.672Z] [INFO]    • Volume 24h: $5,320,369.819
+[2025-07-05T22:55:37.672Z] [INFO] 📊 Token loaded: AISCII (AISCII)
+[2025-07-05T22:55:37.672Z] [INFO]    • Mint: B37KG7jHv1TkhJwe9xTuLuQyzTXvgQjAmBaxLeCrpump
+[2025-07-05T22:55:37.672Z] [INFO]    • Price: $0.00002561
+[2025-07-05T22:55:37.672Z] [INFO]    • Market Cap: $25,606.222
+[2025-07-05T22:55:37.672Z] [INFO]    • Volume 24h: $98.224
+[2025-07-05T22:55:37.672Z] [INFO] ⚠️ No price data for token: aishare (aishare)
+[2025-07-05T22:55:37.672Z] [INFO] 📊 Token loaded: NOVA (AI Shell NOVA)
+[2025-07-05T22:55:37.672Z] [INFO]    • Mint: AxDKAyDsC7p8C5MeDFX6FKV2MPCSGwzkRfGY2qZZpump
+[2025-07-05T22:55:37.672Z] [INFO]    • Price: $0.00036415
+[2025-07-05T22:55:37.672Z] [INFO]    • Market Cap: $363,010.652
+[2025-07-05T22:55:37.672Z] [INFO]    • Volume 24h: $2,897.911
+[2025-07-05T22:55:37.672Z] [INFO] 📊 Token loaded: AISLOP (AI Slop)
+[2025-07-05T22:55:37.672Z] [INFO]    • Mint: 2wzVMXhLypmP92mXNCq4fuFcd9TCC972AbMfuiH3pump
+[2025-07-05T22:55:37.672Z] [INFO]    • Price: $0.00025777
+[2025-07-05T22:55:37.672Z] [INFO]    • Market Cap: $257,759.173
+[2025-07-05T22:55:37.672Z] [INFO]    • Volume 24h: $99,300.817
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: AISM (AISM FAITH TOKEN)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: 9ZFfZwZDfoSqj7HFD7BNGy57XVNkd1BR2UrNYKsnpump
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $0.00312919
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $3,129,038.61
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $6,859.918
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: AIT (AI Trader Agent)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: D4G7rpcQBF5oVQwBzoDwHPiweJ5RYvuEVGdxqmPApump
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $0.00003002
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $25,345.059
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $4.048
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: AITRUMP (AITRUMP)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: 3i8aE21indrAn53qAkWFZrnqJ8AEvPUammvVLjMCb3Yk
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $0.00002721
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $27,201.286
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $1.736
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: AITT (Aittcoin)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: GPbNni4uWSEjSWQhJnv7ZYpjFE3znmi4594iEMndx95L
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $5.70084e-7
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $5,673.807
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $1.41
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: AIVIA (AI Virtual Agents)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: 4ptXaGHy4CcCBfr5SPQZK5bcH9N4njv4LCf1RaJqpump
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $0.00002243
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $22,452.775
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $1,101.306
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: WARPER (AIWarper Token)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: 7JNdLsAgBMi2WZW26SeifhMNEt3LrLcfM8oBQVT7pump
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $0.00002456
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $21,855.882
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $5.649
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: SHEGEN (Aiwithdaddyissues)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: 2KgAN8nLAU74wjiyKi85m4ZT6Z9MtqrUTGfse8Xapump
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $0.00032044
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $319,279.798
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $209,089.704
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: AIXBT (aixbt by Virtuals)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: 14zP2ToQ79XWvc7FQpm4bRnp9d6Mp1rFfsUW3gpLcRX
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $0.130178
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $123,194,757.045
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $55,503,677.451
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: AKACHI (AKACHI)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: Ce9BSXMJssbauHBtGD691M3VVyh5s6pXSFDMvWrEpump
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $0.00000766
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $7,662.376
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $7.368
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: AKIO (Akio)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: Akiox1GAxohWdggSLaFpChxLyS54vz7P7YaF1tckWEQu
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $0.01026838
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $10,122,593.692
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $80,614.371
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: AKT (Akita Inu)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: hUoehiMy279k95UeSijKkjx7RUsb676KSDgJ2i3xYbW
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $0.0000673
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $19.695
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: ALAN (Alan the Alien)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: 3swKY5FN4ENQYYJTYqQzGbT7iEv8yD5UngCWfk3fEVA7
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $8.62551e-7
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $37,391.587
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $50.033
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: ALASKA (Alaska)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: s3ghbbWBTtMizNJKGmeMBd1URpisoQJxuDLrheEX61g
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $0.00001719
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $17,187.391
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $11.072
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: ALBEMARLE (Albemarle Meme Token)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: FEj9JuKq7JMLtvZF3EetVNd5ufU2vPA4ZDiVGaUbiRkj
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $0.0009375
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $140.485
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: ALBERT (Albert)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: 8KSiBaJvpwqzYFU7u8qLmFqiEAHkARDRkAnetFjEznZX
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $0.00000962
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $113.242
+[2025-07-05T22:55:37.673Z] [INFO] 📊 Token loaded: ALCH (Alchemist AI)
+[2025-07-05T22:55:37.673Z] [INFO]    • Mint: HNg5PYJmtqcmzXrv6S9zP1CDKk5BgDuyFBxbvNApump
+[2025-07-05T22:55:37.673Z] [INFO]    • Price: $0.140571
+[2025-07-05T22:55:37.673Z] [INFO]    • Market Cap: $119,479,225.037
+[2025-07-05T22:55:37.673Z] [INFO]    • Volume 24h: $12,993,241.251
+[2025-07-05T22:55:37.674Z] [INFO] 📊 Token loaded: RIN (Aldrin)
+[2025-07-05T22:55:37.674Z] [INFO]    • Mint: E5ndSkaB17Dm7CsD22dvcjfrYSDLCxFcMd6z8ddCk5wp
+[2025-07-05T22:55:37.674Z] [INFO]    • Price: $0.00253396
+[2025-07-05T22:55:37.674Z] [INFO]    • Market Cap: $31,329.587
+[2025-07-05T22:55:37.674Z] [INFO]    • Volume 24h: $4.568
+[2025-07-05T22:55:37.674Z] [INFO] 📊 Token loaded: ALEPH (Aleph.im (Wormhole))
+[2025-07-05T22:55:37.674Z] [INFO]    • Mint: 3UCMiSnkcnkPE1pgQ5ggPCBv6dXgVUy16TmMUe1WpG9x
+[2025-07-05T22:55:37.674Z] [INFO]    • Price: $0.061659
+[2025-07-05T22:55:37.674Z] [INFO]    • Market Cap: $436,498.536
+[2025-07-05T22:55:37.674Z] [INFO]    • Volume 24h: $54,838.597
+[2025-07-05T22:55:37.674Z] [INFO] 📊 Token loaded: ALI (Artificial Liquid Intelligence)
+[2025-07-05T22:55:37.674Z] [INFO]    • Mint: 9wvorGtBJ8gyLorFTmwXWcymPoGVUBn6MRzHwFpCdCeC
+[2025-07-05T22:55:37.674Z] [INFO]    • Price: $0.00480467
+[2025-07-05T22:55:37.674Z] [INFO]    • Market Cap: $43,797,739.119
+[2025-07-05T22:55:37.674Z] [INFO]    • Volume 24h: $1,009,475.093
+[2025-07-05T22:55:37.674Z] [INFO] 📊 Token loaded: ALETHEIA (Aletheia)
+[2025-07-05T22:55:37.674Z] [INFO]    • Mint: 6Xx8p2WmY1Uk2GD35uxhEyuniNrVEeSu3CUThb8Upump
+[2025-07-05T22:55:37.674Z] [INFO]    • Price: $0.00008327
+[2025-07-05T22:55:37.674Z] [INFO]    • Market Cap: $82,923.627
+[2025-07-05T22:55:37.674Z] [INFO]    • Volume 24h: $234.578
+[2025-07-05T22:55:37.674Z] [INFO] 📊 Token loaded: ALEXIS (ALEXIS)
+[2025-07-05T22:55:37.674Z] [INFO]    • Mint: BqCYBZJp7xWvRoWzvxwjd6A858twKpUyaPU4ewQ2BJiC
+[2025-07-05T22:55:37.674Z] [INFO]    • Price: $0.00000786
+[2025-07-05T22:55:37.674Z] [INFO]    • Market Cap: $2,635.234
+[2025-07-05T22:55:37.674Z] [INFO]    • Volume 24h: $85.945
+[2025-07-05T22:55:37.674Z] [INFO] 📊 Token loaded: ALGOAI (Algoritha A.I)
+[2025-07-05T22:55:37.674Z] [INFO]    • Mint: 4b83cYeo4BYfP9NfFUQQWRQYfomJjjChfsV64m5MqifY
+[2025-07-05T22:55:37.674Z] [INFO]    • Price: $0.00004139
+[2025-07-05T22:55:37.674Z] [INFO]    • Market Cap: $29,506.198
+[2025-07-05T22:55:37.674Z] [INFO]    • Volume 24h: $2,177.881
+[2025-07-05T22:55:37.674Z] [INFO] 📊 Token loaded: ALICE (Alice)
+[2025-07-05T22:55:37.674Z] [INFO]    • Mint: 8T988C2a8YNNbppjjd1uYUpmDqE8hLee1tuNokuepump
+[2025-07-05T22:55:37.674Z] [INFO]    • Price: $0.00001036
+[2025-07-05T22:55:37.674Z] [INFO]    • Market Cap: $9,954.017
+[2025-07-05T22:55:37.674Z] [INFO]    • Volume 24h: $110.063
+[2025-07-05T22:55:37.674Z] [INFO] 📊 Token loaded: ALICE (Alice)
+[2025-07-05T22:55:37.674Z] [INFO]    • Mint: 5aqodm2qSK4anKPRGvArGDnF7ko7bm1sQdC49sZrpump
+[2025-07-05T22:55:37.674Z] [INFO]    • Price: $0.00000587
+[2025-07-05T22:55:37.674Z] [INFO]    • Market Cap: $5,860.53
+[2025-07-05T22:55:37.674Z] [INFO]    • Volume 24h: $4.586
+[2025-07-05T22:55:37.674Z] [INFO] Batch completed: 146 tokens with price data
+[2025-07-05T22:55:37.674Z] [INFO] Waiting 5 seconds before next batch...
+[2025-07-05T22:55:42.674Z] [INFO] Fetching batch 4: tokens 151-200
+[2025-07-05T22:55:42.763Z] [WARN] Rate limit exceeded. Waiting 60000ms before retry 1/2
+[2025-07-05T22:56:43.289Z] [INFO] 📊 Token loaded: ALICE (AdaptLearnIntellectCompanyEngine)
+[2025-07-05T22:56:43.290Z] [INFO]    • Mint: HWrgYyGdivwuxV2ePxbk6vwkrKYqMa7is9fYMm5kcQWY
+[2025-07-05T22:56:43.290Z] [INFO]    • Price: $0.0000725
+[2025-07-05T22:56:43.290Z] [INFO]    • Market Cap: $72,423.557
+[2025-07-05T22:56:43.290Z] [INFO]    • Volume 24h: $218,782.499
+[2025-07-05T22:56:43.290Z] [INFO] 📊 Token loaded: ACM (Alicius Muskimus)
+[2025-07-05T22:56:43.290Z] [INFO]    • Mint: BM7qSiFCiveaYmmB1ueGCGDXVWvgBivqdDgmxQgupump
+[2025-07-05T22:56:43.290Z] [INFO]    • Price: $0.00000575
+[2025-07-05T22:56:43.290Z] [INFO]    • Market Cap: $5,437.529
+[2025-07-05T22:56:43.290Z] [INFO]    • Volume 24h: $2.739
+[2025-07-05T22:56:43.290Z] [INFO] 📊 Token loaded: AOC (Alickshundra Occasional-Cortex)
+[2025-07-05T22:56:43.290Z] [INFO]    • Mint: GfkfESc5A4EkxCGWsymNY4ZfkCDdvtB7ajCybLfYL1Qq
+[2025-07-05T22:56:43.290Z] [INFO]    • Price: $0.00002502
+[2025-07-05T22:56:43.290Z] [INFO]    • Market Cap: $24,933.874
+[2025-07-05T22:56:43.290Z] [INFO]    • Volume 24h: $468.602
+[2025-07-05T22:56:43.290Z] [INFO] 📊 Token loaded: ALIENS (Aliens)
+[2025-07-05T22:56:43.290Z] [INFO]    • Mint: GCSfrFVebzoJ9kK5jh8TGW8oJwWeN1n618F98ycLpump
+[2025-07-05T22:56:43.290Z] [INFO]    • Price: $0.0000083
+[2025-07-05T22:56:43.290Z] [INFO]    • Market Cap: $7,894.845
+[2025-07-05T22:56:43.290Z] [INFO]    • Volume 24h: $98.567
+[2025-07-05T22:56:43.290Z] [INFO] 📊 Token loaded: ALINAINTEL (ALINA AI)
+[2025-07-05T22:56:43.290Z] [INFO]    • Mint: HPgsCBk6gkTw5FFPYc9WeeBU8EU2Ye1AYmeTYq5apump
+[2025-07-05T22:56:43.290Z] [INFO]    • Price: $0.00001228
+[2025-07-05T22:56:43.290Z] [INFO]    • Market Cap: $12,268.937
+[2025-07-05T22:56:43.290Z] [INFO]    • Volume 24h: $202.033
+[2025-07-05T22:56:43.290Z] [INFO] 📊 Token loaded: AART (ALL.ART)
+[2025-07-05T22:56:43.290Z] [INFO]    • Mint: F3nefJBcejYbtdREjui1T9DPh5dBgpkKq7u2GAAMXs5B
+[2025-07-05T22:56:43.290Z] [INFO]    • Price: $0.00003153
+[2025-07-05T22:56:43.290Z] [INFO]    • Market Cap: $114,786.978
+[2025-07-05T22:56:43.290Z] [INFO]    • Volume 24h: $83,451.813
+[2025-07-05T22:56:43.290Z] [INFO] 📊 Token loaded: ABR (Allbridge)
+[2025-07-05T22:56:43.290Z] [INFO]    • Mint: a11bdAAuV8iB2fu7X6AxAvDTo1QZ8FXB3kk5eecdasp
+[2025-07-05T22:56:43.290Z] [INFO]    • Price: $0.077408
+[2025-07-05T22:56:43.290Z] [INFO]    • Market Cap: $1,548,724.46
+[2025-07-05T22:56:43.290Z] [INFO]    • Volume 24h: $203.06
+[2025-07-05T22:56:43.290Z] [INFO] 📊 Token loaded: ALL (AllDomains)
+[2025-07-05T22:56:43.290Z] [INFO]    • Mint: BaoawH9p2J8yUK9r5YXQs3hQwmUJgscACjmTkh8rMwYL
+[2025-07-05T22:56:43.290Z] [INFO]    • Price: $0.00101005
+[2025-07-05T22:56:43.290Z] [INFO]    • Market Cap: $193,989.671
+[2025-07-05T22:56:43.290Z] [INFO]    • Volume 24h: $94.054
+[2025-07-05T22:56:43.290Z] [INFO] 📊 Token loaded: ICE (Alligator Alcatraz)
+[2025-07-05T22:56:43.290Z] [INFO]    • Mint: Cnj5xWjidDVvMFGTjEnATV7ULAaeZy86PUQTAacv9No8
+[2025-07-05T22:56:43.290Z] [INFO]    • Price: $0.00002557
+[2025-07-05T22:56:43.290Z] [INFO]    • Market Cap: $25,570.129
+[2025-07-05T22:56:43.290Z] [INFO]    • Volume 24h: $23,335.876
+[2025-07-05T22:56:43.290Z] [INFO] 📊 Token loaded: AWR (All Will Retire)
+[2025-07-05T22:56:43.290Z] [INFO]    • Mint: Ai4CL1SAxVRigxQFwBH8S2JkuL7EqrdiGwTC7JpCpump
+[2025-07-05T22:56:43.290Z] [INFO]    • Price: $0.00236266
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $2,276,259.053
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $796,787.046
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: ALMAN (Alman)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: 2UXQvRGgZTZywU1TsnYtFy7hqoNwDEEW6XqADsqnpump
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $0.00000789
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $7,883.452
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $10.132
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: ALON (Alon)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: 8XtRWb4uAAJFMP4QQhoYYCWR6XXb7ybcCdiqPwz9s5WS
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $0.01124804
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $1,447,698.65
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: ALP (ALP)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: 8ThSrRA6qpkva4bGE6DNfFKnuKuCPM22Db16zS1Mpump
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $0.00004197
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $34,146.888
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $71.974
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: ALPACA (Alpaca)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: FfgtU4bMte3JRZGX7kcNVywxiGoSqUTga8eZxTSFpump
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $0.00004137
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $39,671.21
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $89.343
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: ALPACA (Alpaca)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: 2AZH2nNLNzmG3v6nMC88pUEXWo3GA58zHzPxAmUppump
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $0.00000553
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $5,519.415
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $38.036
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: ALPACO (Alpaco AI & MCPs)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: 8gJAaxa5YkrDpXRF6qw1fHW5nxM8sCUkQ9WfXasgpump
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $0.00000919
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $9,167.965
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $191.892
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: ALPHA (ALPHA)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: 2XJ4DvF97kJKjLAB195KSymFx8uXLmuT1Pw8Z2HCSytP
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $0.00001416
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $2.959
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: ALPHA (Reject Modernity)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: 2zrH2jE542mzB4HABgBjdWMQPtNC5H12pwo1iLpfpump
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $0.00034211
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $341,931.648
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $3,970.836
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: ALPHA (Alpha)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: 2sCUCJdVkmyXp4dT8sFaA9LKgSMK4yDPi9zLHiwXpump
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $0.00068791
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $544,560.713
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $3,627.321
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: ALPHA (AlphaArc)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: Cg93SZJkHePybZqGDuyXLf5Ag5sB2cpWfHUG8wNPpump
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $0.00008067
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $80,402.63
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $132.691
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: GOOGLX (Alphabet xStock)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $180.28
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $1,306,700.652
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $169,403.612
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: ALPHADOGE (AlphaDOGE)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: 8w9YHUm2QDRhoBNA24Dwp1BfDixTk6Jz7DmmMtw62zht
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $0.00001248
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $8,730.703
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $16.971
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: CUMS (alpha humans)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: Fcuz3tn9UuM3ifxvYQGsjrq1xbYcTRFtTsawXCCpump
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $0.0000079
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $7,888.28
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $22.516
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: AIKEK (AlphaKEK.AI)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: CotWkXoBD3edLb6opEGHV9tb3pyKmeoWBLwdMJ8ZDimW
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $0.01678196
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $3,982,683.879
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $6,396.644
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: ALPHA (Alpha Wolf)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: 3wJ4cr3PWs2VtPoh8Bfqs28WcE2WU7T1WA3puugrpump
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $0.00000375
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $3,684.334
+[2025-07-05T22:56:43.291Z] [INFO]    • Volume 24h: $11.387
+[2025-07-05T22:56:43.291Z] [INFO] 📊 Token loaded: ALR (ALRIS AGENT)
+[2025-07-05T22:56:43.291Z] [INFO]    • Mint: FwzpNxnabjZvc8QCnV6qPEBKxqLxSyjobc5Etdgxpump
+[2025-07-05T22:56:43.291Z] [INFO]    • Price: $0.00003957
+[2025-07-05T22:56:43.291Z] [INFO]    • Market Cap: $39,431.533
+[2025-07-05T22:56:43.292Z] [INFO]    • Volume 24h: $17.164
+[2025-07-05T22:56:43.292Z] [INFO] 📊 Token loaded: ALTOID (Altoid)
+[2025-07-05T22:56:43.292Z] [INFO]    • Mint: GULwrVbDds3syijiedNieummMCDnFezYx8Cx6U82pump
+[2025-07-05T22:56:43.292Z] [INFO]    • Price: $0.00001199
+[2025-07-05T22:56:43.292Z] [INFO]    • Market Cap: $11,951.922
+[2025-07-05T22:56:43.292Z] [INFO]    • Volume 24h: $1.256
+[2025-07-05T22:56:43.292Z] [INFO] 📊 Token loaded: JOWNES (Alux Jownes)
+[2025-07-05T22:56:43.292Z] [INFO]    • Mint: 8m9fjYycXAFva1kScttQgsESVZT7yELhjZASqfHBuMa5
+[2025-07-05T22:56:43.292Z] [INFO]    • Price: $0.00000916
+[2025-07-05T22:56:43.292Z] [INFO]    • Market Cap: $9,132.404
+[2025-07-05T22:56:43.292Z] [INFO]    • Volume 24h: $74.3
+[2025-07-05T22:56:43.292Z] [INFO] 📊 Token loaded: AMZNX (Amazon xStock)
+[2025-07-05T22:56:43.292Z] [INFO]    • Mint: Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg
+[2025-07-05T22:56:43.292Z] [INFO]    • Price: $371.56
+[2025-07-05T22:56:43.292Z] [INFO]    • Market Cap: $714,482.941
+[2025-07-05T22:56:43.292Z] [INFO]    • Volume 24h: $174,048.756
+[2025-07-05T22:56:43.292Z] [INFO] ⚠️ No price data for token: ambrx (amber-xstock)
+[2025-07-05T22:56:43.292Z] [INFO] 📊 Token loaded: AMBIOS (Ambios Network)
+[2025-07-05T22:56:43.292Z] [INFO]    • Mint: amb1bbMCnsnMgXfqj6JK359B8T23FijFgiLQiCrd9FM
+[2025-07-05T22:56:43.292Z] [INFO]    • Price: $0.00642214
+[2025-07-05T22:56:43.292Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:43.292Z] [INFO]    • Volume 24h: $424.519
+[2025-07-05T22:56:43.292Z] [INFO] 📊 Token loaded: AMC (AMC)
+[2025-07-05T22:56:43.292Z] [INFO]    • Mint: 9jaZhJM6nMHTo4hY9DGabQ1HNuUWhJtm7js1fmKMVpkN
+[2025-07-05T22:56:43.292Z] [INFO]    • Price: $0.00065423
+[2025-07-05T22:56:43.292Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:43.292Z] [INFO]    • Volume 24h: $3,303.875
+[2025-07-05T22:56:43.292Z] [INFO] 📊 Token loaded: AMERICA (America)
+[2025-07-05T22:56:43.292Z] [INFO]    • Mint: 2MwD89A8xuCpaiDqBsDEHe6rANhPou8PPKdTo7ETpump
+[2025-07-05T22:56:43.292Z] [INFO]    • Price: $0.00005523
+[2025-07-05T22:56:43.292Z] [INFO]    • Market Cap: $55,220.194
+[2025-07-05T22:56:43.292Z] [INFO]    • Volume 24h: $32,837.308
+[2025-07-05T22:56:43.292Z] [INFO] 📊 Token loaded: AIB (AMERICA IS BACK)
+[2025-07-05T22:56:43.292Z] [INFO]    • Mint: 5GfXzzdxUZ4QEwwa5hhBMEazFSp9EhtYvm8RFLxrgyVc
+[2025-07-05T22:56:43.292Z] [INFO]    • Price: $0.00006635
+[2025-07-05T22:56:43.292Z] [INFO]    • Market Cap: $65,710.265
+[2025-07-05T22:56:43.292Z] [INFO]    • Volume 24h: $1,267.873
+[2025-07-05T22:56:43.292Z] [INFO] 📊 Token loaded: USA (American Coin)
+[2025-07-05T22:56:43.292Z] [INFO]    • Mint: 69kdRLyP5DTRkpHraaSZAQbWmAwzF9guKjZfzMXzcbAs
+[2025-07-05T22:56:43.292Z] [INFO]    • Price: $0.00000115
+[2025-07-05T22:56:43.292Z] [INFO]    • Market Cap: $13,386,498.391
+[2025-07-05T22:56:43.292Z] [INFO]    • Volume 24h: $908,395.681
+[2025-07-05T22:56:43.292Z] [INFO] 📊 Token loaded: AGI (American General Intelligence)
+[2025-07-05T22:56:43.292Z] [INFO]    • Mint: 4TYh7zSaRuWcWLztkGUFHzBjqdyEEWA34zUogbAUpump
+[2025-07-05T22:56:43.292Z] [INFO]    • Price: $0.00001908
+[2025-07-05T22:56:43.292Z] [INFO]    • Market Cap: $19,082.128
+[2025-07-05T22:56:43.292Z] [INFO]    • Volume 24h: $2.762
+[2025-07-05T22:56:43.292Z] [INFO] 📊 Token loaded: AP (America Party)
+[2025-07-05T22:56:43.292Z] [INFO]    • Mint: 39zSVsSHFqNhARbVh6n8ZF78nCmhV3gSg8D39xhBNe73
+[2025-07-05T22:56:43.292Z] [INFO]    • Price: $0.00135844
+[2025-07-05T22:56:43.292Z] [INFO]    • Market Cap: $1,358,801.569
+[2025-07-05T22:56:43.292Z] [INFO]    • Volume 24h: $29,652,967.666
+[2025-07-05T22:56:43.292Z] [INFO] 📊 Token loaded: AMIKO (Amiko)
+[2025-07-05T22:56:43.292Z] [INFO]    • Mint: AY1Ww6MxwC3cCiyrandHqLrp4FXvzgcwQTZpJ2FEpump
+[2025-07-05T22:56:43.292Z] [INFO]    • Price: $0.00335028
+[2025-07-05T22:56:43.292Z] [INFO]    • Market Cap: $2,525,435.034
+[2025-07-05T22:56:43.292Z] [INFO]    • Volume 24h: $31,606.529
+[2025-07-05T22:56:43.292Z] [INFO] 📊 Token loaded: AMAI (Amino AI)
+[2025-07-05T22:56:43.292Z] [INFO]    • Mint: GEqwrq3yb2dAERnS1i5tvCqFKmQGxQ4HhY6SHS7opump
+[2025-07-05T22:56:43.292Z] [INFO]    • Price: $0.00000494
+[2025-07-05T22:56:43.292Z] [INFO]    • Market Cap: $4,919.387
+[2025-07-05T22:56:43.292Z] [INFO]    • Volume 24h: $16.963
+[2025-07-05T22:56:43.292Z] [INFO] 📊 Token loaded: AMOURANTH (Amouranth's minutes)
+[2025-07-05T22:56:43.292Z] [INFO]    • Mint: H7ryQGvGeTFT4L6zVjwmombQPZHJ6nBbr1PS8tXytime
+[2025-07-05T22:56:43.292Z] [INFO]    • Price: $0.762368
+[2025-07-05T22:56:43.292Z] [INFO]    • Market Cap: $75,457.55
+[2025-07-05T22:56:43.292Z] [INFO]    • Volume 24h: $2,392.452
+[2025-07-05T22:56:43.292Z] [INFO] 📊 Token loaded: AMU (Amulet Protocol)
+[2025-07-05T22:56:43.292Z] [INFO]    • Mint: AMUwxPsqWSd1fbCGzWsrRKDcNoduuWMkdR38qPdit8G8
+[2025-07-05T22:56:43.292Z] [INFO]    • Price: $0.00016522
+[2025-07-05T22:56:43.292Z] [INFO]    • Market Cap: $75,955.705
+[2025-07-05T22:56:43.292Z] [INFO]    • Volume 24h: $140.862
+[2025-07-05T22:56:43.292Z] [INFO] 📊 Token loaded: ANALOS (analoS)
+[2025-07-05T22:56:43.292Z] [INFO]    • Mint: 7iT1GRYYhEop2nV1dyCwK2MGyLmPHq47WhPGSwiqcUg5
+[2025-07-05T22:56:43.293Z] [INFO]    • Price: $0.00000322
+[2025-07-05T22:56:43.293Z] [INFO]    • Market Cap: $320,078.797
+[2025-07-05T22:56:43.293Z] [INFO]    • Volume 24h: $10,377.672
+[2025-07-05T22:56:43.293Z] [INFO] 📊 Token loaded: ZERO (Analysoor)
+[2025-07-05T22:56:43.293Z] [INFO]    • Mint: 93RC484oMK5T9H89rzT5qiAXKHGP9jscXfFfrihNbe57
+[2025-07-05T22:56:43.293Z] [INFO]    • Price: $0.087944
+[2025-07-05T22:56:43.293Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:43.293Z] [INFO]    • Volume 24h: $207,770.135
+[2025-07-05T22:56:43.293Z] [INFO] 📊 Token loaded: ANARCHY (ANARCHY)
+[2025-07-05T22:56:43.293Z] [INFO]    • Mint: GYPxyPtu6g1NmnEPPkTcCdSZz7ZMs6A1S3wTjnLdpump
+[2025-07-05T22:56:43.293Z] [INFO]    • Price: $0.00086552
+[2025-07-05T22:56:43.293Z] [INFO]    • Market Cap: $371,133.995
+[2025-07-05T22:56:43.293Z] [INFO]    • Volume 24h: $271.702
+[2025-07-05T22:56:43.293Z] [INFO] 📊 Token loaded: GONE (AND IT'S GONE)
+[2025-07-05T22:56:43.293Z] [INFO]    • Mint: 89D8aUdgHfyCRXYMxgo7ogHDbNnuVpHYRnqFfNF7gone
+[2025-07-05T22:56:43.293Z] [INFO]    • Price: $0.00001283
+[2025-07-05T22:56:43.293Z] [INFO]    • Market Cap: $12,801.441
+[2025-07-05T22:56:43.293Z] [INFO]    • Volume 24h: $13.708
+[2025-07-05T22:56:43.293Z] [INFO] 📊 Token loaded: VONSPEED (Andrea Von Speed)
+[2025-07-05T22:56:43.293Z] [INFO]    • Mint: DVzrCErBzydh92bBzSJX1dKwVvb4omwhrvNz8CwRyxxV
+[2025-07-05T22:56:43.293Z] [INFO]    • Price: $0.00007541
+[2025-07-05T22:56:43.293Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:43.293Z] [INFO]    • Volume 24h: $83.29
+[2025-07-05T22:56:43.293Z] [INFO] 📊 Token loaded: ANDREA (Andrea Von Speed)
+[2025-07-05T22:56:43.293Z] [INFO]    • Mint: FdwpkZZs78rUJPRMavGqfFDujYmCbxQFLWqupY5Hbonk
+[2025-07-05T22:56:43.293Z] [INFO]    • Price: $0.00018761
+[2025-07-05T22:56:43.293Z] [INFO]    • Market Cap: $185,192.883
+[2025-07-05T22:56:43.293Z] [INFO]    • Volume 24h: $111,729.971
+[2025-07-05T22:56:43.293Z] [INFO] 📊 Token loaded: WTR (AndreyWTR)
+[2025-07-05T22:56:43.293Z] [INFO]    • Mint: 7ekB2w3Rsxmg2YSL6axUHLmHEveJUbxBHRxmDSfX6ray
+[2025-07-05T22:56:43.293Z] [INFO]    • Price: $0.00093669
+[2025-07-05T22:56:43.293Z] [INFO]    • Market Cap: $889,373.735
+[2025-07-05T22:56:43.297Z] [INFO]    • Volume 24h: $13,439.305
+[2025-07-05T22:56:43.297Z] [INFO] 📊 Token loaded: ANDY (Andy)
+[2025-07-05T22:56:43.297Z] [INFO]    • Mint: 93n51i8anR3ziS6kxqXEACjrvJoXpAxt3qbbo3eaRFRz
+[2025-07-05T22:56:43.297Z] [INFO]    • Price: $0.00014348
+[2025-07-05T22:56:43.297Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:43.297Z] [INFO]    • Volume 24h: $225.146
+[2025-07-05T22:56:43.297Z] [INFO] 📊 Token loaded: ANDY70B (ANDY70B)
+[2025-07-05T22:56:43.297Z] [INFO]    • Mint: 69P4cjVxSbrGfks5bcAC5yJGwRBvyeZ9exDmhoVCitVT
+[2025-07-05T22:56:43.297Z] [INFO]    • Price: $0.00017987
+[2025-07-05T22:56:43.297Z] [INFO]    • Market Cap: $173,101.615
+[2025-07-05T22:56:43.297Z] [INFO]    • Volume 24h: $5,826.169
+[2025-07-05T22:56:43.297Z] [INFO] Batch completed: 195 tokens with price data
+[2025-07-05T22:56:43.297Z] [INFO] Waiting 5 seconds before next batch...
+[2025-07-05T22:56:48.298Z] [INFO] Fetching batch 5: tokens 201-250
+[2025-07-05T22:56:48.799Z] [INFO] 📊 Token loaded: ANDY (Andy on SOL)
+[2025-07-05T22:56:48.799Z] [INFO]    • Mint: 667w6y7eH5tQucYQXfJ2KmiuGBE8HfYnqqbjLNSw7yww
+[2025-07-05T22:56:48.799Z] [INFO]    • Price: $0.00025437
+[2025-07-05T22:56:48.800Z] [INFO]    • Market Cap: $240,669.015
+[2025-07-05T22:56:48.800Z] [INFO]    • Volume 24h: $253,726.506
+[2025-07-05T22:56:48.800Z] [INFO] 📊 Token loaded: ANIME (A New Internet Money Era)
+[2025-07-05T22:56:48.800Z] [INFO]    • Mint: GRkAQsphKwc5PPMmi2bLT2aG9opmnHqJPN7spmjLpump
+[2025-07-05T22:56:48.800Z] [INFO]    • Price: $0.00001698
+[2025-07-05T22:56:48.800Z] [INFO]    • Market Cap: $16,490.058
+[2025-07-05T22:56:48.800Z] [INFO]    • Volume 24h: $5.831
+[2025-07-05T22:56:48.800Z] [INFO] 📊 Token loaded: ANGRYGUY (ANGRYGUY)
+[2025-07-05T22:56:48.800Z] [INFO]    • Mint: B5cteji7DaRFWfY16BZeGhWMTaeX7RX1CokhbhCzpump
+[2025-07-05T22:56:48.800Z] [INFO]    • Price: $0.00000918
+[2025-07-05T22:56:48.800Z] [INFO]    • Market Cap: $9,157.801
+[2025-07-05T22:56:48.800Z] [INFO]    • Volume 24h: $7.245
+[2025-07-05T22:56:48.800Z] [INFO] 📊 Token loaded: ANGRYSLERF (AngrySlerf)
+[2025-07-05T22:56:48.800Z] [INFO]    • Mint: 2QagM8UBq81JZ2yvdGsJCG1MVXUxihaVxajXCAXpFJsF
+[2025-07-05T22:56:48.800Z] [INFO]    • Price: $0.00033541
+[2025-07-05T22:56:48.800Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:48.800Z] [INFO]    • Volume 24h: $4.406
+[2025-07-05T22:56:48.800Z] [INFO] 📊 Token loaded: ANIME (Animefication)
+[2025-07-05T22:56:48.800Z] [INFO]    • Mint: 45DzrxKPS4Rgerk7u6gBCB9iikF4gYVUtYE6GXbDdZkj
+[2025-07-05T22:56:48.800Z] [INFO]    • Price: $0.00001691
+[2025-07-05T22:56:48.800Z] [INFO]    • Market Cap: $16,882.982
+[2025-07-05T22:56:48.800Z] [INFO]    • Volume 24h: $262.157
+[2025-07-05T22:56:48.800Z] [INFO] 📊 Token loaded: ANITA (Anita AI)
+[2025-07-05T22:56:48.800Z] [INFO]    • Mint: AnXE9mZYWReqBw4v5HrY2S2utt42uEtcBGmuCXASvRAi
+[2025-07-05T22:56:48.800Z] [INFO]    • Price: $0.00207163
+[2025-07-05T22:56:48.800Z] [INFO]    • Market Cap: $2,071,634.69
+[2025-07-05T22:56:48.800Z] [INFO]    • Volume 24h: $98,977.245
+[2025-07-05T22:56:48.801Z] [INFO] 📊 Token loaded: WYNN (Anita Max Wynn)
+[2025-07-05T22:56:48.801Z] [INFO]    • Mint: 4vqYQTjmKjxrWGtbL2tVkbAU1EVAz9JwcYtd2VE3PbVU
+[2025-07-05T22:56:48.801Z] [INFO]    • Price: $0.00036723
+[2025-07-05T22:56:48.801Z] [INFO]    • Market Cap: $366,135.855
+[2025-07-05T22:56:48.801Z] [INFO]    • Volume 24h: $11,195.316
+[2025-07-05T22:56:48.801Z] [INFO] 📊 Token loaded: ANON (Anonymous)
+[2025-07-05T22:56:48.801Z] [INFO]    • Mint: 8VJ51bdE3xorQ1zB7FEa8CsHdM4kw77xCFiCgbnL2qbT
+[2025-07-05T22:56:48.801Z] [INFO]    • Price: $0.0000122
+[2025-07-05T22:56:48.801Z] [INFO]    • Market Cap: $12,154.401
+[2025-07-05T22:56:48.801Z] [INFO]    • Volume 24h: $54.364
+[2025-07-05T22:56:48.801Z] [INFO] 📊 Token loaded: ACC (AnonymousCodingCult)
+[2025-07-05T22:56:48.801Z] [INFO]    • Mint: CrMwppXm5kQEbXPGNH45ASkQyRbd7uonD8heVQsEbgSA
+[2025-07-05T22:56:48.801Z] [INFO]    • Price: $0.04992614
+[2025-07-05T22:56:48.801Z] [INFO]    • Market Cap: $339,621.381
+[2025-07-05T22:56:48.801Z] [INFO]    • Volume 24h: $11,516.446
+[2025-07-05T22:56:48.801Z] [INFO] 📊 Token loaded: HOBBES (Ansem's Cat)
+[2025-07-05T22:56:48.801Z] [INFO]    • Mint: 6n7Janary9fqzxKaJVrhL9TG2F61VbAtwUMu1YZscaQS
+[2025-07-05T22:56:48.801Z] [INFO]    • Price: $0.00028876
+[2025-07-05T22:56:48.801Z] [INFO]    • Market Cap: $288,758.271
+[2025-07-05T22:56:48.801Z] [INFO]    • Volume 24h: $43,414.517
+[2025-07-05T22:56:48.801Z] [INFO] 📊 Token loaded: ANSEM (Ansem's minutes)
+[2025-07-05T22:56:48.801Z] [INFO]    • Mint: HAs8hvTB8ZH6dBG26KQGik4fxitNYi41jnYd49bvtime
+[2025-07-05T22:56:48.801Z] [INFO]    • Price: $15.96
+[2025-07-05T22:56:48.801Z] [INFO]    • Market Cap: $1,582,392.531
+[2025-07-05T22:56:48.801Z] [INFO]    • Volume 24h: $42,244.087
+[2025-07-05T22:56:48.801Z] [INFO] 📊 Token loaded: AWP (Ansem Wif Photographer)
+[2025-07-05T22:56:48.801Z] [INFO]    • Mint: HAvWYZjA4eLA56gZs2iUZub8E12Pk3VYgmrW3Lmw25D
+[2025-07-05T22:56:48.801Z] [INFO]    • Price: $0.0001747
+[2025-07-05T22:56:48.801Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:48.802Z] [INFO]    • Volume 24h: $62.495
+[2025-07-05T22:56:48.802Z] [INFO] 📊 Token loaded: ANSOM (Ansom)
+[2025-07-05T22:56:48.802Z] [INFO]    • Mint: BfHkvKMEYjwPXnL36uiM8RnAoMFy8aqNyTJXYU3ZnZtz
+[2025-07-05T22:56:48.802Z] [INFO]    • Price: $0.00002942
+[2025-07-05T22:56:48.802Z] [INFO]    • Market Cap: $29,326.654
+[2025-07-05T22:56:48.802Z] [INFO]    • Volume 24h: $167.989
+[2025-07-05T22:56:48.802Z] [INFO] 📊 Token loaded: ANTT (Antara Token)
+[2025-07-05T22:56:48.802Z] [INFO]    • Mint: ANTT2Ve8c3JC6fAksFxUGtByzEHmJs49EupP7htA5W7j
+[2025-07-05T22:56:48.802Z] [INFO]    • Price: $0.00117138
+[2025-07-05T22:56:48.802Z] [INFO]    • Market Cap: $68,358.015
+[2025-07-05T22:56:48.802Z] [INFO]    • Volume 24h: $34,443.497
+[2025-07-05T22:56:48.802Z] [INFO] 📊 Token loaded: ANTS (ANT COLONY)
+[2025-07-05T22:56:48.802Z] [INFO]    • Mint: 7VnT8zHzorYS92snKC4CZU2veigEVnVVBSxTw7G1pump
+[2025-07-05T22:56:48.802Z] [INFO]    • Price: $0.00002649
+[2025-07-05T22:56:48.802Z] [INFO]    • Market Cap: $26,461.962
+[2025-07-05T22:56:48.802Z] [INFO]    • Volume 24h: $177.483
+[2025-07-05T22:56:48.802Z] [INFO] 📊 Token loaded: AG (Anti-Goatse)
+[2025-07-05T22:56:48.802Z] [INFO]    • Mint: BdYqxVbfofR5SrwwDdMhf6P7oGWQnbydFjY3ySpppump
+[2025-07-05T22:56:48.802Z] [INFO]    • Price: $0.00000919
+[2025-07-05T22:56:48.802Z] [INFO]    • Market Cap: $9,178.319
+[2025-07-05T22:56:48.802Z] [INFO]    • Volume 24h: $1.499
+[2025-07-05T22:56:48.802Z] [INFO] 📊 Token loaded: ANTIRUG (Anti Rug Agent)
+[2025-07-05T22:56:48.802Z] [INFO]    • Mint: ts3foLrNUMvwdVeit1oNeLWjYk7e4qsn8PqSsqRpump
+[2025-07-05T22:56:48.802Z] [INFO]    • Price: $0.00061555
+[2025-07-05T22:56:48.802Z] [INFO]    • Market Cap: $613,373.573
+[2025-07-05T22:56:48.802Z] [INFO]    • Volume 24h: $12,004.163
+[2025-07-05T22:56:48.802Z] [INFO] 📊 Token loaded: ANTI (Antitoken)
+[2025-07-05T22:56:48.802Z] [INFO]    • Mint: HB8KrN7Bb3iLWUPsozp67kS4gxtbA4W5QJX4wKPvpump
+[2025-07-05T22:56:48.802Z] [INFO]    • Price: $0.00007213
+[2025-07-05T22:56:48.803Z] [INFO]    • Market Cap: $72,132.497
+[2025-07-05T22:56:48.803Z] [INFO]    • Volume 24h: $1,430.978
+[2025-07-05T22:56:48.803Z] [INFO] 📊 Token loaded: AI (Any Inu)
+[2025-07-05T22:56:48.803Z] [INFO]    • Mint: ACeWC77UeW2DBZMe7YBsuXoxLvk4dHMnPzneApau1Au6
+[2025-07-05T22:56:48.803Z] [INFO]    • Price: $0.00000209
+[2025-07-05T22:56:48.803Z] [INFO]    • Market Cap: $882,679.505
+[2025-07-05T22:56:48.803Z] [INFO]    • Volume 24h: $94,203.723
+[2025-07-05T22:56:48.803Z] [INFO] 📊 Token loaded: APARTMENT (Apartment)
+[2025-07-05T22:56:48.803Z] [INFO]    • Mint: 2b6evX4o265k7MAU5QtTsw3G2g5uz2SUbAVkFr3gbvB2
+[2025-07-05T22:56:48.803Z] [INFO]    • Price: $5.1405e-14
+[2025-07-05T22:56:48.803Z] [INFO]    • Market Cap: $5,139.265
+[2025-07-05T22:56:48.803Z] [INFO]    • Volume 24h: $92.036
+[2025-07-05T22:56:48.803Z] [INFO] 📊 Token loaded: APED (APED)
+[2025-07-05T22:56:48.803Z] [INFO]    • Mint: Ghp84ZTWgJhATi9UwnTSqzedihUsvup6Ejwiz4TaEA25
+[2025-07-05T22:56:48.803Z] [INFO]    • Price: $0.00000867
+[2025-07-05T22:56:48.803Z] [INFO]    • Market Cap: $8,078.872
+[2025-07-05T22:56:48.803Z] [INFO]    • Volume 24h: $1.509
+[2025-07-05T22:56:48.803Z] [INFO] 📊 Token loaded: APET (ApeJackPot)
+[2025-07-05T22:56:48.803Z] [INFO]    • Mint: J3shFA4iGw2iCZnwVS3tuJniyGLt37Ue44zWv9hyjCt2
+[2025-07-05T22:56:48.803Z] [INFO]    • Price: $0.00000369
+[2025-07-05T22:56:48.803Z] [INFO]    • Market Cap: $3,682.189
+[2025-07-05T22:56:48.804Z] [INFO]    • Volume 24h: $27.224
+[2025-07-05T22:56:48.804Z] [INFO] 📊 Token loaded: APE (Ape.lol)
+[2025-07-05T22:56:48.804Z] [INFO]    • Mint: DF5yCVTfhVwvS1VRfHETNzEeh1n6DjAqEBs3kj9frdAr
+[2025-07-05T22:56:48.804Z] [INFO]    • Price: $0.00002402
+[2025-07-05T22:56:48.804Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:48.804Z] [INFO]    • Volume 24h: $11.078
+[2025-07-05T22:56:48.804Z] [INFO] 📊 Token loaded: APES (APES)
+[2025-07-05T22:56:48.804Z] [INFO]    • Mint: 984GBL7PhceChtN64NWLdBb49rSQXX7ozpdkEbR1pump
+[2025-07-05T22:56:48.804Z] [INFO]    • Price: $0.00004229
+[2025-07-05T22:56:48.804Z] [INFO]    • Market Cap: $41,947.899
+[2025-07-05T22:56:48.804Z] [INFO]    • Volume 24h: $105.316
+[2025-07-05T22:56:48.804Z] [INFO] 📊 Token loaded: APEWIFHAT (ApeWifHat)
+[2025-07-05T22:56:48.804Z] [INFO]    • Mint: KdF3kjqSHbWXFstBLA2dccDxuNBi4o3yZqtMhB7k5dZ
+[2025-07-05T22:56:48.804Z] [INFO]    • Price: $8.16483e-10
+[2025-07-05T22:56:48.804Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:48.804Z] [INFO]    • Volume 24h: $186.795
+[2025-07-05T22:56:48.804Z] [INFO] 📊 Token loaded: APEX (Apex AI)
+[2025-07-05T22:56:48.804Z] [INFO]    • Mint: 6rE8kJHDuskmwj1MmehvwL2i4QXdLmPTYnrxJm6Cpump
+[2025-07-05T22:56:48.804Z] [INFO]    • Price: $0.00133202
+[2025-07-05T22:56:48.804Z] [INFO]    • Market Cap: $1,325,038.497
+[2025-07-05T22:56:48.804Z] [INFO]    • Volume 24h: $185,742.006
+[2025-07-05T22:56:48.804Z] [INFO] 📊 Token loaded: APEX (ApeXit Finance)
+[2025-07-05T22:56:48.804Z] [INFO]    • Mint: 51tMb3zBKDiQhNwGqpgwbavaGH54mk8fXFzxTc1xnasg
+[2025-07-05T22:56:48.804Z] [INFO]    • Price: $0.00125535
+[2025-07-05T22:56:48.804Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:48.804Z] [INFO]    • Volume 24h: $2.078
+[2025-07-05T22:56:48.804Z] [INFO] 📊 Token loaded: API (Apicoin)
+[2025-07-05T22:56:48.804Z] [INFO]    • Mint: HmJ8VR1ugamWJTecfcNpmCG1hviMRWNXp7Pq68fzpump
+[2025-07-05T22:56:48.804Z] [INFO]    • Price: $0.0000074
+[2025-07-05T22:56:48.804Z] [INFO]    • Market Cap: $7,397.695
+[2025-07-05T22:56:48.804Z] [INFO]    • Volume 24h: $4.707
+[2025-07-05T22:56:48.804Z] [INFO] 📊 Token loaded: APOLLO (Apollo)
+[2025-07-05T22:56:48.804Z] [INFO]    • Mint: AY88hS3S3fkDtkSc7abEkYjcNsxuCiGD8Lq4PmwakZuL
+[2025-07-05T22:56:48.804Z] [INFO]    • Price: $31.69
+[2025-07-05T22:56:48.805Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:48.805Z] [INFO]    • Volume 24h: $6.148
+[2025-07-05T22:56:48.805Z] [INFO] 📊 Token loaded: ACRED (Apollo Diversified Credit Securitize Fund)
+[2025-07-05T22:56:48.805Z] [INFO]    • Mint: FubtUcvhSCr3VPXEcxouoQjKQ7NWTCzXyECe76B7L3f8
+[2025-07-05T22:56:48.805Z] [INFO]    • Price: $1035.82
+[2025-07-05T22:56:48.805Z] [INFO]    • Market Cap: $108,678,617.825
+[2025-07-05T22:56:48.805Z] [INFO]    • Volume 24h: $0
+[2025-07-05T22:56:48.805Z] [INFO] 📊 Token loaded: $ACAT (Apple Cat)
+[2025-07-05T22:56:48.805Z] [INFO]    • Mint: acatzTjUeHDT3SoufN6NMxGUmBFtoqFHnFwusdw8kYX
+[2025-07-05T22:56:48.805Z] [INFO]    • Price: $0.00009215
+[2025-07-05T22:56:48.805Z] [INFO]    • Market Cap: $91,840.793
+[2025-07-05T22:56:48.805Z] [INFO]    • Volume 24h: $480.058
+[2025-07-05T22:56:48.805Z] [INFO] 📊 Token loaded: AAPLX (Apple xStock)
+[2025-07-05T22:56:48.805Z] [INFO]    • Mint: XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp
+[2025-07-05T22:56:48.805Z] [INFO]    • Price: $213.76
+[2025-07-05T22:56:48.805Z] [INFO]    • Market Cap: $1,770,258.447
+[2025-07-05T22:56:48.805Z] [INFO]    • Volume 24h: $590,384.119
+[2025-07-05T22:56:48.805Z] [INFO] ⚠️ No price data for token: appx (applovin-xstock)
+[2025-07-05T22:56:48.805Z] [INFO] 📊 Token loaded: APRT (Apricot)
+[2025-07-05T22:56:48.805Z] [INFO]    • Mint: APTtJyaRX5yGTsJU522N4VYWg3vCvSb65eam5GrPT5Rt
+[2025-07-05T22:56:48.805Z] [INFO]    • Price: $0.00013189
+[2025-07-05T22:56:48.805Z] [INFO]    • Market Cap: $21,696.266
+[2025-07-05T22:56:48.805Z] [INFO]    • Volume 24h: $3.405
+[2025-07-05T22:56:48.805Z] [INFO] 📊 Token loaded: APU (Apu Apustaja (Solana))
+[2025-07-05T22:56:48.805Z] [INFO]    • Mint: ECutGg12PNhqhkvnH1s1FcuXgCDzKDNhSf5aLtANioR7
+[2025-07-05T22:56:48.805Z] [INFO]    • Price: $0.00023199
+[2025-07-05T22:56:48.805Z] [INFO]    • Market Cap: $231,850.082
+[2025-07-05T22:56:48.805Z] [INFO]    • Volume 24h: $6,717.509
+[2025-07-05T22:56:48.805Z] [INFO] 📊 Token loaded: APYS (APYSwap)
+[2025-07-05T22:56:48.805Z] [INFO]    • Mint: 5JnZ667P3VcjDinkJFysWh2K2KtViy63FZ3oL5YghEhW
+[2025-07-05T22:56:48.805Z] [INFO]    • Price: $0.00239376
+[2025-07-05T22:56:48.805Z] [INFO]    • Market Cap: $23,380.647
+[2025-07-05T22:56:48.805Z] [INFO]    • Volume 24h: $103,766.379
+[2025-07-05T22:56:48.805Z] [INFO] 📊 Token loaded: AQUARIUS (Aquarius)
+[2025-07-05T22:56:48.805Z] [INFO]    • Mint: C49Ut3om3QFTDrMZ5Cr8VcTKPpHDcQ2Fv8mmuJHHigDt
+[2025-07-05T22:56:48.805Z] [INFO]    • Price: $0.00059742
+[2025-07-05T22:56:48.805Z] [INFO]    • Market Cap: $597,419.953
+[2025-07-05T22:56:48.805Z] [INFO]    • Volume 24h: $332.859
+[2025-07-05T22:56:48.805Z] [INFO] 📊 Token loaded: AQUA (Aquathecoin)
+[2025-07-05T22:56:48.805Z] [INFO]    • Mint: 5mXAnC2LWxvNF6und1Mokrv4WnPDP9uxzRsyWATYpump
+[2025-07-05T22:56:48.805Z] [INFO]    • Price: $0.00001562
+[2025-07-05T22:56:48.806Z] [INFO]    • Market Cap: $15,532.607
+[2025-07-05T22:56:48.806Z] [INFO]    • Volume 24h: $22.147
+[2025-07-05T22:56:48.806Z] [INFO] 📊 Token loaded: ARAB (Arab cat)
+[2025-07-05T22:56:48.806Z] [INFO]    • Mint: BFpchrNVhyTRzMNAg9QkiZfRN2vqRBwcYoTX8qgkbDvm
+[2025-07-05T22:56:48.806Z] [INFO]    • Price: $0.00049181
+[2025-07-05T22:56:48.806Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:48.806Z] [INFO]    • Volume 24h: $67.958
+[2025-07-05T22:56:48.806Z] [INFO] 📊 Token loaded: ARB (ARB Protocol)
+[2025-07-05T22:56:48.806Z] [INFO]    • Mint: 9tzZzEHsKnwFL1A3DyFJwj36KnZj3gZ7g4srWp9YTEoh
+[2025-07-05T22:56:48.806Z] [INFO]    • Price: $0.00002638
+[2025-07-05T22:56:48.806Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:48.806Z] [INFO]    • Volume 24h: $31.509
+[2025-07-05T22:56:48.806Z] [INFO] 📊 Token loaded: ARCHIE (Archie the Cigar Poodle)
+[2025-07-05T22:56:48.806Z] [INFO]    • Mint: 4GG1oKz3jNVmbDxrNMhKosANDQKq7AP49UTzJ5HUpump
+[2025-07-05T22:56:48.806Z] [INFO]    • Price: $0.00003972
+[2025-07-05T22:56:48.806Z] [INFO]    • Market Cap: $38,791.808
+[2025-07-05T22:56:48.806Z] [INFO]    • Volume 24h: $60.325
+[2025-07-05T22:56:48.806Z] [INFO] 📊 Token loaded: ARG (ArgentinaCoin)
+[2025-07-05T22:56:48.806Z] [INFO]    • Mint: 9XRpjZjhJPeWtUymiEWn3FW7uAnMeQca14ucTWWWyP2g
+[2025-07-05T22:56:48.806Z] [INFO]    • Price: $0.00005885
+[2025-07-05T22:56:48.806Z] [INFO]    • Market Cap: $58,652.021
+[2025-07-05T22:56:48.806Z] [INFO]    • Volume 24h: $44.294
+[2025-07-05T22:56:48.806Z] [INFO] 📊 Token loaded: ARGO (Argo)
+[2025-07-05T22:56:48.806Z] [INFO]    • Mint: Argoo945JjG9oyt5hgsrdtwbG3S4ATXQy4tTdYMzsV1m
+[2025-07-05T22:56:48.806Z] [INFO]    • Price: $0.00009322
+[2025-07-05T22:56:48.806Z] [INFO]    • Market Cap: $93,216.91
+[2025-07-05T22:56:48.806Z] [INFO]    • Volume 24h: $1.29
+[2025-07-05T22:56:48.806Z] [INFO] 📊 Token loaded: ARIA (Aria)
+[2025-07-05T22:56:48.806Z] [INFO]    • Mint: GhBPHgnNF99EThYxt4bxUfPX1hCPyAS72RCBgLjLpump
+[2025-07-05T22:56:48.806Z] [INFO]    • Price: $0.00100473
+[2025-07-05T22:56:48.806Z] [INFO]    • Market Cap: $900,988.123
+[2025-07-05T22:56:48.806Z] [INFO]    • Volume 24h: $13,425.069
+[2025-07-05T22:56:48.806Z] [INFO] 📊 Token loaded: ARIA (Ariacoin)
+[2025-07-05T22:56:48.806Z] [INFO]    • Mint: Dg5qTMUrfMucLSt2BUMkVG1kRuyiEDf63o5XS5wHew6W
+[2025-07-05T22:56:48.806Z] [INFO]    • Price: $5.7162e-8
+[2025-07-05T22:56:48.807Z] [INFO]    • Market Cap: $1,568.542
+[2025-07-05T22:56:48.807Z] [INFO]    • Volume 24h: $28.252
+[2025-07-05T22:56:48.807Z] [INFO] 📊 Token loaded: RIA (aRIA Currency)
+[2025-07-05T22:56:48.807Z] [INFO]    • Mint: Ca7abRdfWER9tzZb9UzuMyRjb9RNVJ4DB3tBgiYiYxR5
+[2025-07-05T22:56:48.807Z] [INFO]    • Price: $3.26614e-7
+[2025-07-05T22:56:48.807Z] [INFO]    • Market Cap: $3,262.373
+[2025-07-05T22:56:48.807Z] [INFO]    • Volume 24h: $37.543
+[2025-07-05T22:56:48.807Z] [INFO] 📊 Token loaded: ARIES (Aries)
+[2025-07-05T22:56:48.807Z] [INFO]    • Mint: GhFiFrExPY3proVF96oth1gESWA5QPQzdtb8cy8b1YZv
+[2025-07-05T22:56:48.807Z] [INFO]    • Price: $0.00055783
+[2025-07-05T22:56:48.807Z] [INFO]    • Market Cap: $557,654.714
+[2025-07-05T22:56:48.807Z] [INFO]    • Volume 24h: $351.009
+[2025-07-05T22:56:48.807Z] [INFO] 📊 Token loaded: ARIE (Arie The Sealion)
+[2025-07-05T22:56:48.807Z] [INFO]    • Mint: 4ZiYgt9nyPXvSfBWADGYHiWnTdnogrFgLTALdFWVpump
+[2025-07-05T22:56:48.807Z] [INFO]    • Price: $0.00003429
+[2025-07-05T22:56:48.807Z] [INFO]    • Market Cap: $34,148.313
+[2025-07-05T22:56:48.807Z] [INFO]    • Volume 24h: $781.137
+[2025-07-05T22:56:48.807Z] [INFO] 📊 Token loaded: 99CENTS (Arizona Iced Tea)
+[2025-07-05T22:56:48.807Z] [INFO]    • Mint: 3VTXWW93L1WRfQ7QDPjvfBQgzFRVqDgHPnc8vwQmEpUi
+[2025-07-05T22:56:48.807Z] [INFO]    • Price: $0.00007995
+[2025-07-05T22:56:48.807Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:48.807Z] [INFO]    • Volume 24h: $18.512
+[2025-07-05T22:56:48.807Z] [INFO] 📊 Token loaded: ARMY (ARMY)
+[2025-07-05T22:56:48.807Z] [INFO]    • Mint: ARMYZt71GXq4vw4mtDs5LnEp4ZgwWKEE2CdMU3WNnFEC
+[2025-07-05T22:56:48.807Z] [INFO]    • Price: $0.0000218
+[2025-07-05T22:56:48.807Z] [INFO]    • Market Cap: $65,386.621
+[2025-07-05T22:56:48.807Z] [INFO]    • Volume 24h: $26.811
+[2025-07-05T22:56:48.807Z] [INFO] Batch completed: 244 tokens with price data
+[2025-07-05T22:56:48.807Z] [INFO] Waiting 5 seconds before next batch...
+[2025-07-05T22:56:53.809Z] [INFO] Fetching batch 6: tokens 251-300
+[2025-07-05T22:56:54.322Z] [INFO] 📊 Token loaded: AROK (AROK.VC)
+[2025-07-05T22:56:54.322Z] [INFO]    • Mint: Cwe5k2iEy8dt7vCGY93GBrqQS4FWyac6pQjvjLcPD6qp
+[2025-07-05T22:56:54.322Z] [INFO]    • Price: $0.00082787
+[2025-07-05T22:56:54.322Z] [INFO]    • Market Cap: $824,313.078
+[2025-07-05T22:56:54.322Z] [INFO]    • Volume 24h: $727.518
+[2025-07-05T22:56:54.322Z] [INFO] 📊 Token loaded: CLAMS (Artificial Isle Clams)
+[2025-07-05T22:56:54.322Z] [INFO]    • Mint: pGmqZA8iruRh7dtRH4x22cU4H5wPPWsJUA9h9vapump
+[2025-07-05T22:56:54.322Z] [INFO]    • Price: $0.00001728
+[2025-07-05T22:56:54.322Z] [INFO]    • Market Cap: $16,383.364
+[2025-07-05T22:56:54.322Z] [INFO]    • Volume 24h: $86.608
+[2025-07-05T22:56:54.322Z] [INFO] 📊 Token loaded: ART (Art of our era)
+[2025-07-05T22:56:54.322Z] [INFO]    • Mint: ESMhjJ3GHMLw9vu3PvuvgSZXVLPKoZ6CYs71LgYGpump
+[2025-07-05T22:56:54.322Z] [INFO]    • Price: $0.00000728
+[2025-07-05T22:56:54.322Z] [INFO]    • Market Cap: $7,275.528
+[2025-07-05T22:56:54.322Z] [INFO]    • Volume 24h: $1,264.101
+[2025-07-05T22:56:54.322Z] [INFO] 📊 Token loaded: ATR (Artrade)
+[2025-07-05T22:56:54.322Z] [INFO]    • Mint: ATRLuHph8dxnPny4WSNW7fxkhbeivBrtWbY6BfB4xpLj
+[2025-07-05T22:56:54.322Z] [INFO]    • Price: $0.01204651
+[2025-07-05T22:56:54.323Z] [INFO]    • Market Cap: $15,200,902.799
+[2025-07-05T22:56:54.323Z] [INFO]    • Volume 24h: $733,906.28
+[2025-07-05T22:56:54.323Z] [INFO] 📊 Token loaded: ARXIV (arXiv)
+[2025-07-05T22:56:54.323Z] [INFO]    • Mint: 7rJp1KhptfCXd6K46bQzaGRYYUboyPE1u6fzEYBKffZB
+[2025-07-05T22:56:54.323Z] [INFO]    • Price: $0.0000552
+[2025-07-05T22:56:54.323Z] [INFO]    • Market Cap: $55,188.826
+[2025-07-05T22:56:54.323Z] [INFO]    • Volume 24h: $2.044
+[2025-07-05T22:56:54.323Z] [INFO] 📊 Token loaded: ASCIA (ASCIA)
+[2025-07-05T22:56:54.323Z] [INFO]    • Mint: HatXP5HWJQYA3416dcyMMhDb1T7JGua7niLfY8j7pump
+[2025-07-05T22:56:54.323Z] [INFO]    • Price: $0.00000745
+[2025-07-05T22:56:54.323Z] [INFO]    • Market Cap: $7,439.803
+[2025-07-05T22:56:54.323Z] [INFO]    • Volume 24h: $2.308
+[2025-07-05T22:56:54.323Z] [INFO] 📊 Token loaded: ASHA (Asha)
+[2025-07-05T22:56:54.323Z] [INFO]    • Mint: 45ZAM7JK8ZGHuBQiJ8kvhdiVdiQGsTQGgt3gRAEQpump
+[2025-07-05T22:56:54.323Z] [INFO]    • Price: $0.00006163
+[2025-07-05T22:56:54.323Z] [INFO]    • Market Cap: $53,001.056
+[2025-07-05T22:56:54.323Z] [INFO]    • Volume 24h: $128.3
+[2025-07-05T22:56:54.323Z] [INFO] 📊 Token loaded: IRENE (ASIAN MOTHER)
+[2025-07-05T22:56:54.323Z] [INFO]    • Mint: EJ1RbQZs1r1eTAnMTVfgGekgWt6nbHjNGqcn8prxpump
+[2025-07-05T22:56:54.323Z] [INFO]    • Price: $0.00001701
+[2025-07-05T22:56:54.323Z] [INFO]    • Market Cap: $16,994.676
+[2025-07-05T22:56:54.323Z] [INFO]    • Volume 24h: $1.399
+[2025-07-05T22:56:54.323Z] [INFO] 📊 Token loaded: ASKJ (AskJimmy)
+[2025-07-05T22:56:54.323Z] [INFO]    • Mint: DgkKrQ1ErdRNjT2yTcAdEBa92JjFx75yxi4owArQarc
+[2025-07-05T22:56:54.323Z] [INFO]    • Price: $0.00148724
+[2025-07-05T22:56:54.323Z] [INFO]    • Market Cap: $624,605.364
+[2025-07-05T22:56:54.323Z] [INFO]    • Volume 24h: $808,435.225
+[2025-07-05T22:56:54.323Z] [INFO] 📊 Token loaded: ASSAI (ASSAI)
+[2025-07-05T22:56:54.323Z] [INFO]    • Mint: 12XbSPVc5hmWjKUzf5ExTysM2pEL3tM953YkMXmLWkGd
+[2025-07-05T22:56:54.323Z] [INFO]    • Price: $0.00002586
+[2025-07-05T22:56:54.323Z] [INFO]    • Market Cap: $25,743.969
+[2025-07-05T22:56:54.323Z] [INFO]    • Volume 24h: $1,984.686
+[2025-07-05T22:56:54.323Z] [INFO] 📊 Token loaded: ASSCOIN (ASSCOIN)
+[2025-07-05T22:56:54.323Z] [INFO]    • Mint: G3EDZoS49NRVKP8X1HggHZJueJeR8d2izUHeXdV3pump
+[2025-07-05T22:56:54.323Z] [INFO]    • Price: $0.0009847
+[2025-07-05T22:56:54.323Z] [INFO]    • Market Cap: $981,202.306
+[2025-07-05T22:56:54.323Z] [INFO]    • Volume 24h: $198,251.891
+[2025-07-05T22:56:54.323Z] [INFO] 📊 Token loaded: ASRR (Assisterr AI)
+[2025-07-05T22:56:54.323Z] [INFO]    • Mint: ASRRjA1R4RHVk5H9QKKm1jaQqMkxvv6nh5EypPrvwmxQ
+[2025-07-05T22:56:54.323Z] [INFO]    • Price: $0.149862
+[2025-07-05T22:56:54.323Z] [INFO]    • Market Cap: $2,104,721.552
+[2025-07-05T22:56:54.323Z] [INFO]    • Volume 24h: $1,806,578.253
+[2025-07-05T22:56:54.323Z] [INFO] 📊 Token loaded: ASS&P 500 (ASS&P 500)
+[2025-07-05T22:56:54.323Z] [INFO]    • Mint: FRUnVTbSteDWYmn8URfsJkHYgfu9MDxjz7vwYj4fpump
+[2025-07-05T22:56:54.323Z] [INFO]    • Price: $0.0000291
+[2025-07-05T22:56:54.323Z] [INFO]    • Market Cap: $29,076.344
+[2025-07-05T22:56:54.323Z] [INFO]    • Volume 24h: $2,588.109
+[2025-07-05T22:56:54.323Z] [INFO] 📊 Token loaded: HERIA (Astheria)
+[2025-07-05T22:56:54.323Z] [INFO]    • Mint: HzN6MGRCi4QMpAeqvKnqsDDodAq2LWNdxSkPHnCpump
+[2025-07-05T22:56:54.323Z] [INFO]    • Price: $0.00003319
+[2025-07-05T22:56:54.323Z] [INFO]    • Market Cap: $32,820.893
+[2025-07-05T22:56:54.323Z] [INFO]    • Volume 24h: $6,577.649
+[2025-07-05T22:56:54.323Z] [INFO] 📊 Token loaded: GLXY (Astrals GLXY)
+[2025-07-05T22:56:54.323Z] [INFO]    • Mint: CJ5U6wPmjxFUyTJpUTS7Rt1UqhTmSVRMvmJ8WD4nndXW
+[2025-07-05T22:56:54.323Z] [INFO]    • Price: $3.49984e-7
+[2025-07-05T22:56:54.323Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:54.323Z] [INFO]    • Volume 24h: $1.69
+[2025-07-05T22:56:54.323Z] [INFO] ⚠️ No price data for token: aznx (astrazeneca-xstock)
+[2025-07-05T22:56:54.323Z] [INFO] 📊 Token loaded: APX (AstroPepeX)
+[2025-07-05T22:56:54.323Z] [INFO]    • Mint: 8GQa5N9HJT5tW6vg3umYG5us1xHmiU948LfDihg2f8Vf
+[2025-07-05T22:56:54.323Z] [INFO]    • Price: $0.00001698
+[2025-07-05T22:56:54.323Z] [INFO]    • Market Cap: $1,104,200.882
+[2025-07-05T22:56:54.323Z] [INFO]    • Volume 24h: $48,497.907
+[2025-07-05T22:56:54.323Z] [INFO] 📊 Token loaded: ASYM (ASYM)
+[2025-07-05T22:56:54.323Z] [INFO]    • Mint: DNMTk67urDBxEEVRx9HjVzCVu8en4Kgg5HfZy3E6pump
+[2025-07-05T22:56:54.323Z] [INFO]    • Price: $0.00054134
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $541,287.687
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $340.216
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: ATHCAT (ATHCAT)
+[2025-07-05T22:56:54.324Z] [INFO]    • Mint: EUjqbTAhVoArG9u5YCA25hAsk7uTCZ5KcDsVmkMNpump
+[2025-07-05T22:56:54.324Z] [INFO]    • Price: $0.00001523
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $15,228.832
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $1.376
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: ATLAM (ATLAM)
+[2025-07-05T22:56:54.324Z] [INFO]    • Mint: GMSdKc3MsRE3mGvCahFjf4W8xt3qdayaYWHguoG9hryd
+[2025-07-05T22:56:54.324Z] [INFO]    • Price: $0.00039712
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $32,374.14
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $82.653
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: ATS (Atlas DEX)
+[2025-07-05T22:56:54.324Z] [INFO]    • Mint: HJbNXx2YMRxgfUJ6K4qeWtjatMK5KYQT1QnsCdDWywNv
+[2025-07-05T22:56:54.324Z] [INFO]    • Price: $0.00022877
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $13,982.827
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $10.848
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: ATNA (atna)
+[2025-07-05T22:56:54.324Z] [INFO]    • Mint: 9ZDghDhVrJih39y98dADEPKL9o3WLwXcLoks4Gvqpump
+[2025-07-05T22:56:54.324Z] [INFO]    • Price: $0.00003185
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $31,580.608
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $2,898.468
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: ATREU (Atreu)
+[2025-07-05T22:56:54.324Z] [INFO]    • Mint: 6SyosWL8CWHZhrgUAE3G73DV45TJjQWSzwpFgc3Xpump
+[2025-07-05T22:56:54.324Z] [INFO]    • Price: $0.00001819
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $18,143.996
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $651.927
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: ATSCOIN (ATS COIN)
+[2025-07-05T22:56:54.324Z] [INFO]    • Mint: ATSCZA9yeRDoLQQMTiiKDF2gW1gkFtzNaRr4tQXYVz16
+[2025-07-05T22:56:54.324Z] [INFO]    • Price: $0.01052521
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $2,210,293.624
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $51,707.824
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: AUDIO (Audius (Wormhole))
+[2025-07-05T22:56:54.324Z] [INFO]    • Mint: 9LzCMqDgTKYz9Drzqnpgee3SGa89up3a247ypMj2xrqM
+[2025-07-05T22:56:54.324Z] [INFO]    • Price: $0.056167
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $131,670.766
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: AURAFARM (AuraFarming)
+[2025-07-05T22:56:54.324Z] [INFO]    • Mint: 4rwPNRSFgcS7EGphFdX7VwXuhjZGxph7gYyb7Zp2pump
+[2025-07-05T22:56:54.324Z] [INFO]    • Price: $0.00072779
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $725,964.062
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $321,624.568
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: AURA (aura)
+[2025-07-05T22:56:54.324Z] [INFO]    • Mint: DtR4D9FtVoTX2569gaL837ZgrB6wNjj6tkmnX9Rdk9B2
+[2025-07-05T22:56:54.324Z] [INFO]    • Price: $0.132009
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $127,225,517.272
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $5,043,061.795
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: AURA (Aurascope)
+[2025-07-05T22:56:54.324Z] [INFO]    • Mint: CMkj12qHC9RjAUs1MED38Bt7gfyP3TbEpa1mcBno3RUY
+[2025-07-05T22:56:54.324Z] [INFO]    • Price: $0.00018051
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $180,510.387
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $1,040.599
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: AURORA (AURORA)
+[2025-07-05T22:56:54.324Z] [INFO]    • Mint: 9tF4vuYRQY3d5GPnE9pjUevukgo6vHiepe3E1w8Jpump
+[2025-07-05T22:56:54.324Z] [INFO]    • Price: $0.00001619
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $16,187.434
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $3.563
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: AURORA (Aurora)
+[2025-07-05T22:56:54.324Z] [INFO]    • Mint: bozdUuCb2kdipxES9PzsYHmDVrf7FBTSW3p1CFBpump
+[2025-07-05T22:56:54.324Z] [INFO]    • Price: $0.00003301
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $32,888.507
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $323.609
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: AURA (Aurora Ventures)
+[2025-07-05T22:56:54.324Z] [INFO]    • Mint: 3YmNY3Giya7AKNNQbqo35HPuqTrrcgT9KADQBM2hDWNe
+[2025-07-05T22:56:54.324Z] [INFO]    • Price: $0.00002486
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $7,560.875
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $74.648
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: AURY (Aurory)
+[2025-07-05T22:56:54.324Z] [INFO]    • Mint: AURYydfxJib1ZkTir1Jn1J9ECYUtjb6rKQVmtYaixWPP
+[2025-07-05T22:56:54.324Z] [INFO]    • Price: $0.095938
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $7,207,715.709
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $9,127.73
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: AUTISM (autism)
+[2025-07-05T22:56:54.324Z] [INFO]    • Mint: BkVeSP2GsXV3AYoRJBSZTpFE8sXmcuGnRQcFgoWspump
+[2025-07-05T22:56:54.324Z] [INFO]    • Price: $0.00052997
+[2025-07-05T22:56:54.324Z] [INFO]    • Market Cap: $502,933.565
+[2025-07-05T22:56:54.324Z] [INFO]    • Volume 24h: $83,668.25
+[2025-07-05T22:56:54.324Z] [INFO] 📊 Token loaded: AUTISTA (autista cat)
+[2025-07-05T22:56:54.325Z] [INFO]    • Mint: 6QbkqyarW5ET7TvNsENGmV7e4fg7SpACdYb8ba5Ppump
+[2025-07-05T22:56:54.325Z] [INFO]    • Price: $0.00001734
+[2025-07-05T22:56:54.325Z] [INFO]    • Market Cap: $17,318.435
+[2025-07-05T22:56:54.325Z] [INFO]    • Volume 24h: $86.692
+[2025-07-05T22:56:54.325Z] [INFO] 📊 Token loaded: ATM (Automatic Treasury Machine)
+[2025-07-05T22:56:54.325Z] [INFO]    • Mint: 8QhSMvYfXome11VgxFMD75hNbGQXW5QTnjA8khENkY2c
+[2025-07-05T22:56:54.325Z] [INFO]    • Price: $0.00003413
+[2025-07-05T22:56:54.325Z] [INFO]    • Market Cap: $33,960.372
+[2025-07-05T22:56:54.325Z] [INFO]    • Volume 24h: $5,651.922
+[2025-07-05T22:56:54.325Z] [INFO] 📊 Token loaded: OLAS (Autonolas)
+[2025-07-05T22:56:54.325Z] [INFO]    • Mint: Ez3nzG9ofodYCvEmw73XhQ87LWNYVRM2s7diB5tBZPyM
+[2025-07-05T22:56:54.325Z] [INFO]    • Price: $0.249965
+[2025-07-05T22:56:54.325Z] [INFO]    • Market Cap: $44,682,863.533
+[2025-07-05T22:56:54.325Z] [INFO]    • Volume 24h: $363,553.549
+[2025-07-05T22:56:54.325Z] [INFO] 📊 Token loaded: AVB (Autonomous Virtual Beings)
+[2025-07-05T22:56:54.326Z] [INFO]    • Mint: 6d5zHW5B8RkGKd51Lpb9RqFQSqDudr9GJgZ1SgQZpump
+[2025-07-05T22:56:54.327Z] [INFO]    • Price: $0.00162171
+[2025-07-05T22:56:54.327Z] [INFO]    • Market Cap: $1,621,616.954
+[2025-07-05T22:56:54.327Z] [INFO]    • Volume 24h: $407,247.88
+[2025-07-05T22:56:54.327Z] [INFO] 📊 Token loaded: AVA (Ava AI)
+[2025-07-05T22:56:54.327Z] [INFO]    • Mint: DKu9kykSfbN5LBfFXtNNDPaX35o4Fv6vJ9FKk7pZpump
+[2025-07-05T22:56:54.327Z] [INFO]    • Price: $0.03112483
+[2025-07-05T22:56:54.327Z] [INFO]    • Market Cap: $31,119,922.3
+[2025-07-05T22:56:54.327Z] [INFO]    • Volume 24h: $6,476,374.267
+[2025-07-05T22:56:54.327Z] [INFO] 📊 Token loaded: AVA (AVA Chiang Mai Night Safari (AVA))
+[2025-07-05T22:56:54.327Z] [INFO]    • Mint: H1vAwYTZkL2Bq8tpS5DhC4pPJjhMLviH2ScGjuePpump
+[2025-07-05T22:56:54.327Z] [INFO]    • Price: $0.00009485
+[2025-07-05T22:56:54.327Z] [INFO]    • Market Cap: $94,848.433
+[2025-07-05T22:56:54.327Z] [INFO]    • Volume 24h: $5,706.787
+[2025-07-05T22:56:54.327Z] [INFO] 📊 Token loaded: AVAX (Avalanche (Wormhole))
+[2025-07-05T22:56:54.327Z] [INFO]    • Mint: KgV1GvrHQmRBY8sHQQeUKwTm2r2h8t4C8qt12Cw1HVE
+[2025-07-05T22:56:54.327Z] [INFO]    • Price: $17.95
+[2025-07-05T22:56:54.327Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:54.327Z] [INFO]    • Volume 24h: $2,051.765
+[2025-07-05T22:56:54.327Z] [INFO] 📊 Token loaded: AVA (Ava The Golden Tiger)
+[2025-07-05T22:56:54.327Z] [INFO]    • Mint: 3aJsBAoLt9to9ncXRp67QtGkueBYo8ozHv9p7ehMeZJy
+[2025-07-05T22:56:54.327Z] [INFO]    • Price: $0.0012099
+[2025-07-05T22:56:54.327Z] [INFO]    • Market Cap: $4,778.902
+[2025-07-05T22:56:54.327Z] [INFO]    • Volume 24h: $101.364
+[2025-07-05T22:56:54.327Z] [INFO] 📊 Token loaded: AVI (Avian Labs)
+[2025-07-05T22:56:54.327Z] [INFO]    • Mint: BS68mRRVBXoA9DJiYuGwzZUgyRnxyHDKK5bzZNNzpWJA
+[2025-07-05T22:56:54.327Z] [INFO]    • Price: $0.0000052
+[2025-07-05T22:56:54.327Z] [INFO]    • Market Cap: $5,204.936
+[2025-07-05T22:56:54.327Z] [INFO]    • Volume 24h: $3.003
+[2025-07-05T22:56:54.327Z] [INFO] 📊 Token loaded: AVO (Avo)
+[2025-07-05T22:56:54.327Z] [INFO]    • Mint: GdZ9rwHyKcriLdbSzhtEFLe5MLs7Vk6AY1aE5ei7nsmP
+[2025-07-05T22:56:54.327Z] [INFO]    • Price: $0.00069675
+[2025-07-05T22:56:54.327Z] [INFO]    • Market Cap: $706,670.826
+[2025-07-05T22:56:54.327Z] [INFO]    • Volume 24h: $60,470.082
+[2025-07-05T22:56:54.327Z] [INFO] 📊 Token loaded: AVDO (AvocadoCoin)
+[2025-07-05T22:56:54.327Z] [INFO]    • Mint: EE5L8cMU4itTsCSuor7NLK6RZx6JhsBe8GGV3oaAHm3P
+[2025-07-05T22:56:54.327Z] [INFO]    • Price: $1561.25
+[2025-07-05T22:56:54.327Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:54.327Z] [INFO]    • Volume 24h: $86,827.918
+[2025-07-05T22:56:54.327Z] [INFO] 📊 Token loaded: ATO (Avocato)
+[2025-07-05T22:56:54.327Z] [INFO]    • Mint: HJXh1XULVe2Mdp6mTKd5K7of1uFqBTbmcWzvBv6cpump
+[2025-07-05T22:56:54.327Z] [INFO]    • Price: $0.0000113
+[2025-07-05T22:56:54.327Z] [INFO]    • Market Cap: $11,257.143
+[2025-07-05T22:56:54.327Z] [INFO]    • Volume 24h: $1.783
+[2025-07-05T22:56:54.327Z] [INFO] 📊 Token loaded: AFK (Away From Keyboard)
+[2025-07-05T22:56:54.327Z] [INFO]    • Mint: 9R6qezCXoY5fX8nC7SA4bZ1zHrwG9WnnKVGt1SRoMGF
+[2025-07-05T22:56:54.327Z] [INFO]    • Price: $0.0001551
+[2025-07-05T22:56:54.327Z] [INFO]    • Market Cap: $117,568.288
+[2025-07-05T22:56:54.327Z] [INFO]    • Volume 24h: $1,287.534
+[2025-07-05T22:56:54.327Z] [INFO] 📊 Token loaded: ALMC (Awkward Look Monkey Club)
+[2025-07-05T22:56:54.327Z] [INFO]    • Mint: 7f94zk1EgfoeG57Vj5FtDDjMmPNHM4DYs7KRiyd2T4bA
+[2025-07-05T22:56:54.327Z] [INFO]    • Price: $0.00001863
+[2025-07-05T22:56:54.327Z] [INFO]    • Market Cap: $18,077.895
+[2025-07-05T22:56:54.327Z] [INFO]    • Volume 24h: $119.37
+[2025-07-05T22:56:54.327Z] [INFO] 📊 Token loaded: AXI (AXI)
+[2025-07-05T22:56:54.327Z] [INFO]    • Mint: 9tLUnDz6G2dUGVhiLEEEpfM8e1YBiXnWrdT4xVeopump
+[2025-07-05T22:56:54.327Z] [INFO]    • Price: $0.00017641
+[2025-07-05T22:56:54.327Z] [INFO]    • Market Cap: $175,820.057
+[2025-07-05T22:56:54.327Z] [INFO]    • Volume 24h: $1,024.087
+[2025-07-05T22:56:54.327Z] [INFO] 📊 Token loaded: AC (Azadi Coin)
+[2025-07-05T22:56:54.327Z] [INFO]    • Mint: CCEDUV4wfDUog2Lb4o1vA9Wpzz4WXn7fqf5zsW46XuS9
+[2025-07-05T22:56:54.328Z] [INFO]    • Price: $11
+[2025-07-05T22:56:54.328Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:54.328Z] [INFO]    • Volume 24h: $12,944.641
+[2025-07-05T22:56:54.328Z] [INFO] 📊 Token loaded: AZIZI (Azizi)
+[2025-07-05T22:56:54.328Z] [INFO]    • Mint: 4LDT8u5BcVf2acdWJsqz45yaFsXBCsjY79ERLXX6pump
+[2025-07-05T22:56:54.328Z] [INFO]    • Price: $0.00001703
+[2025-07-05T22:56:54.328Z] [INFO]    • Market Cap: $16,779.374
+[2025-07-05T22:56:54.328Z] [INFO]    • Volume 24h: $495.834
+[2025-07-05T22:56:54.328Z] [INFO] Batch completed: 293 tokens with price data
+[2025-07-05T22:56:54.328Z] [INFO] Waiting 5 seconds before next batch...
+[2025-07-05T22:56:59.328Z] [INFO] Fetching batch 7: tokens 301-350
+[2025-07-05T22:56:59.601Z] [INFO] 📊 Token loaded: BABA (BABA)
+[2025-07-05T22:56:59.601Z] [INFO]    • Mint: 6dEJEuFvaD8jMyotbvbMx7ixpP2frXnZCSgDexwqkE6B
+[2025-07-05T22:56:59.601Z] [INFO]    • Price: $0.00005595
+[2025-07-05T22:56:59.601Z] [INFO]    • Market Cap: $55,948.426
+[2025-07-05T22:56:59.601Z] [INFO]    • Volume 24h: $16.463
+[2025-07-05T22:56:59.602Z] [INFO] 📊 Token loaded: BABYAG (BABA YAGA)
+[2025-07-05T22:56:59.602Z] [INFO]    • Mint: FhrFGKvx32aSJW4tdygWnjEs8wKnD4FzxyjezBLg6sfE
+[2025-07-05T22:56:59.602Z] [INFO]    • Price: $0.00004816
+[2025-07-05T22:56:59.602Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:59.602Z] [INFO]    • Volume 24h: $9.346
+[2025-07-05T22:56:59.602Z] [INFO] 📊 Token loaded: BABY (Baby)
+[2025-07-05T22:56:59.602Z] [INFO]    • Mint: 5hmf8Jt9puwoqiFQTb3vr22732ZTKYRLRw9Vo7tN3rcz
+[2025-07-05T22:56:59.602Z] [INFO]    • Price: $1.13049e-7
+[2025-07-05T22:56:59.602Z] [INFO]    • Market Cap: $108,060.098
+[2025-07-05T22:56:59.602Z] [INFO]    • Volume 24h: $3,228.04
+[2025-07-05T22:56:59.602Z] [INFO] 📊 Token loaded: BABYAURA (Baby Aura)
+[2025-07-05T22:56:59.602Z] [INFO]    • Mint: HzC1RLQhbV5hpFLw2EYhi9iWNWoN365xDvtYHv9vpump
+[2025-07-05T22:56:59.602Z] [INFO]    • Price: $0.00000817
+[2025-07-05T22:56:59.602Z] [INFO]    • Market Cap: $8,159.743
+[2025-07-05T22:56:59.602Z] [INFO]    • Volume 24h: $27.343
+[2025-07-05T22:56:59.602Z] [INFO] 📊 Token loaded: BBEER (BABY BEERCOIN)
+[2025-07-05T22:56:59.602Z] [INFO]    • Mint: 7okPYisaUFvpTKu96KJcPLLwGB9ZyCZJjxyKr8CdEooM
+[2025-07-05T22:56:59.602Z] [INFO]    • Price: $0.00000712
+[2025-07-05T22:56:59.602Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:59.602Z] [INFO]    • Volume 24h: $4.274
+[2025-07-05T22:56:59.602Z] [INFO] 📊 Token loaded: BABYBTC (Baby BitCoin)
+[2025-07-05T22:56:59.602Z] [INFO]    • Mint: 8467ssuj6Gkw15ABv6BvxJAKnGJALXJu6dxDxt4upump
+[2025-07-05T22:56:59.602Z] [INFO]    • Price: $0.00016857
+[2025-07-05T22:56:59.602Z] [INFO]    • Market Cap: $168,573.53
+[2025-07-05T22:56:59.603Z] [INFO]    • Volume 24h: $433.517
+[2025-07-05T22:56:59.603Z] [INFO] 📊 Token loaded: BABYBONK (BabyBonk)
+[2025-07-05T22:56:59.603Z] [INFO]    • Mint: Dx1Lq5FjangW5ifRMEogAiakm24LyB5AoHmQifepvNjV
+[2025-07-05T22:56:59.603Z] [INFO]    • Price: $0.00052484
+[2025-07-05T22:56:59.603Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:59.603Z] [INFO]    • Volume 24h: $5,030.474
+[2025-07-05T22:56:59.603Z] [INFO] 📊 Token loaded: BABYDOGE (Baby Doge Coin)
+[2025-07-05T22:56:59.603Z] [INFO]    • Mint: 7dUKUopcNWW6CcU4eRxCHh1uiMh32zDrmGf6ufqhxann
+[2025-07-05T22:56:59.603Z] [INFO]    • Price: $1.127e-9
+[2025-07-05T22:56:59.603Z] [INFO]    • Market Cap: $190,030,427.217
+[2025-07-05T22:56:59.603Z] [INFO]    • Volume 24h: $6,368,647.664
+[2025-07-05T22:56:59.603Z] [INFO] 📊 Token loaded: BABYWIF (babydogwifhat)
+[2025-07-05T22:56:59.603Z] [INFO]    • Mint: 9ceEjz32cv8jBcqsppgjrryiE2tor7PCm7j9mYk8gzTk
+[2025-07-05T22:56:59.603Z] [INFO]    • Price: $0.00006837
+[2025-07-05T22:56:59.603Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:59.603Z] [INFO]    • Volume 24h: $157.013
+[2025-07-05T22:56:59.603Z] [INFO] 📊 Token loaded: BABYFWOG (Baby Fwog)
+[2025-07-05T22:56:59.603Z] [INFO]    • Mint: 3Bbj7eZTuMd2FrfeZ2degzckxhgB5b63crGoHLtrpump
+[2025-07-05T22:56:59.603Z] [INFO]    • Price: $0.00047328
+[2025-07-05T22:56:59.603Z] [INFO]    • Market Cap: $473,640.635
+[2025-07-05T22:56:59.603Z] [INFO]    • Volume 24h: $118,717.262
+[2025-07-05T22:56:59.603Z] [INFO] 📊 Token loaded: BABYGOAT (Baby Goatseus Maximus)
+[2025-07-05T22:56:59.604Z] [INFO]    • Mint: F4aLcMxQy6CPcXAuER3J5QgB89n4fqBMs2bcrqQBpump
+[2025-07-05T22:56:59.604Z] [INFO]    • Price: $0.00002452
+[2025-07-05T22:56:59.604Z] [INFO]    • Market Cap: $24,427.434
+[2025-07-05T22:56:59.604Z] [INFO]    • Volume 24h: $84.848
+[2025-07-05T22:56:59.604Z] [INFO] 📊 Token loaded: BONKEY (Baby Monkey)
+[2025-07-05T22:56:59.604Z] [INFO]    • Mint: 6y4rgKVoPUc8HMcnWfca8siuBa3gAjxNaRrHxVmMpump
+[2025-07-05T22:56:59.604Z] [INFO]    • Price: $0.00000779
+[2025-07-05T22:56:59.604Z] [INFO]    • Market Cap: $7,756.048
+[2025-07-05T22:56:59.604Z] [INFO]    • Volume 24h: $42.783
+[2025-07-05T22:56:59.604Z] [INFO] 📊 Token loaded: BABYDENG (BabyMooDeng)
+[2025-07-05T22:56:59.604Z] [INFO]    • Mint: HpLfPx1NkMghAEVq6d2nv84LiZt4nKvGJ2aRiUFno1DX
+[2025-07-05T22:56:59.604Z] [INFO]    • Price: $0.00004358
+[2025-07-05T22:56:59.604Z] [INFO]    • Market Cap: $43,422.413
+[2025-07-05T22:56:59.604Z] [INFO]    • Volume 24h: $525.179
+[2025-07-05T22:56:59.604Z] [INFO] 📊 Token loaded: BABYMYRO (BabyMyro)
+[2025-07-05T22:56:59.604Z] [INFO]    • Mint: 5AubNFWbb7HYMXN4dXUcPiRaUSA3GiFuF3mBz1Z3eNV6
+[2025-07-05T22:56:59.604Z] [INFO]    • Price: $0.00000963
+[2025-07-05T22:56:59.604Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:59.604Z] [INFO]    • Volume 24h: $31.015
+[2025-07-05T22:56:59.604Z] [INFO] 📊 Token loaded: BABYP (Baby Peanut)
+[2025-07-05T22:56:59.604Z] [INFO]    • Mint: 2NdVT9iYQQfGE5vjNkCDTFiWijDwxqHAx4A9PeP7pump
+[2025-07-05T22:56:59.604Z] [INFO]    • Price: $0.00000696
+[2025-07-05T22:56:59.604Z] [INFO]    • Market Cap: $6,947.348
+[2025-07-05T22:56:59.604Z] [INFO]    • Volume 24h: $1.044
+[2025-07-05T22:56:59.604Z] [INFO] 📊 Token loaded: BABYPNUT (Baby Pnut)
+[2025-07-05T22:56:59.604Z] [INFO]    • Mint: z9ysNwXCYrh4xXRyQG9ujWqxNrdcChoicoJA9ebd7iF
+[2025-07-05T22:56:59.604Z] [INFO]    • Price: $0.00003684
+[2025-07-05T22:56:59.604Z] [INFO]    • Market Cap: $35,951.574
+[2025-07-05T22:56:59.604Z] [INFO]    • Volume 24h: $659.959
+[2025-07-05T22:56:59.604Z] [INFO] 📊 Token loaded: BABYPOES (BabyPOES)
+[2025-07-05T22:56:59.604Z] [INFO]    • Mint: 83xejQ2QoHWD47REppszZPbvkzHUyem5SSkjyXBFieoC
+[2025-07-05T22:56:59.604Z] [INFO]    • Price: $0.00006361
+[2025-07-05T22:56:59.604Z] [INFO]    • Market Cap: $60,295.082
+[2025-07-05T22:56:59.604Z] [INFO]    • Volume 24h: $52,242.412
+[2025-07-05T22:56:59.604Z] [INFO] 📊 Token loaded: BABYPURPE (Baby Purple Pepe)
+[2025-07-05T22:56:59.604Z] [INFO]    • Mint: Ej9jJDCD85mZysgorrY582Vpv7HLgDyi7Fa2jRCjgscZ
+[2025-07-05T22:56:59.604Z] [INFO]    • Price: $0.00004362
+[2025-07-05T22:56:59.605Z] [INFO]    • Market Cap: $43,216.138
+[2025-07-05T22:56:59.605Z] [INFO]    • Volume 24h: $261.256
+[2025-07-05T22:56:59.605Z] [INFO] 📊 Token loaded: BABY (Baby Samo Coin)
+[2025-07-05T22:56:59.605Z] [INFO]    • Mint: Uuc6hiKT9Y6ASoqs2phonGGw2LAtecfJu9yEohppzWH
+[2025-07-05T22:56:59.605Z] [INFO]    • Price: $0.00000232
+[2025-07-05T22:56:59.605Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:59.605Z] [INFO]    • Volume 24h: $38.769
+[2025-07-05T22:56:59.605Z] [INFO] 📊 Token loaded: BABYSHARK (Baby Shark Meme)
+[2025-07-05T22:56:59.605Z] [INFO]    • Mint: 8nKP8Vc72pRZB6bhCy8D1UYf6ZjwYT859i6awyinpump
+[2025-07-05T22:56:59.605Z] [INFO]    • Price: $0.00116301
+[2025-07-05T22:56:59.605Z] [INFO]    • Market Cap: $987,796.956
+[2025-07-05T22:56:59.605Z] [INFO]    • Volume 24h: $296,839.002
+[2025-07-05T22:56:59.605Z] [INFO] 📊 Token loaded: BABYSHIRO (Baby Shiro Neko)
+[2025-07-05T22:56:59.605Z] [INFO]    • Mint: 5Nu2hLo3ffU4fs2yVtsCvAT7ymysuYs5NSFRpvLMVSBi
+[2025-07-05T22:56:59.605Z] [INFO]    • Price: $0.00001453
+[2025-07-05T22:56:59.605Z] [INFO]    • Market Cap: $14,528.842
+[2025-07-05T22:56:59.605Z] [INFO]    • Volume 24h: $98.452
+[2025-07-05T22:56:59.605Z] [INFO] 📊 Token loaded: BABYSOL (BabySOL)
+[2025-07-05T22:56:59.605Z] [INFO]    • Mint: bsAwuVJMPAazbQSVpPQND69mvwftQutZhxpWqsf2BUE
+[2025-07-05T22:56:59.605Z] [INFO]    • Price: $0.00091881
+[2025-07-05T22:56:59.605Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:59.605Z] [INFO]    • Volume 24h: $2,137.824
+[2025-07-05T22:56:59.605Z] [INFO] 📊 Token loaded: BABYSOL (Baby Solana)
+[2025-07-05T22:56:59.605Z] [INFO]    • Mint: 54meDtup2K7pqyhUK24AymoLzMPtrkhNTbEzQ6gSpump
+[2025-07-05T22:56:59.605Z] [INFO]    • Price: $0.00008621
+[2025-07-05T22:56:59.605Z] [INFO]    • Market Cap: $86,208.323
+[2025-07-05T22:56:59.605Z] [INFO]    • Volume 24h: $1.086
+[2025-07-05T22:56:59.605Z] [INFO] 📊 Token loaded: BABYTRUMP (BABYTRUMP)
+[2025-07-05T22:56:59.605Z] [INFO]    • Mint: 6NbnHQKD2dh4jswTLmMCP7LnSh4Nh6y2cNgdQg2ny9zW
+[2025-07-05T22:56:59.605Z] [INFO]    • Price: $0.00273905
+[2025-07-05T22:56:59.605Z] [INFO]    • Market Cap: $108,620.497
+[2025-07-05T22:56:59.605Z] [INFO]    • Volume 24h: $41.826
+[2025-07-05T22:56:59.605Z] [INFO] 📊 Token loaded: BWEN (Baby Wen)
+[2025-07-05T22:56:59.605Z] [INFO]    • Mint: 7pmuGLLYdJ2mc7chZwEJAaxuWALAYqaVqbUwzzyHcA7D
+[2025-07-05T22:56:59.605Z] [INFO]    • Price: $0.00409873
+[2025-07-05T22:56:59.605Z] [INFO]    • Market Cap: $410,239.185
+[2025-07-05T22:56:59.605Z] [INFO]    • Volume 24h: $139.755
+[2025-07-05T22:56:59.605Z] [INFO] ⚠️ No price data for token: bpsol (backpack-staked-sol)
+[2025-07-05T22:56:59.605Z] [INFO] 📊 Token loaded: $BADCAT (BADCATsol)
+[2025-07-05T22:56:59.605Z] [INFO]    • Mint: 7MJuVYPNDxo3xh6U5kGVsrSxqRPaLzGNYunUUxGKY6kg
+[2025-07-05T22:56:59.605Z] [INFO]    • Price: $0.00022325
+[2025-07-05T22:56:59.605Z] [INFO]    • Market Cap: $173,636.672
+[2025-07-05T22:56:59.606Z] [INFO]    • Volume 24h: $607.018
+[2025-07-05T22:56:59.606Z] [INFO] 📊 Token loaded: BADGER (badger badger badger)
+[2025-07-05T22:56:59.606Z] [INFO]    • Mint: 8kp7gVCTWVbNP257A7MHgsYheshqYGnqWbApS6f3pump
+[2025-07-05T22:56:59.606Z] [INFO]    • Price: $0.00002633
+[2025-07-05T22:56:59.606Z] [INFO]    • Market Cap: $26,183.073
+[2025-07-05T22:56:59.606Z] [INFO]    • Volume 24h: $1.998
+[2025-07-05T22:56:59.606Z] [INFO] 📊 Token loaded: BAINANCE (bAInance Labs)
+[2025-07-05T22:56:59.606Z] [INFO]    • Mint: 4tViJmZ7LKREaqxrh3tXeCB5TfK7o67W3WhykHrr49ZC
+[2025-07-05T22:56:59.606Z] [INFO]    • Price: $0.00015674
+[2025-07-05T22:56:59.606Z] [INFO]    • Market Cap: $171,873.368
+[2025-07-05T22:56:59.606Z] [INFO]    • Volume 24h: $1,924.869
+[2025-07-05T22:56:59.606Z] [INFO] 📊 Token loaded: BAKED (Baked)
+[2025-07-05T22:56:59.606Z] [INFO]    • Mint: CQbXk942c6GPcRwtZ2WMFP5JcQ9NqbXtb8jUewBi7GoT
+[2025-07-05T22:56:59.606Z] [INFO]    • Price: $0.00058859
+[2025-07-05T22:56:59.606Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:59.606Z] [INFO]    • Volume 24h: $587.998
+[2025-07-05T22:56:59.606Z] [INFO] 📊 Token loaded: BAKKT (BAKKT)
+[2025-07-05T22:56:59.606Z] [INFO]    • Mint: Hz4CJCpZky4YD75Zs2R2nBjP5wY6tYbraaT2hVZCpump
+[2025-07-05T22:56:59.606Z] [INFO]    • Price: $0.00017643
+[2025-07-05T22:56:59.606Z] [INFO]    • Market Cap: $176,382.937
+[2025-07-05T22:56:59.606Z] [INFO]    • Volume 24h: $164,110.238
+[2025-07-05T22:56:59.606Z] [INFO] 📊 Token loaded: BAKSO (BAKSO)
+[2025-07-05T22:56:59.606Z] [INFO]    • Mint: FqnqT1GKi8S4Gyk5wnSKvJjXW48HqGtKJt9WS4o2pump
+[2025-07-05T22:56:59.606Z] [INFO]    • Price: $0.00006214
+[2025-07-05T22:56:59.606Z] [INFO]    • Market Cap: $61,947.343
+[2025-07-05T22:56:59.606Z] [INFO]    • Volume 24h: $2,694.609
+[2025-07-05T22:56:59.606Z] [INFO] 📊 Token loaded: BALN (Balanced)
+[2025-07-05T22:56:59.606Z] [INFO]    • Mint: BH4TZqN9TXnkjiLEQZ9xuXo85YaGoonM4PHpcjHEoTAx
+[2025-07-05T22:56:59.606Z] [INFO]    • Price: $0.086359
+[2025-07-05T22:56:59.606Z] [INFO]    • Market Cap: $2,279,810.8
+[2025-07-05T22:56:59.606Z] [INFO]    • Volume 24h: $3,436.487
+[2025-07-05T22:56:59.606Z] [INFO] 📊 Token loaded: BOF (Balls of Fate)
+[2025-07-05T22:56:59.606Z] [INFO]    • Mint: 4yCuUMPFvaqxK71CK6SZc3wmtC2PDpDN9mcBzUkepump
+[2025-07-05T22:56:59.606Z] [INFO]    • Price: $0.00006889
+[2025-07-05T22:56:59.606Z] [INFO]    • Market Cap: $68,662.148
+[2025-07-05T22:56:59.606Z] [INFO]    • Volume 24h: $67.072
+[2025-07-05T22:56:59.606Z] [INFO] 📊 Token loaded: BAMBIT (BAMBIT)
+[2025-07-05T22:56:59.606Z] [INFO]    • Mint: xN9Qd63mUYg7npanmdksmcqp3NQjTcGFQPTyq2F1TQC
+[2025-07-05T22:56:59.606Z] [INFO]    • Price: $0.00033167
+[2025-07-05T22:56:59.606Z] [INFO]    • Market Cap: $26,532.947
+[2025-07-05T22:56:59.606Z] [INFO]    • Volume 24h: $9.053
+[2025-07-05T22:56:59.606Z] [INFO] 📊 Token loaded: BMBO (Bamboo Coin)
+[2025-07-05T22:56:59.606Z] [INFO]    • Mint: 5sM9xxcBTM9rWza6nEgq2cShA87JjTBx1Cu82LjgmaEg
+[2025-07-05T22:56:59.607Z] [INFO]    • Price: $0.00000111
+[2025-07-05T22:56:59.607Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:59.607Z] [INFO]    • Volume 24h: $30.321
+[2025-07-05T22:56:59.607Z] [INFO] 📊 Token loaded: BAM (BAM by Scotty)
+[2025-07-05T22:56:59.607Z] [INFO]    • Mint: CWY3XDTbN91sSmg4XR3ZgxAVgrhiFv4Ue8gUwwJLbonk
+[2025-07-05T22:56:59.607Z] [INFO]    • Price: $0.00035927
+[2025-07-05T22:56:59.607Z] [INFO]    • Market Cap: $359,112.726
+[2025-07-05T22:56:59.607Z] [INFO]    • Volume 24h: $862,662.523
+[2025-07-05T22:56:59.607Z] [INFO] 📊 Token loaded: BCAT (BananaCat (Sol))
+[2025-07-05T22:56:59.607Z] [INFO]    • Mint: 31GUGbRSct8MsJJnditGy98xMxowq58sFsZ9CGQRMLT8
+[2025-07-05T22:56:59.607Z] [INFO]    • Price: $0.00005511
+[2025-07-05T22:56:59.607Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:59.607Z] [INFO]    • Volume 24h: $51.625
+[2025-07-05T22:56:59.607Z] [INFO] 📊 Token loaded: BANANA (Banana for Scale)
+[2025-07-05T22:56:59.607Z] [INFO]    • Mint: FuQASH8ps9NPeDu4h3rVtMBygKYoSiSTZ4uSiA5tpump
+[2025-07-05T22:56:59.607Z] [INFO]    • Price: $0.00020009
+[2025-07-05T22:56:59.607Z] [INFO]    • Market Cap: $200,093.624
+[2025-07-05T22:56:59.607Z] [INFO]    • Volume 24h: $28,515.38
+[2025-07-05T22:56:59.607Z] [INFO] 📊 Token loaded: BTW (Banana Tape Wall)
+[2025-07-05T22:56:59.607Z] [INFO]    • Mint: 4ytpZgVoNB66bFs6NRCUaAVsLdtYk2fHq4U92Jnjpump
+[2025-07-05T22:56:59.607Z] [INFO]    • Price: $0.00017781
+[2025-07-05T22:56:59.607Z] [INFO]    • Market Cap: $177,716.72
+[2025-07-05T22:56:59.607Z] [INFO]    • Volume 24h: $364.169
+[2025-07-05T22:56:59.607Z] [INFO] 📊 Token loaded: $BANE (bane)
+[2025-07-05T22:56:59.607Z] [INFO]    • Mint: BMocPvavt5CLXvJpQohTRbg17WhPMfkFxibHEQpSpump
+[2025-07-05T22:56:59.607Z] [INFO]    • Price: $0.00002141
+[2025-07-05T22:56:59.607Z] [INFO]    • Market Cap: $21,393.852
+[2025-07-05T22:56:59.607Z] [INFO]    • Volume 24h: $2.144
+[2025-07-05T22:56:59.607Z] [INFO] 📊 Token loaded: BANGCHAIN (BangChain AI)
+[2025-07-05T22:56:59.607Z] [INFO]    • Mint: 8SVVCGzYwnAkDwwvc5fSHZdCenUyhPccnGirWecVpump
+[2025-07-05T22:56:59.607Z] [INFO]    • Price: $0.00031653
+[2025-07-05T22:56:59.607Z] [INFO]    • Market Cap: $315,426.124
+[2025-07-05T22:56:59.607Z] [INFO]    • Volume 24h: $4,374.619
+[2025-07-05T22:56:59.607Z] [INFO] 📊 Token loaded: BANJO (Banjo)
+[2025-07-05T22:56:59.607Z] [INFO]    • Mint: HmRpmbeGosahTzChmTmKzFHR5SmgSgXFAXKumajgpump
+[2025-07-05T22:56:59.607Z] [INFO]    • Price: $0.00010934
+[2025-07-05T22:56:59.607Z] [INFO]    • Market Cap: $109,335.872
+[2025-07-05T22:56:59.607Z] [INFO]    • Volume 24h: $5,507.142
+[2025-07-05T22:56:59.607Z] [INFO] ⚠️ No price data for token: bacx (bank-of-america-xstock)
+[2025-07-05T22:56:59.607Z] [INFO] 📊 Token loaded: BANNED (BANNED)
+[2025-07-05T22:56:59.607Z] [INFO]    • Mint: EecSMXvvhszENGs7SAWMejLgBHBAhCvkMDWY88JR7hog
+[2025-07-05T22:56:59.607Z] [INFO]    • Price: $0.00022061
+[2025-07-05T22:56:59.607Z] [INFO]    • Market Cap: $220,586.523
+[2025-07-05T22:56:59.607Z] [INFO]    • Volume 24h: $2,208.361
+[2025-07-05T22:56:59.608Z] [INFO] 📊 Token loaded: BANKSY (BANKSY)
+[2025-07-05T22:56:59.608Z] [INFO]    • Mint: BXFD1Dd1AT87MADC6SYZ95QQQjrTKEnDRwvVhAiLpump
+[2025-07-05T22:56:59.608Z] [INFO]    • Price: $0.00002629
+[2025-07-05T22:56:59.608Z] [INFO]    • Market Cap: $19,239.425
+[2025-07-05T22:56:59.608Z] [INFO]    • Volume 24h: $3.305
+[2025-07-05T22:56:59.608Z] [INFO] 📊 Token loaded: BANX (BANX)
+[2025-07-05T22:56:59.608Z] [INFO]    • Mint: BANXbTpN8U2cU41FjPxe2Ti37PiT5cCxLUKDQZuJeMMR
+[2025-07-05T22:56:59.608Z] [INFO]    • Price: $0.00001807
+[2025-07-05T22:56:59.608Z] [INFO]    • Market Cap: $270,993.914
+[2025-07-05T22:56:59.608Z] [INFO]    • Volume 24h: $40.975
+[2025-07-05T22:56:59.608Z] [INFO] 📊 Token loaded: BAO (BAO)
+[2025-07-05T22:56:59.608Z] [INFO]    • Mint: AtnAZZ7YYcexfYxVvdEH5VnRWx3smJDLPdFQZ826v4UT
+[2025-07-05T22:56:59.608Z] [INFO]    • Price: $0.0000096
+[2025-07-05T22:56:59.608Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:56:59.608Z] [INFO]    • Volume 24h: $2,143.179
+[2025-07-05T22:56:59.608Z] [INFO] 📊 Token loaded: BAOBAO (Baobao)
+[2025-07-05T22:56:59.608Z] [INFO]    • Mint: 3Xu3Qf2NRrbcDsQjV1B8mndGndS2ATVSMVtgX2Tkpump
+[2025-07-05T22:56:59.608Z] [INFO]    • Price: $0.00000852
+[2025-07-05T22:56:59.608Z] [INFO]    • Market Cap: $8,497.101
+[2025-07-05T22:56:59.608Z] [INFO]    • Volume 24h: $14.708
+[2025-07-05T22:56:59.608Z] [INFO] 📊 Token loaded: BAOBAO (BaoBao Panda)
+[2025-07-05T22:56:59.608Z] [INFO]    • Mint: GeBCL92LPDysZPFYjRkPe7cK42Vb4ehHPZCTtCSwja7w
+[2025-07-05T22:56:59.608Z] [INFO]    • Price: $1.893e-9
+[2025-07-05T22:56:59.608Z] [INFO]    • Market Cap: $18,864.547
+[2025-07-05T22:56:59.608Z] [INFO]    • Volume 24h: $3.76
+[2025-07-05T22:56:59.608Z] [INFO] Batch completed: 341 tokens with price data
+[2025-07-05T22:56:59.608Z] [INFO] Waiting 5 seconds before next batch...
+[2025-07-05T22:57:04.610Z] [INFO] Fetching batch 8: tokens 351-400
+[2025-07-05T22:57:05.124Z] [INFO] 📊 Token loaded: BAOS (BaoBaoSol)
+[2025-07-05T22:57:05.125Z] [INFO]    • Mint: UHaVCzi4ZsGrzHhAFbokkXfaugfYbkdVME8XYaR7eKu
+[2025-07-05T22:57:05.125Z] [INFO]    • Price: $0.00021321
+[2025-07-05T22:57:05.125Z] [INFO]    • Market Cap: $213,292.426
+[2025-07-05T22:57:05.125Z] [INFO]    • Volume 24h: $843.697
+[2025-07-05T22:57:05.125Z] [INFO] 📊 Token loaded: BAOLONG (Baolong the Enemy of Nailong)
+[2025-07-05T22:57:05.125Z] [INFO]    • Mint: 4kNYao89ncP1zqPgUj4ExxhFRv8YpbNxQ3YqMXgwpump
+[2025-07-05T22:57:05.125Z] [INFO]    • Price: $0.00001233
+[2025-07-05T22:57:05.125Z] [INFO]    • Market Cap: $12,331.825
+[2025-07-05T22:57:05.125Z] [INFO]    • Volume 24h: $146.793
+[2025-07-05T22:57:05.125Z] [INFO] 📊 Token loaded: BARK (BarkCoin)
+[2025-07-05T22:57:05.125Z] [INFO]    • Mint: APkM2bqzpwQaiv5BY2eA7vR7DEB1EX5MMf6JNcBCHYrC
+[2025-07-05T22:57:05.125Z] [INFO]    • Price: $0.00001495
+[2025-07-05T22:57:05.125Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:05.125Z] [INFO]    • Volume 24h: $34.22
+[2025-07-05T22:57:05.125Z] [INFO] 📊 Token loaded: BARK (Barking Dog)
+[2025-07-05T22:57:05.125Z] [INFO]    • Mint: HWcmFw19wHSuxJFXz4xSzLqVz9sAFykNYdBc4eGfpump
+[2025-07-05T22:57:05.125Z] [INFO]    • Price: $0.00000876
+[2025-07-05T22:57:05.125Z] [INFO]    • Market Cap: $8,687.29
+[2025-07-05T22:57:05.125Z] [INFO]    • Volume 24h: $9.661
+[2025-07-05T22:57:05.125Z] [INFO] 📊 Token loaded: BBT (Basebet)
+[2025-07-05T22:57:05.125Z] [INFO]    • Mint: BBTX8ZaLTEdjLTi8u2E2iG2enoBJBsijNuVzLaYrH1m3
+[2025-07-05T22:57:05.125Z] [INFO]    • Price: $0.00004101
+[2025-07-05T22:57:05.125Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:05.125Z] [INFO]    • Volume 24h: $410.529
+[2025-07-05T22:57:05.125Z] [INFO] 📊 Token loaded: BASED (BASED)
+[2025-07-05T22:57:05.125Z] [INFO]    • Mint: Em4rcuhX6STfB7mxb66dUXDmZPYCjDiQFthvzSzpump
+[2025-07-05T22:57:05.125Z] [INFO]    • Price: $0.00120319
+[2025-07-05T22:57:05.125Z] [INFO]    • Market Cap: $1,204,482.239
+[2025-07-05T22:57:05.125Z] [INFO]    • Volume 24h: $14,200.775
+[2025-07-05T22:57:05.126Z] [INFO] 📊 Token loaded: HELLO (Based Department)
+[2025-07-05T22:57:05.126Z] [INFO]    • Mint: HrBwc1Gwptdb4hVFjLp97MbBW2jyzh4R7kBsZT1tpump
+[2025-07-05T22:57:05.126Z] [INFO]    • Price: $0.00000446
+[2025-07-05T22:57:05.126Z] [INFO]    • Market Cap: $4,459.15
+[2025-07-05T22:57:05.126Z] [INFO]    • Volume 24h: $0.967
+[2025-07-05T22:57:05.126Z] [INFO] 📊 Token loaded: BASEDD (BASEDD House)
+[2025-07-05T22:57:05.126Z] [INFO]    • Mint: 8Y5MwnUM19uqhnsrFnKijrmn33CmHBTUoedXtTGDpump
+[2025-07-05T22:57:05.126Z] [INFO]    • Price: $0.00220682
+[2025-07-05T22:57:05.126Z] [INFO]    • Market Cap: $2,205,335.63
+[2025-07-05T22:57:05.126Z] [INFO]    • Volume 24h: $243,010.745
+[2025-07-05T22:57:05.126Z] [INFO] 📊 Token loaded: BASEY (BASEY AI Agent)
+[2025-07-05T22:57:05.126Z] [INFO]    • Mint: BaseyFE2cWS2dQWukdeDLhTHrmdjRxShFjmg3E9UyJq2
+[2025-07-05T22:57:05.126Z] [INFO]    • Price: $0.00001401
+[2025-07-05T22:57:05.126Z] [INFO]    • Market Cap: $13,870.161
+[2025-07-05T22:57:05.126Z] [INFO]    • Volume 24h: $6.292
+[2025-07-05T22:57:05.126Z] [INFO] 📊 Token loaded: BAT (Basic Attention)
+[2025-07-05T22:57:05.126Z] [INFO]    • Mint: EPeUFDgHRxs9xxEPVaL6kfGQvCon7jmAWKVUHuux1Tpz
+[2025-07-05T22:57:05.126Z] [INFO]    • Price: $0.123766
+[2025-07-05T22:57:05.126Z] [INFO]    • Market Cap: $185,142,320.482
+[2025-07-05T22:57:05.126Z] [INFO]    • Volume 24h: $8,108,076.237
+[2025-07-05T22:57:05.126Z] [INFO] 📊 Token loaded: BASIS (basis.markets)
+[2025-07-05T22:57:05.126Z] [INFO]    • Mint: Basis9oJw9j8cw53oMV7iqsgo6ihi9ALw4QR31rcjUJa
+[2025-07-05T22:57:05.126Z] [INFO]    • Price: $0.00368732
+[2025-07-05T22:57:05.126Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:05.126Z] [INFO]    • Volume 24h: $1.001
+[2025-07-05T22:57:05.126Z] [INFO] 📊 Token loaded: BSKT (Basket)
+[2025-07-05T22:57:05.126Z] [INFO]    • Mint: 6gnCPhXtLnUD76HjQuSYPENLSZdG8RvDB1pTLM5aLSJA
+[2025-07-05T22:57:05.127Z] [INFO]    • Price: $2.0049e-7
+[2025-07-05T22:57:05.127Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:05.127Z] [INFO]    • Volume 24h: $8.901
+[2025-07-05T22:57:05.127Z] [INFO] 📊 Token loaded: BASKT (Baskt.Fun)
+[2025-07-05T22:57:05.127Z] [INFO]    • Mint: Ejq4Xr7KwHtLPkfGr3DGkKSgyGCuZvsndeyj92yXpump
+[2025-07-05T22:57:05.127Z] [INFO]    • Price: $0.00001993
+[2025-07-05T22:57:05.127Z] [INFO]    • Market Cap: $19,495.564
+[2025-07-05T22:57:05.127Z] [INFO]    • Volume 24h: $886.973
+[2025-07-05T22:57:05.127Z] [INFO] 📊 Token loaded: BTC (batcat)
+[2025-07-05T22:57:05.127Z] [INFO]    • Mint: EtBc6gkCvsB9c6f5wSbwG8wPjRqXMB5euptK6bqG1R4X
+[2025-07-05T22:57:05.127Z] [INFO]    • Price: $0.00004982
+[2025-07-05T22:57:05.127Z] [INFO]    • Market Cap: $49,650.507
+[2025-07-05T22:57:05.127Z] [INFO]    • Volume 24h: $1,164.698
+[2025-07-05T22:57:05.127Z] [INFO] 📊 Token loaded: BBTKN (Battle Buddy Token)
+[2025-07-05T22:57:05.127Z] [INFO]    • Mint: 6uAufXPdvenEVxCRayMj8qSPG8xA386ZLuoVr9tvHZqx
+[2025-07-05T22:57:05.127Z] [INFO]    • Price: $0.00000188
+[2025-07-05T22:57:05.127Z] [INFO]    • Market Cap: $1,496.85
+[2025-07-05T22:57:05.127Z] [INFO]    • Volume 24h: $8.174
+[2025-07-05T22:57:05.127Z] [INFO] 📊 Token loaded: BAZINGA (Bazinga)
+[2025-07-05T22:57:05.127Z] [INFO]    • Mint: C3JX9TWLqHKmcoTDTppaJebX2U7DcUQDEHVSmJFz6K6S
+[2025-07-05T22:57:05.127Z] [INFO]    • Price: $0.0001132
+[2025-07-05T22:57:05.127Z] [INFO]    • Market Cap: $90,308.648
+[2025-07-05T22:57:05.127Z] [INFO]    • Volume 24h: $6.236
+[2025-07-05T22:57:05.127Z] [INFO] 📊 Token loaded: BCOQ (BCOQ INU)
+[2025-07-05T22:57:05.127Z] [INFO]    • Mint: coqRkaaKeUygDPhuS3mrmrj6DiHjeQJc2rFbT2YfxWn
+[2025-07-05T22:57:05.127Z] [INFO]    • Price: $3.005e-9
+[2025-07-05T22:57:05.127Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:05.127Z] [INFO]    • Volume 24h: $56.689
+[2025-07-05T22:57:05.127Z] [INFO] 📊 Token loaded: BC (BCGame Coin)
+[2025-07-05T22:57:05.127Z] [INFO]    • Mint: BCNT4t3rv5Hva8RnUtJUJLnxzeFAabcYp8CghC1SmWin
+[2025-07-05T22:57:05.127Z] [INFO]    • Price: $0.00449776
+[2025-07-05T22:57:05.127Z] [INFO]    • Market Cap: $44,973,641.406
+[2025-07-05T22:57:05.127Z] [INFO]    • Volume 24h: $6,574.858
+[2025-07-05T22:57:05.127Z] [INFO] 📊 Token loaded: BIB (Bear In Bathrobe)
+[2025-07-05T22:57:05.127Z] [INFO]    • Mint: PvhC1i1uu1xmB8bsaoTj3mLf1ihYdQo7MtVQebppump
+[2025-07-05T22:57:05.127Z] [INFO]    • Price: $0.00103109
+[2025-07-05T22:57:05.127Z] [INFO]    • Market Cap: $1,031,086.314
+[2025-07-05T22:57:05.127Z] [INFO]    • Volume 24h: $143.321
+[2025-07-05T22:57:05.128Z] [INFO] 📊 Token loaded: BEE (Bee)
+[2025-07-05T22:57:05.128Z] [INFO]    • Mint: B2BsVuodH2eBGRnFckRYYW6yjur7Tn8cCxaSE2Xrnj5V
+[2025-07-05T22:57:05.128Z] [INFO]    • Price: $0.00002006
+[2025-07-05T22:57:05.128Z] [INFO]    • Market Cap: $19,996.3
+[2025-07-05T22:57:05.128Z] [INFO]    • Volume 24h: $11.206
+[2025-07-05T22:57:05.128Z] [INFO] 📊 Token loaded: BEEM (Beem Communication)
+[2025-07-05T22:57:05.128Z] [INFO]    • Mint: BeemGmKYvz52af2myrx7xE82rE8ZvW9MgpvX8ikJQZNe
+[2025-07-05T22:57:05.128Z] [INFO]    • Price: $0.00078839
+[2025-07-05T22:57:05.128Z] [INFO]    • Market Cap: $788,382.441
+[2025-07-05T22:57:05.128Z] [INFO]    • Volume 24h: $2.701
+[2025-07-05T22:57:05.128Z] [INFO] 📊 Token loaded: BEENZ (BEENZ)
+[2025-07-05T22:57:05.128Z] [INFO]    • Mint: 9sbrLLnk4vxJajnZWXP9h5qk1NDFw7dz2eHjgemcpump
+[2025-07-05T22:57:05.128Z] [INFO]    • Price: $0.00025305
+[2025-07-05T22:57:05.128Z] [INFO]    • Market Cap: $254,879.761
+[2025-07-05T22:57:05.128Z] [INFO]    • Volume 24h: $167,151.549
+[2025-07-05T22:57:05.128Z] [INFO] 📊 Token loaded: BEEP (Beep)
+[2025-07-05T22:57:05.128Z] [INFO]    • Mint: B7beofzmsqpnwjNcpx2KSxwkmpqfE7RMZoE7wgqGfCYh
+[2025-07-05T22:57:05.128Z] [INFO]    • Price: $0.00001506
+[2025-07-05T22:57:05.128Z] [INFO]    • Market Cap: $15,061.669
+[2025-07-05T22:57:05.128Z] [INFO]    • Volume 24h: $45.185
+[2025-07-05T22:57:05.128Z] [INFO] 📊 Token loaded: BCI (Beer Can Island)
+[2025-07-05T22:57:05.128Z] [INFO]    • Mint: FHT57nzPTw6FFk3XK2gjFsCvxqYWbh6qM8dEiGK7pump
+[2025-07-05T22:57:05.128Z] [INFO]    • Price: $0.00000908
+[2025-07-05T22:57:05.128Z] [INFO]    • Market Cap: $9,081.153
+[2025-07-05T22:57:05.128Z] [INFO]    • Volume 24h: $5.035
+[2025-07-05T22:57:05.128Z] [INFO] 📊 Token loaded: BEER2 (Beercoin 2)
+[2025-07-05T22:57:05.128Z] [INFO]    • Mint: GCKTFLxkMeUTUbuQM1k6f1cy4o4tC2V13ye2ebL3p52r
+[2025-07-05T22:57:05.128Z] [INFO]    • Price: $6.05383e-7
+[2025-07-05T22:57:05.128Z] [INFO]    • Market Cap: $239,608.162
+[2025-07-05T22:57:05.128Z] [INFO]    • Volume 24h: $3,819.65
+[2025-07-05T22:57:05.128Z] [INFO] 📊 Token loaded: BEER (Beercoin)
+[2025-07-05T22:57:05.128Z] [INFO]    • Mint: AujTJJ7aMS8LDo3bFzoyXDwT3jBALUbu4VZhzZdTZLmG
+[2025-07-05T22:57:05.128Z] [INFO]    • Price: $0.00000307
+[2025-07-05T22:57:05.128Z] [INFO]    • Market Cap: $2,733,047.375
+[2025-07-05T22:57:05.128Z] [INFO]    • Volume 24h: $361,355.695
+[2025-07-05T22:57:05.128Z] [INFO] 📊 Token loaded: BEEVO (Beevo)
+[2025-07-05T22:57:05.128Z] [INFO]    • Mint: 5tmsiuCDPdjq4nA4GVjAgayL7ehgGPJ47mNmNvBboop
+[2025-07-05T22:57:05.128Z] [INFO]    • Price: $0.00000574
+[2025-07-05T22:57:05.128Z] [INFO]    • Market Cap: $5,739.314
+[2025-07-05T22:57:05.128Z] [INFO]    • Volume 24h: $134.714
+[2025-07-05T22:57:05.128Z] [INFO] 📊 Token loaded: $BEFFAI (BeffAI)
+[2025-07-05T22:57:05.128Z] [INFO]    • Mint: 2Tr3i2qjSPUb7e7BSFWTq7gsRzJEnYBKc7wRAYu3pump
+[2025-07-05T22:57:05.128Z] [INFO]    • Price: $0.00005331
+[2025-07-05T22:57:05.128Z] [INFO]    • Market Cap: $53,356.979
+[2025-07-05T22:57:05.128Z] [INFO]    • Volume 24h: $4,742.496
+[2025-07-05T22:57:05.128Z] [INFO] 📊 Token loaded: BEING_AI (BEINGAI)
+[2025-07-05T22:57:05.128Z] [INFO]    • Mint: FdzVFSP9KX58GzpJywdqhAmADr3XTEypawHyenShpump
+[2025-07-05T22:57:05.128Z] [INFO]    • Price: $0.00002001
+[2025-07-05T22:57:05.128Z] [INFO]    • Market Cap: $19,792.659
+[2025-07-05T22:57:05.128Z] [INFO]    • Volume 24h: $20.536
+[2025-07-05T22:57:05.128Z] [INFO] 📊 Token loaded: BELIEFTEAM (Beliefteam)
+[2025-07-05T22:57:05.128Z] [INFO]    • Mint: DddnaQ3Vtr829Scjk7WW8y6r5EBq9aarnfaz2FZ6dss9
+[2025-07-05T22:57:05.128Z] [INFO]    • Price: $0.00001676
+[2025-07-05T22:57:05.128Z] [INFO]    • Market Cap: $16,745.789
+[2025-07-05T22:57:05.128Z] [INFO]    • Volume 24h: $70.293
+[2025-07-05T22:57:05.128Z] [INFO] 📊 Token loaded: BIS (Believe In Something)
+[2025-07-05T22:57:05.128Z] [INFO]    • Mint: 2GPJhV9jNrj7TaLYMRgWkcy6sTKLcwntv7nZ7qDyMRGM
+[2025-07-05T22:57:05.128Z] [INFO]    • Price: $0.00071138
+[2025-07-05T22:57:05.128Z] [INFO]    • Market Cap: $711,755.027
+[2025-07-05T22:57:05.128Z] [INFO]    • Volume 24h: $10,293.713
+[2025-07-05T22:57:05.128Z] [INFO] 📊 Token loaded: DTF (believe in something)
+[2025-07-05T22:57:05.128Z] [INFO]    • Mint: EmhVWGUa2Q9PN4QjzFjvuVyzFKg4s3ERwjKR9dQDpump
+[2025-07-05T22:57:05.128Z] [INFO]    • Price: $0.00052565
+[2025-07-05T22:57:05.128Z] [INFO]    • Market Cap: $521,473.49
+[2025-07-05T22:57:05.128Z] [INFO]    • Volume 24h: $116,374.408
+[2025-07-05T22:57:05.128Z] [INFO] 📊 Token loaded: BPAD (BelievePad)
+[2025-07-05T22:57:05.128Z] [INFO]    • Mint: H1pRLTGu9Q3Kv6ziV9DCvTxNQA2vAVocYuGb41wZ1FBk
+[2025-07-05T22:57:05.128Z] [INFO]    • Price: $0.00003475
+[2025-07-05T22:57:05.128Z] [INFO]    • Market Cap: $34,659.293
+[2025-07-05T22:57:05.128Z] [INFO]    • Volume 24h: $44.871
+[2025-07-05T22:57:05.129Z] [INFO] 📊 Token loaded: BSCREENER (BelieveScreener)
+[2025-07-05T22:57:05.129Z] [INFO]    • Mint: 4PYijC1Xas63cxdoYnUg7SQgcg23UgNNcPmvbj6KNUSz
+[2025-07-05T22:57:05.129Z] [INFO]    • Price: $0.00019551
+[2025-07-05T22:57:05.129Z] [INFO]    • Market Cap: $195,484.122
+[2025-07-05T22:57:05.129Z] [INFO]    • Volume 24h: $661,941.359
+[2025-07-05T22:57:05.129Z] [INFO] 📊 Token loaded: BLOB (Blob)
+[2025-07-05T22:57:05.129Z] [INFO]    • Mint: 92kxUXDsBQLy5ptGxtmH9CDYd5E6ZQynzf2eFPiUpump
+[2025-07-05T22:57:05.129Z] [INFO]    • Price: $0.00004645
+[2025-07-05T22:57:05.129Z] [INFO]    • Market Cap: $44,895.72
+[2025-07-05T22:57:05.129Z] [INFO]    • Volume 24h: $2.457
+[2025-07-05T22:57:05.129Z] [INFO] 📊 Token loaded: BELUGA (Beluga)
+[2025-07-05T22:57:05.129Z] [INFO]    • Mint: EcLwiJG3tvraFRG798JaUADgHcCn5zSVreHqxssUPCHd
+[2025-07-05T22:57:05.129Z] [INFO]    • Price: $0.00000444
+[2025-07-05T22:57:05.129Z] [INFO]    • Market Cap: $3,991.682
+[2025-07-05T22:57:05.129Z] [INFO]    • Volume 24h: $13.51
+[2025-07-05T22:57:05.129Z] [INFO] 📊 Token loaded: BELUGA (Beluga Cat)
+[2025-07-05T22:57:05.129Z] [INFO]    • Mint: E63CDwLy9Dwr3EptAzopV9RuWoQnn5ZVYEjLWnJX8dCw
+[2025-07-05T22:57:05.129Z] [INFO]    • Price: $0.00005269
+[2025-07-05T22:57:05.129Z] [INFO]    • Market Cap: $52,512.33
+[2025-07-05T22:57:05.129Z] [INFO]    • Volume 24h: $811.103
+[2025-07-05T22:57:05.129Z] [INFO] 📊 Token loaded: LAUNCHCOIN (Launch Coin on Believe)
+[2025-07-05T22:57:05.129Z] [INFO]    • Mint: Ey59PH7Z4BFU4HjyKnyMdWt5GGN76KazTAwQihoUXRnk
+[2025-07-05T22:57:05.129Z] [INFO]    • Price: $0.098247
+[2025-07-05T22:57:05.129Z] [INFO]    • Market Cap: $98,243,938.216
+[2025-07-05T22:57:05.129Z] [INFO]    • Volume 24h: $20,193,209.888
+[2025-07-05T22:57:05.129Z] [INFO] 📊 Token loaded: BENDOG (Ben the Dog)
+[2025-07-05T22:57:05.129Z] [INFO]    • Mint: AHW5N8iqZobTcBepkSJzZ61XtAuSzBDcpxtrLG6KUKPk
+[2025-07-05T22:57:05.129Z] [INFO]    • Price: $0.00079247
+[2025-07-05T22:57:05.129Z] [INFO]    • Market Cap: $792,621.496
+[2025-07-05T22:57:05.129Z] [INFO]    • Volume 24h: $812,936.79
+[2025-07-05T22:57:05.129Z] [INFO] ⚠️ No price data for token: brk.bx (berkshire-hathaway-xstock)
+[2025-07-05T22:57:05.129Z] [INFO] 📊 Token loaded: BERT (Bertram The Pomeranian)
+[2025-07-05T22:57:05.129Z] [INFO]    • Mint: HgBRWfYxEfvPhtqkaeymCQtHCrKE46qQ43pKe8HCpump
+[2025-07-05T22:57:05.129Z] [INFO]    • Price: $0.02538194
+[2025-07-05T22:57:05.129Z] [INFO]    • Market Cap: $24,772,490.551
+[2025-07-05T22:57:05.129Z] [INFO]    • Volume 24h: $1,718,401.997
+[2025-07-05T22:57:05.129Z] [INFO] 📊 Token loaded: BESA (Besa Gaming Company)
+[2025-07-05T22:57:05.129Z] [INFO]    • Mint: FQMoiNiQGLngizBVdhxqD1o2k6rvcX9ComxjKucgBByH
+[2025-07-05T22:57:05.129Z] [INFO]    • Price: $0.00000434
+[2025-07-05T22:57:05.129Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:05.129Z] [INFO]    • Volume 24h: $4.773
+[2025-07-05T22:57:05.129Z] [INFO] 📊 Token loaded: BEST (Bestcoin)
+[2025-07-05T22:57:05.129Z] [INFO]    • Mint: 8f1zccZPpbjz17Ay9wZKT5Mx2oPtUyxAVz5p5yzEbonk
+[2025-07-05T22:57:05.129Z] [INFO]    • Price: $0.00003164
+[2025-07-05T22:57:05.129Z] [INFO]    • Market Cap: $2,167,450.422
+[2025-07-05T22:57:05.129Z] [INFO]    • Volume 24h: $873,486.673
+[2025-07-05T22:57:05.129Z] [INFO] 📊 Token loaded: CULT (Best Memecoin Ever)
+[2025-07-05T22:57:05.129Z] [INFO]    • Mint: 93EpfRSroBwD5DmDBXkaCdLZy8nnShtrVCLMCXjxpump
+[2025-07-05T22:57:05.129Z] [INFO]    • Price: $0.00019492
+[2025-07-05T22:57:05.129Z] [INFO]    • Market Cap: $194,910.891
+[2025-07-05T22:57:05.129Z] [INFO]    • Volume 24h: $14,306.646
+[2025-07-05T22:57:05.129Z] [INFO] 📊 Token loaded: BETA (Beta)
+[2025-07-05T22:57:05.129Z] [INFO]    • Mint: CKrVUhFFKxjBshAWHE3ZkiPiBTkN3CfrMfbdWBH1pump
+[2025-07-05T22:57:05.129Z] [INFO]    • Price: $0.00000888
+[2025-07-05T22:57:05.129Z] [INFO]    • Market Cap: $8,856.271
+[2025-07-05T22:57:05.129Z] [INFO]    • Volume 24h: $1.412
+[2025-07-05T22:57:05.129Z] [INFO] 📊 Token loaded: BETA (Beta Trader)
+[2025-07-05T22:57:05.129Z] [INFO]    • Mint: A6jBzMFsrxGEi2s8SDejWHojGu2j2RF7LvwTD2NTpump
+[2025-07-05T22:57:05.129Z] [INFO]    • Price: $0.00001533
+[2025-07-05T22:57:05.129Z] [INFO]    • Market Cap: $15,259.357
+[2025-07-05T22:57:05.129Z] [INFO]    • Volume 24h: $209.75
+[2025-07-05T22:57:05.129Z] [INFO] 📊 Token loaded: BETBIG (Bet Big Casino)
+[2025-07-05T22:57:05.129Z] [INFO]    • Mint: Vtrh4NchQ7RGuaL5L1KZG5qUDAvp6UK8uhRsZP3pump
+[2025-07-05T22:57:05.129Z] [INFO]    • Price: $0.00003392
+[2025-07-05T22:57:05.129Z] [INFO]    • Market Cap: $33,916.311
+[2025-07-05T22:57:05.129Z] [INFO]    • Volume 24h: $86.816
+[2025-07-05T22:57:05.129Z] [INFO] 📊 Token loaded: DUEL (BetDuel.ai)
+[2025-07-05T22:57:05.129Z] [INFO]    • Mint: EovfxuA6xc5Fn6Cx7r2WgJS5PgcEWWJqmPkpNFZdpump
+[2025-07-05T22:57:05.129Z] [INFO]    • Price: $0.00000958
+[2025-07-05T22:57:05.129Z] [INFO]    • Market Cap: $9,554.92
+[2025-07-05T22:57:05.129Z] [INFO]    • Volume 24h: $169.948
+[2025-07-05T22:57:05.129Z] [INFO] 📊 Token loaded: $BETH (Beth)
+[2025-07-05T22:57:05.130Z] [INFO]    • Mint: 7uJrMsDN2Wxdc3VAq1iK9N5AHaTA7wUpbm1wqRonpump
+[2025-07-05T22:57:05.130Z] [INFO]    • Price: $0.00006579
+[2025-07-05T22:57:05.130Z] [INFO]    • Market Cap: $61,702.075
+[2025-07-05T22:57:05.130Z] [INFO]    • Volume 24h: $23,044.512
+[2025-07-05T22:57:05.130Z] [INFO] 📊 Token loaded: BET (Bet more)
+[2025-07-05T22:57:05.130Z] [INFO]    • Mint: 5CLSw4viyMLfnRHHxZpDF8CuZt5e1ceq1AJqd4GjAJNX
+[2025-07-05T22:57:05.130Z] [INFO]    • Price: $0.00029927
+[2025-07-05T22:57:05.130Z] [INFO]    • Market Cap: $298,926.871
+[2025-07-05T22:57:05.130Z] [INFO]    • Volume 24h: $17,802.378
+[2025-07-05T22:57:05.130Z] [INFO] Batch completed: 390 tokens with price data
+[2025-07-05T22:57:05.130Z] [INFO] Waiting 5 seconds before next batch...
+[2025-07-05T22:57:10.130Z] [INFO] Fetching batch 9: tokens 401-450
+[2025-07-05T22:57:10.395Z] [INFO] 📊 Token loaded: BMR (BetMore Casino)
+[2025-07-05T22:57:10.396Z] [INFO]    • Mint: C73RSByWgBnYPf6YqU9U275PuRr5LNKzH6jRArScfBfX
+[2025-07-05T22:57:10.396Z] [INFO]    • Price: $0.0000087
+[2025-07-05T22:57:10.396Z] [INFO]    • Market Cap: $8,704.73
+[2025-07-05T22:57:10.396Z] [INFO]    • Volume 24h: $16.861
+[2025-07-05T22:57:10.396Z] [INFO] 📊 Token loaded: BEZO (BEZO)
+[2025-07-05T22:57:10.396Z] [INFO]    • Mint: 7gsdvvoREQbKesWJCDCb8reeM65yQuQDwT2jcH1JUG9V
+[2025-07-05T22:57:10.396Z] [INFO]    • Price: $0.00000616
+[2025-07-05T22:57:10.396Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:10.396Z] [INFO]    • Volume 24h: $4.376
+[2025-07-05T22:57:10.396Z] [INFO] 📊 Token loaded: BEZOGE (BEZOGE on SOL)
+[2025-07-05T22:57:10.396Z] [INFO]    • Mint: HUhmmhEiT8H969TS775PiF9w3sDyHgBYkMjGiyMQpump
+[2025-07-05T22:57:10.396Z] [INFO]    • Price: $0.00001662
+[2025-07-05T22:57:10.396Z] [INFO]    • Market Cap: $16,616.49
+[2025-07-05T22:57:10.396Z] [INFO]    • Volume 24h: $17.821
+[2025-07-05T22:57:10.396Z] [INFO] 📊 Token loaded: BHAD (B.H.A.D)
+[2025-07-05T22:57:10.396Z] [INFO]    • Mint: 57Wdx3uikKcAt2w8F9GMwgGeEvkaU6pXacYScW1hpump
+[2025-07-05T22:57:10.396Z] [INFO]    • Price: $0.00014702
+[2025-07-05T22:57:10.396Z] [INFO]    • Market Cap: $144,933.305
+[2025-07-05T22:57:10.396Z] [INFO]    • Volume 24h: $3,456.449
+[2025-07-05T22:57:10.396Z] [INFO] 📊 Token loaded: BIAO (Biao Coin)
+[2025-07-05T22:57:10.396Z] [INFO]    • Mint: 3W52uCb8NW8ruMF9mmJX3oKiYAjdPai4633srsZFQCS6
+[2025-07-05T22:57:10.396Z] [INFO]    • Price: $0.0000104
+[2025-07-05T22:57:10.396Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:10.396Z] [INFO]    • Volume 24h: $885.104
+[2025-07-05T22:57:10.396Z] [INFO] 📊 Token loaded: BIAO (BIAO on SOL)
+[2025-07-05T22:57:10.396Z] [INFO]    • Mint: 2ru87k7yAZnDRsnqVpgJYETFgqVApuBcwB2xDb19pump
+[2025-07-05T22:57:10.396Z] [INFO]    • Price: $0.00091163
+[2025-07-05T22:57:10.396Z] [INFO]    • Market Cap: $912,006.968
+[2025-07-05T22:57:10.396Z] [INFO]    • Volume 24h: $302,115.088
+[2025-07-05T22:57:10.396Z] [INFO] 📊 Token loaded: BIAO (Biaoqing SOL)
+[2025-07-05T22:57:10.396Z] [INFO]    • Mint: J12BiPmojMSbigxf1YH1aEctEfcyAsonUFixDnyVpump
+[2025-07-05T22:57:10.396Z] [INFO]    • Price: $0.00000528
+[2025-07-05T22:57:10.396Z] [INFO]    • Market Cap: $5,276.068
+[2025-07-05T22:57:10.396Z] [INFO]    • Volume 24h: $11.696
+[2025-07-05T22:57:10.396Z] [INFO] 📊 Token loaded: BIBI (Bibi)
+[2025-07-05T22:57:10.396Z] [INFO]    • Mint: 7UiTAJhzDcqc5CvVAUWS6sUyeXcQWUXuh7zsbUrNzb8K
+[2025-07-05T22:57:10.396Z] [INFO]    • Price: $0.00002184
+[2025-07-05T22:57:10.396Z] [INFO]    • Market Cap: $21,837.573
+[2025-07-05T22:57:10.396Z] [INFO]    • Volume 24h: $72.494
+[2025-07-05T22:57:10.396Z] [INFO] 📊 Token loaded: BICHO (bicho)
+[2025-07-05T22:57:10.396Z] [INFO]    • Mint: GkJxELgJXpQRm7dfc2yS18vBDRxP5SjVJgbrmTGgpump
+[2025-07-05T22:57:10.396Z] [INFO]    • Price: $0.00005141
+[2025-07-05T22:57:10.396Z] [INFO]    • Market Cap: $26,417.108
+[2025-07-05T22:57:10.396Z] [INFO]    • Volume 24h: $1,063.533
+[2025-07-05T22:57:10.396Z] [INFO] 📊 Token loaded: EAGLE (Big Bear Bald Eagle)
+[2025-07-05T22:57:10.396Z] [INFO]    • Mint: BhwwEnvzsEdncGWdDZv2airsw1HZVbRBBGfYhgZfpump
+[2025-07-05T22:57:10.396Z] [INFO]    • Price: $0.00000934
+[2025-07-05T22:57:10.396Z] [INFO]    • Market Cap: $9,315.878
+[2025-07-05T22:57:10.396Z] [INFO]    • Volume 24h: $60.937
+[2025-07-05T22:57:10.396Z] [INFO] 📊 Token loaded: $CHEUNGUS (Big Cheungus)
+[2025-07-05T22:57:10.396Z] [INFO]    • Mint: FAKDHD3GuHMvHmgMPgFKNknZJDEnGT6AQFipaQ4ppump
+[2025-07-05T22:57:10.396Z] [INFO]    • Price: $0.00001794
+[2025-07-05T22:57:10.396Z] [INFO]    • Market Cap: $17,934.698
+[2025-07-05T22:57:10.396Z] [INFO]    • Volume 24h: $3.12
+[2025-07-05T22:57:10.396Z] [INFO] 📊 Token loaded: BDE (Big Defi Energy)
+[2025-07-05T22:57:10.396Z] [INFO]    • Mint: H5gczCNbrtso6BqGKihF97RaWaxpUEZnFuFUKK4YX3s2
+[2025-07-05T22:57:10.396Z] [INFO]    • Price: $0.00080814
+[2025-07-05T22:57:10.396Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:10.396Z] [INFO]    • Volume 24h: $14.794
+[2025-07-05T22:57:10.396Z] [INFO] 📊 Token loaded: BINK (Big Dog Fink)
+[2025-07-05T22:57:10.396Z] [INFO]    • Mint: CeK6k4BMmiqkxkzYAbQuUp3hrVFSHxuQ1LJXmNybc3vz
+[2025-07-05T22:57:10.396Z] [INFO]    • Price: $0.00022137
+[2025-07-05T22:57:10.396Z] [INFO]    • Market Cap: $32,971,334.305
+[2025-07-05T22:57:10.396Z] [INFO]    • Volume 24h: $476.731
+[2025-07-05T22:57:10.396Z] [INFO] 📊 Token loaded: BIGFACTS (BIGFACTS)
+[2025-07-05T22:57:10.396Z] [INFO]    • Mint: 8U5SJfExR7QMhPWWKLFV5F9L8mX3vioEP29GxocBpump
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $0.00546294
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $2,530,586.696
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $35,726.988
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: BIGFOOT (Bigfoot Vlogs)
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: 4mswMCYRz4ifCPh53b48ecXJvwurCJRqMwKSHuP4pump
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $0.00006752
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $66,972.736
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $9,520.172
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: BIGJIM (BIG JIM)
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: HbACvu9eKjCJE7h4oGFSnX6fvbDqwugRGYeuJebRVBkR
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $4.968e-9
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $4,910.785
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $19.881
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: DRUGS (Big Pharmai)
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: CX9YDTED9TWgVXVoFy8JL9gSSAEWcTv4mzjLSv17LQsj
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $0.00050888
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $559,760.429
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $10,336.669
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: TRYB (BiLira)
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: A94X2fRy3wydNShU4dRaDyap2UuoeWJGWyATtyp61WZf
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $0.03176489
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $18,821,278.114
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $406.99
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: BILLI (Billi)
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: CmLfUYD69N4cdthVJBAcojPhZvFTwEz3Xo2TuBzLpump
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $0.00000829
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $8,287.359
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $122.117
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: BDC (Billy (Bitcoin))
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: BDCs2xEqzXyRpp9P6uPDnAvERpLKBfzHPEzbe3BfCxDY
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $0.01167143
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $11,669,398.771
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $63,702.386
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: BINU (Billion Dollar Inu)
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: DdWVqFmdQpyjdU3AeUSEhrsnJQBPH7iK9xdCFrBgpAy2
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $0.00001898
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $28.717
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: BILL (Bill the Bear)
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: 5o817YNoR97F1h5suzBghwc8dP53oureRuFbgJiaCFuZ
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $2.5969e-8
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $23,007.389
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $13.808
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: BILLY (Billy)
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: 3B5wuUrMEi5yATD7on46hKfej3pfmd7t1RKgrsN3pump
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $0.00438746
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $4,319,044.6
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $1,142,289.716
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: $BILLY (Billy Bets by Virtuals)
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: 9Rhbn9G5poLvgnFzuYBtJgbzmiipNra35QpnUek9virt
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $0.00394842
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $3,944,674.737
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $37,091.544
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: BNB (Binance Coin (Wormhole))
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: 9gP2kCy3wA1ctvYWQk75guqXuHfrEomqydHLtcTCqiLa
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $655.4
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $26,981.84
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: BNSOL (Binance Staked SOL)
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: BNso1VUJnh4zcfpZa6986Ea66P6TCp59hvtNJ8b1X85
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $156.53
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $1,372,354,516.965
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $733,004.389
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: BINGUS (Bingus The Cat)
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: AQuuQ4xktyzGBFnbKHnYsXHxsKVQetAoiPeCEG97NUJw
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $0.00126347
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $1,259,325.609
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $233,512.008
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: BIO/ACC (Bio Acceleration)
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: 7dxQE4YXrWqtwUVb8W8HjfPT3t4H4dWZfsDWRWKupump
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $0.00003245
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $32,395.694
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $169.403
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: SBKPT (BiokriptX)
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: BLLbAtSHFpgkSaUGmSQnjafnhebt8XPncaeYrpEgWoVk
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $0.00001287
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $64,349.603
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $4.62
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: BIO (Bio Protocol)
+[2025-07-05T22:57:10.397Z] [INFO]    • Mint: bioJ9JTqW62MLz7UKHU69gtKhPpGi1BQhccj2kmSvUJ
+[2025-07-05T22:57:10.397Z] [INFO]    • Price: $0.051085
+[2025-07-05T22:57:10.397Z] [INFO]    • Market Cap: $92,155,072.536
+[2025-07-05T22:57:10.397Z] [INFO]    • Volume 24h: $8,164,149.62
+[2025-07-05T22:57:10.397Z] [INFO] 📊 Token loaded: BIOS (BIOS)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: DWDnYfhVMnNBbWz4uEVvLVZLdYQoSuBosSU2vmHSpump
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.00016959
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $500.207
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: BIRB (birb)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: 2EBjqPYGLUExdWwJJRLqtGPawzb2aMjE1wTpUYKhy2UQ
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.00010779
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $107,786.199
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $67.594
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: BIRDDOG (Bird Dog on SOL)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: 3XTp12PmKMHxB6YkejaGPUjMGBLKRGgzHWgJuVTsBCoP
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.0002912
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $5,894.678
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: $BIRDFLU (BIRDFLU)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: EUxS8Kqvbe8zDr8bG1RYtgjVNzEhMTG6B6H3WwrCHfwA
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.00006313
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $63,115.264
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $1.986
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: $BIRDIE (Birdie)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: C4zNLzmCp5aDkYEpxwcLAdmGTAT3fE3YxA2kTdSRpump
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.00001062
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $8,496.372
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $122.335
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: BIRDS (BIRDIES)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: 9m9fmqJ2s7iUXZhFMsrdes1UcAtu3JyZXK3ZXfW3KPEw
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $5.72551e-7
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $2.863
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: BIRD (Bird.Money)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: FTPnEQ3NfRRZ9tvmpDW6JFrvweBE5sanxnXSpJL1dvbB
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $1.017
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $118,209.797
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $8,293.456
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: BITARD (BITARD)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: 2ZZaE2gNQSPZLEFiNzBewgQhj3wGpx4oDzuAawh4DHBB
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.00000789
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $7,886.14
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $2.33
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: $BITB (BitBean)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: 9jBg9QnpGLmPB58Fmp5L7fbwk1kJ7HYcaziRdPR7yRQJ
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.00002498
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $24,333.113
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $9.524
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: BITBONDS (BITBONDS)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: 4NTREQyLwcxYddh6TmmiwQt55zvGtngCLyYDBJQ8pump
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.000079
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $78,514.631
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $1,109.283
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: BRAWL (Brawl AI Layer)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: 5mdBkZ4dTP94SE7PyiuWseTDAd1kYxSk6oYaWB7186s7
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.00002974
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $354,031.324
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: BITCAT (Bitcat)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: BSkz8QHwk1DaT3Dcf1L5vWsCRzgrfrLR3qYmwSt1rtUM
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.00043863
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $43,856.785
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $101.644
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: BTCAT (BitCat)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: 3XFiHA2gexzBjqtM5Z7FjJhP6f28D2m79UihBCfkpump
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.00006325
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $60,213.416
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $179.518
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: BITCAT (Bitcat)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: 4j9bDg7iWNah1Qa61rrqwWZMtEdqV3fV56SzyhfNpump
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.00034526
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $345,275.874
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $95,396.759
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: BOB (Bitcoin Bob)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: DL9sLSN488yMbots3wsbzHZ3UpKSkM42kr1y13CPpump
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.00007668
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $76,728.442
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $201.859
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: ISAAC (Bitcoin breaking $100 in 2013)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: GTiMaW6FNPLrWNVLYk5KkLApxiHvCwbGr9KdueGypump
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.00008506
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $84,472.1
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $1,219.125
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: SASHA (Bitcoin Cat)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: 6WNva7iLjTvxSfXPSmbjceW5Yc41LUH4SJNqKom5pump
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.00004618
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $46,185.163
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $117.747
+[2025-07-05T22:57:10.398Z] [INFO] 📊 Token loaded: GARGOYLE (Bitcoin Dog)
+[2025-07-05T22:57:10.398Z] [INFO]    • Mint: DzBTcjCRaK524YZVaR84j92MH1yUWtqLxYrEAVjapump
+[2025-07-05T22:57:10.398Z] [INFO]    • Price: $0.00000556
+[2025-07-05T22:57:10.398Z] [INFO]    • Market Cap: $5,557.024
+[2025-07-05T22:57:10.398Z] [INFO]    • Volume 24h: $2.809
+[2025-07-05T22:57:10.399Z] [INFO] 📊 Token loaded: BRRR (Bitcoin Printer)
+[2025-07-05T22:57:10.399Z] [INFO]    • Mint: 7dGEYMPsAVxJY3qQJaCHwLPkCCx9SSE52H4k1wF617uE
+[2025-07-05T22:57:10.399Z] [INFO]    • Price: $0.00001307
+[2025-07-05T22:57:10.399Z] [INFO]    • Market Cap: $12,624.067
+[2025-07-05T22:57:10.399Z] [INFO]    • Volume 24h: $18.923
+[2025-07-05T22:57:10.399Z] [INFO] 📊 Token loaded: PUPPET (bitcoin puppets solona)
+[2025-07-05T22:57:10.399Z] [INFO]    • Mint: 6icM9VTZpbBxeLpBCHbSDtoYPmDmENpc8YkyKKWmnAKH
+[2025-07-05T22:57:10.399Z] [INFO]    • Price: $0.00000236
+[2025-07-05T22:57:10.399Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:10.399Z] [INFO]    • Volume 24h: $23.726
+[2025-07-05T22:57:10.399Z] [INFO] Batch completed: 440 tokens with price data
+[2025-07-05T22:57:10.399Z] [INFO] Waiting 5 seconds before next batch...
+[2025-07-05T22:57:15.399Z] [INFO] Fetching batch 10: tokens 451-500
+[2025-07-05T22:57:15.659Z] [INFO] 📊 Token loaded: BTM (Bitcoin Treasury Machine)
+[2025-07-05T22:57:15.659Z] [INFO]    • Mint: 5Xc1AycwC2ENTDWwGV41twqCyKkeoAfjnqLGMKKd7ytX
+[2025-07-05T22:57:15.659Z] [INFO]    • Price: $0.00001206
+[2025-07-05T22:57:15.660Z] [INFO]    • Market Cap: $12,040.718
+[2025-07-05T22:57:15.660Z] [INFO]    • Volume 24h: $12.863
+[2025-07-05T22:57:15.660Z] [INFO] 📊 Token loaded: BWAH (Bitcoin Wizard Apple Hurler)
+[2025-07-05T22:57:15.660Z] [INFO]    • Mint: 8sv4W4uQ9qML87Kr2XFkYBDwsiFEJVZZ1ScsM71Hpump
+[2025-07-05T22:57:15.660Z] [INFO]    • Price: $0.00001753
+[2025-07-05T22:57:15.660Z] [INFO]    • Market Cap: $17,516.813
+[2025-07-05T22:57:15.660Z] [INFO]    • Volume 24h: $4,171.55
+[2025-07-05T22:57:15.660Z] [INFO] 📊 Token loaded: BTCWIZ (Bitcoin Wizard Mascot)
+[2025-07-05T22:57:15.660Z] [INFO]    • Mint: GiSC3EA7C2kZwESb53cJybcmeRRExM4gqzV5UTz9pump
+[2025-07-05T22:57:15.660Z] [INFO]    • Price: $0.00001986
+[2025-07-05T22:57:15.660Z] [INFO]    • Market Cap: $19,780.711
+[2025-07-05T22:57:15.660Z] [INFO]    • Volume 24h: $72.749
+[2025-07-05T22:57:15.660Z] [INFO] 📊 Token loaded: BITCORN (Bitcorn)
+[2025-07-05T22:57:15.660Z] [INFO]    • Mint: F76Go1TqbZwnG17BhbQMovEJQHnmXuBBHAjGd3v1pump
+[2025-07-05T22:57:15.660Z] [INFO]    • Price: $0.00002182
+[2025-07-05T22:57:15.660Z] [INFO]    • Market Cap: $21,908.772
+[2025-07-05T22:57:15.660Z] [INFO]    • Volume 24h: $728.833
+[2025-07-05T22:57:15.660Z] [INFO] 📊 Token loaded: BITCORN (BITCORN)
+[2025-07-05T22:57:15.660Z] [INFO]    • Mint: FSqH8gHUdt87mwJJm8figSz8kJyLdietRcPwDcfopump
+[2025-07-05T22:57:15.661Z] [INFO]    • Price: $0.00002522
+[2025-07-05T22:57:15.661Z] [INFO]    • Market Cap: $25,206.067
+[2025-07-05T22:57:15.661Z] [INFO]    • Volume 24h: $2,302.76
+[2025-07-05T22:57:15.661Z] [INFO] 📊 Token loaded: AIDD (BitDoctorAI)
+[2025-07-05T22:57:15.661Z] [INFO]    • Mint: aiddowDsfMxaxPtVmmmnaX9B8DNzM78YypD84dVra7B
+[2025-07-05T22:57:15.661Z] [INFO]    • Price: $0.00348631
+[2025-07-05T22:57:15.661Z] [INFO]    • Market Cap: $773,729.514
+[2025-07-05T22:57:15.661Z] [INFO]    • Volume 24h: $2,183.409
+[2025-07-05T22:57:15.661Z] [INFO] 📊 Token loaded: BITDOG (bitdog)
+[2025-07-05T22:57:15.661Z] [INFO]    • Mint: 2ZmE6PFEwz3Z148JeMtrqmF9NJi6CwvHkQF66dbCpump
+[2025-07-05T22:57:15.661Z] [INFO]    • Price: $0.00001301
+[2025-07-05T22:57:15.661Z] [INFO]    • Market Cap: $12,944.036
+[2025-07-05T22:57:15.661Z] [INFO]    • Volume 24h: $3.753
+[2025-07-05T22:57:15.661Z] [INFO] 📊 Token loaded: BGSOL (Bitget Staked SOL)
+[2025-07-05T22:57:15.661Z] [INFO]    • Mint: bgSoLfRx1wRPehwC9TyG568AGjnf1sQG1MYa8s3FbfY
+[2025-07-05T22:57:15.661Z] [INFO]    • Price: $161.1
+[2025-07-05T22:57:15.661Z] [INFO]    • Market Cap: $14,028,285.716
+[2025-07-05T22:57:15.661Z] [INFO]    • Volume 24h: $2,527,775.425
+[2025-07-05T22:57:15.661Z] [INFO] 📊 Token loaded: BTM (BitMeme)
+[2025-07-05T22:57:15.661Z] [INFO]    • Mint: 2XEm27fupa295SSXpmD8coakcFpCJn3huMsH5V77ZixP
+[2025-07-05T22:57:15.661Z] [INFO]    • Price: $7.833e-7
+[2025-07-05T22:57:15.661Z] [INFO]    • Market Cap: $69,247.763
+[2025-07-05T22:57:15.661Z] [INFO]    • Volume 24h: $392.585
+[2025-07-05T22:57:15.661Z] [INFO] 📊 Token loaded: BRISE (Bitgert)
+[2025-07-05T22:57:15.661Z] [INFO]    • Mint: ErSZNwsamWjR9Hj2o18GLwVyTkooyGbdptjMjuv72X8A
+[2025-07-05T22:57:15.661Z] [INFO]    • Price: $3.9323e-8
+[2025-07-05T22:57:15.661Z] [INFO]    • Market Cap: $15,555,247.989
+[2025-07-05T22:57:15.661Z] [INFO]    • Volume 24h: $2,998,429.751
+[2025-07-05T22:57:15.661Z] [INFO] 📊 Token loaded: SPWN (Bitspawn)
+[2025-07-05T22:57:15.661Z] [INFO]    • Mint: 5U9QqCPhqXAJcEv9uyzFJd5zhN93vuPk1aNNkXnUfPnt
+[2025-07-05T22:57:15.661Z] [INFO]    • Price: $0.0000064
+[2025-07-05T22:57:15.661Z] [INFO]    • Market Cap: $4,599.525
+[2025-07-05T22:57:15.661Z] [INFO]    • Volume 24h: $35.764
+[2025-07-05T22:57:15.661Z] [INFO] 📊 Token loaded: FTW (Black Agnus)
+[2025-07-05T22:57:15.661Z] [INFO]    • Mint: 7ePhsDXkpPJs6rPM3TQScpbgonzKUPo9vuQr8GXMMGpf
+[2025-07-05T22:57:15.661Z] [INFO]    • Price: $4.25e-9
+[2025-07-05T22:57:15.661Z] [INFO]    • Market Cap: $255,135.543
+[2025-07-05T22:57:15.661Z] [INFO]    • Volume 24h: $1,032.349
+[2025-07-05T22:57:15.661Z] [INFO] 📊 Token loaded: BLACKCOIN (BlackCoin)
+[2025-07-05T22:57:15.661Z] [INFO]    • Mint: J3rYdme789g1zAysfbH9oP4zjagvfVM2PX7KJgFDpump
+[2025-07-05T22:57:15.661Z] [INFO]    • Price: $0.00038208
+[2025-07-05T22:57:15.661Z] [INFO]    • Market Cap: $383,112.676
+[2025-07-05T22:57:15.661Z] [INFO]    • Volume 24h: $291,544.034
+[2025-07-05T22:57:15.661Z] [INFO] 📊 Token loaded: BLACKCROC (Blackcroc)
+[2025-07-05T22:57:15.661Z] [INFO]    • Mint: Be6a7UZT4k6yUgQibJczPat8C2qGujEAoje7wY7Pgegr
+[2025-07-05T22:57:15.661Z] [INFO]    • Price: $0.00001498
+[2025-07-05T22:57:15.661Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:15.661Z] [INFO]    • Volume 24h: $11.197
+[2025-07-05T22:57:15.661Z] [INFO] 📊 Token loaded: ANGLERFISH (Black Devil)
+[2025-07-05T22:57:15.661Z] [INFO]    • Mint: DjgujfEv2u2qz7PNuS6Ct7bctnxPFihfWE2zBpKZpump
+[2025-07-05T22:57:15.661Z] [INFO]    • Price: $0.00011003
+[2025-07-05T22:57:15.661Z] [INFO]    • Market Cap: $109,951.03
+[2025-07-05T22:57:15.661Z] [INFO]    • Volume 24h: $162,907.774
+[2025-07-05T22:57:15.661Z] [INFO] 📊 Token loaded: BD/SOL (BlackDuckrwa)
+[2025-07-05T22:57:15.662Z] [INFO]    • Mint: i3s1iZgKxLNs39S9JDceHmFtVhJH1WFZHkGNWFUmoon
+[2025-07-05T22:57:15.662Z] [INFO]    • Price: $0.00015898
+[2025-07-05T22:57:15.662Z] [INFO]    • Market Cap: $157,088.331
+[2025-07-05T22:57:15.662Z] [INFO]    • Volume 24h: $65.995
+[2025-07-05T22:57:15.662Z] [INFO] 📊 Token loaded: RACKS (BlackRack)
+[2025-07-05T22:57:15.662Z] [INFO]    • Mint: D7yP4ycfsRWUGYionGpi64sLF2ddZ2JXxuRAti2M7uck
+[2025-07-05T22:57:15.662Z] [INFO]    • Price: $0.00025321
+[2025-07-05T22:57:15.662Z] [INFO]    • Market Cap: $248,157.737
+[2025-07-05T22:57:15.662Z] [INFO]    • Volume 24h: $1,176.853
+[2025-07-05T22:57:15.662Z] [INFO] 📊 Token loaded: BUIDL (BlackRock USD Institutional Digital Liquidity Fund)
+[2025-07-05T22:57:15.662Z] [INFO]    • Mint: GyWgeqpy5GueU2YbkE8xqUeVEokCMMCEeUrfbtMw6phr
+[2025-07-05T22:57:15.662Z] [INFO]    • Price: $1
+[2025-07-05T22:57:15.662Z] [INFO]    • Market Cap: $2,833,937,572.534
+[2025-07-05T22:57:15.662Z] [INFO]    • Volume 24h: $0
+[2025-07-05T22:57:15.662Z] [INFO] 📊 Token loaded: SWAN (Black Swan)
+[2025-07-05T22:57:15.662Z] [INFO]    • Mint: 3jyiXJ9zi4B8j6EXvdH6pCKTJsYHWvzN5nY8Mecbpump
+[2025-07-05T22:57:15.662Z] [INFO]    • Price: $0.00000815
+[2025-07-05T22:57:15.662Z] [INFO]    • Market Cap: $8,124.792
+[2025-07-05T22:57:15.662Z] [INFO]    • Volume 24h: $98.27
+[2025-07-05T22:57:15.662Z] [INFO] 📊 Token loaded: BLACK (Blacktail AI)
+[2025-07-05T22:57:15.662Z] [INFO]    • Mint: tABry1BGSzqx5FAP4fiWo5VYjWEthsPVvi8GJNwpump
+[2025-07-05T22:57:15.662Z] [INFO]    • Price: $0.00016795
+[2025-07-05T22:57:15.662Z] [INFO]    • Market Cap: $151,143.009
+[2025-07-05T22:57:15.662Z] [INFO]    • Volume 24h: $1.754
+[2025-07-05T22:57:15.662Z] [INFO] 📊 Token loaded: BSOL (BlazeStake Staked SOL)
+[2025-07-05T22:57:15.662Z] [INFO]    • Mint: bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1
+[2025-07-05T22:57:15.662Z] [INFO]    • Price: $181.54
+[2025-07-05T22:57:15.662Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:15.662Z] [INFO]    • Volume 24h: $416,316.421
+[2025-07-05T22:57:15.662Z] [INFO] 📊 Token loaded: BLAZR (Blazr)
+[2025-07-05T22:57:15.662Z] [INFO]    • Mint: 21M2qaHHkGJdpZHbpbjfFH2CXCbPhJM3VxLTycpKpump
+[2025-07-05T22:57:15.662Z] [INFO]    • Price: $0.00005581
+[2025-07-05T22:57:15.662Z] [INFO]    • Market Cap: $52,912.596
+[2025-07-05T22:57:15.662Z] [INFO]    • Volume 24h: $56,825.314
+[2025-07-05T22:57:15.662Z] [INFO] 📊 Token loaded: BLIFFY (Bliffy)
+[2025-07-05T22:57:15.662Z] [INFO]    • Mint: BLiFF7FoZrs9AMnZnn8dXn89wybGiFgQtpRDqMsdLQF
+[2025-07-05T22:57:15.662Z] [INFO]    • Price: $0.00000724
+[2025-07-05T22:57:15.662Z] [INFO]    • Market Cap: $121,227.889
+[2025-07-05T22:57:15.662Z] [INFO]    • Volume 24h: $160.925
+[2025-07-05T22:57:15.662Z] [INFO] 📊 Token loaded: BLINK (blinkdotfun)
+[2025-07-05T22:57:15.662Z] [INFO]    • Mint: b1nkm6skdrwXoMku8CVx8Fk4LfC2jAqxV3m9VDNjYqz
+[2025-07-05T22:57:15.662Z] [INFO]    • Price: $0.00049905
+[2025-07-05T22:57:15.662Z] [INFO]    • Market Cap: $498,825.886
+[2025-07-05T22:57:15.662Z] [INFO]    • Volume 24h: $7,397.8
+[2025-07-05T22:57:15.662Z] [INFO] 📊 Token loaded: BGG1 (Blinks.gg)
+[2025-07-05T22:57:15.662Z] [INFO]    • Mint: 62CsquahdQ3J286G9UTqV6whxryfihdV4yg7kSJnpump
+[2025-07-05T22:57:15.662Z] [INFO]    • Price: $0.00073549
+[2025-07-05T22:57:15.662Z] [INFO]    • Market Cap: $737,062.804
+[2025-07-05T22:57:15.662Z] [INFO]    • Volume 24h: $76,907.78
+[2025-07-05T22:57:15.662Z] [INFO] 📊 Token loaded: BLOB (Blobana pet)
+[2025-07-05T22:57:15.662Z] [INFO]    • Mint: DgG9sM56ZcVidBV8bNArQPm93a2rmjzHkrrUntGSpump
+[2025-07-05T22:57:15.662Z] [INFO]    • Price: $0.0000446
+[2025-07-05T22:57:15.662Z] [INFO]    • Market Cap: $44,617.43
+[2025-07-05T22:57:15.662Z] [INFO]    • Volume 24h: $40.833
+[2025-07-05T22:57:15.662Z] [INFO] 📊 Token loaded: BLOCK (Block)
+[2025-07-05T22:57:15.662Z] [INFO]    • Mint: 2zwuFv4tzMrJMA3Gq5nNH3i4ojWPtCkjmGzTMXe4RpMc
+[2025-07-05T22:57:15.662Z] [INFO]    • Price: $0.00002633
+[2025-07-05T22:57:15.662Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:15.662Z] [INFO]    • Volume 24h: $1.971
+[2025-07-05T22:57:15.663Z] [INFO] 📊 Token loaded: BLOCK (block AI)
+[2025-07-05T22:57:15.663Z] [INFO]    • Mint: 6CcuCL1LESQqTznT6wi9kjLPnAZs6b4GM1D1GeS8pump
+[2025-07-05T22:57:15.663Z] [INFO]    • Price: $0.0000183
+[2025-07-05T22:57:15.663Z] [INFO]    • Market Cap: $15,330.787
+[2025-07-05T22:57:15.663Z] [INFO]    • Volume 24h: $2.63
+[2025-07-05T22:57:15.663Z] [INFO] 📊 Token loaded: BLOCK (Blockasset)
+[2025-07-05T22:57:15.663Z] [INFO]    • Mint: NFTUkR4u7wKxy9QLaX2TGvd9oZSWoMo4jqSJqdMb7Nk
+[2025-07-05T22:57:15.663Z] [INFO]    • Price: $0.079935
+[2025-07-05T22:57:15.663Z] [INFO]    • Market Cap: $15,908,954.04
+[2025-07-05T22:57:15.663Z] [INFO]    • Volume 24h: $360,120.475
+[2025-07-05T22:57:15.663Z] [INFO] 📊 Token loaded: BLOC (BlockCycle)
+[2025-07-05T22:57:15.663Z] [INFO]    • Mint: bLoCKG5okCUQuh6r6GFRvVRnBFRCXeZw2G29qxGYMot
+[2025-07-05T22:57:15.663Z] [INFO]    • Price: $0.00001254
+[2025-07-05T22:57:15.663Z] [INFO]    • Market Cap: $12,544.292
+[2025-07-05T22:57:15.663Z] [INFO]    • Volume 24h: $11.172
+[2025-07-05T22:57:15.663Z] [INFO] 📊 Token loaded: BDROP (BlockDrop)
+[2025-07-05T22:57:15.663Z] [INFO]    • Mint: DcJLACAUR25RujgxBVhZtcWPCTjzSw6YDM8E7oipiT3k
+[2025-07-05T22:57:15.663Z] [INFO]    • Price: $0.0005587
+[2025-07-05T22:57:15.663Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:15.663Z] [INFO]    • Volume 24h: $45.264
+[2025-07-05T22:57:15.663Z] [INFO] 📊 Token loaded: $FORGE ($FORGE)
+[2025-07-05T22:57:15.663Z] [INFO]    • Mint: FoRGERiW7odcCBGU1bztZi16osPBHjxharvDathL5eds
+[2025-07-05T22:57:15.663Z] [INFO]    • Price: $0.00363222
+[2025-07-05T22:57:15.663Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:15.663Z] [INFO]    • Volume 24h: $243.892
+[2025-07-05T22:57:15.663Z] [INFO] 📊 Token loaded: BLOCKY (Blocky Ai Agent)
+[2025-07-05T22:57:15.663Z] [INFO]    • Mint: CsZFPqMei7DXBfXfxCydAPBN9y5wzrYmYcwBhLLRT3iU
+[2025-07-05T22:57:15.663Z] [INFO]    • Price: $0.00098117
+[2025-07-05T22:57:15.663Z] [INFO]    • Market Cap: $932,108.364
+[2025-07-05T22:57:15.663Z] [INFO]    • Volume 24h: $35,091.13
+[2025-07-05T22:57:15.663Z] [INFO] 📊 Token loaded: BLT (Blocto)
+[2025-07-05T22:57:15.663Z] [INFO]    • Mint: BLT1noyNr3GttckEVrtcfC6oyK6yV1DpPgSyXbncMwef
+[2025-07-05T22:57:15.663Z] [INFO]    • Price: $0.00015994
+[2025-07-05T22:57:15.663Z] [INFO]    • Market Cap: $37,631.36
+[2025-07-05T22:57:15.663Z] [INFO]    • Volume 24h: $1,310.386
+[2025-07-05T22:57:15.663Z] [INFO] 📊 Token loaded: $BLOOD (BLOOD)
+[2025-07-05T22:57:15.663Z] [INFO]    • Mint: FmmEZCz8JEQP2RsueVV2XNGdTHt8RQMQH6mjjFWAJyAP
+[2025-07-05T22:57:15.663Z] [INFO]    • Price: $1.0708e-8
+[2025-07-05T22:57:15.663Z] [INFO]    • Market Cap: $9,059.893
+[2025-07-05T22:57:15.663Z] [INFO]    • Volume 24h: $12.555
+[2025-07-05T22:57:15.663Z] [INFO] 📊 Token loaded: CHANT (Bloodline Chanting My Name)
+[2025-07-05T22:57:15.663Z] [INFO]    • Mint: GiUgtv3NiUteADLBUg2Sc8Y2c3d3doYLpnZkagZqpump
+[2025-07-05T22:57:15.663Z] [INFO]    • Price: $0.0000515
+[2025-07-05T22:57:15.663Z] [INFO]    • Market Cap: $51,499.696
+[2025-07-05T22:57:15.663Z] [INFO]    • Volume 24h: $1,367.131
+[2025-07-05T22:57:15.663Z] [INFO] 📊 Token loaded: SPERG (Bloomsperg Terminal)
+[2025-07-05T22:57:15.663Z] [INFO]    • Mint: 4vKEwZ2ZHmHFuQEE69emXV2Zq1EKeJYVCESsMqydpump
+[2025-07-05T22:57:15.663Z] [INFO]    • Price: $0.00007584
+[2025-07-05T22:57:15.663Z] [INFO]    • Market Cap: $75,584.913
+[2025-07-05T22:57:15.663Z] [INFO]    • Volume 24h: $1,016.679
+[2025-07-05T22:57:15.663Z] [INFO] 📊 Token loaded: BLOOP (Bloop Furpal)
+[2025-07-05T22:57:15.663Z] [INFO]    • Mint: HGfaYTieJ7rXrWD8taVux2PrSB69hjQypaopvFtSMaTT
+[2025-07-05T22:57:15.663Z] [INFO]    • Price: $0.0000078
+[2025-07-05T22:57:15.663Z] [INFO]    • Market Cap: $7,796.109
+[2025-07-05T22:57:15.663Z] [INFO]    • Volume 24h: $1.051
+[2025-07-05T22:57:15.663Z] [INFO] 📊 Token loaded: BLORMMY (blormmy)
+[2025-07-05T22:57:15.663Z] [INFO]    • Mint: 71AZt4P5kc5vpfTJR1HjNbMzD84G7vxam4DtL3kJpump
+[2025-07-05T22:57:15.663Z] [INFO]    • Price: $0.00085421
+[2025-07-05T22:57:15.663Z] [INFO]    • Market Cap: $854,994.886
+[2025-07-05T22:57:15.663Z] [INFO]    • Volume 24h: $2,944.734
+[2025-07-05T22:57:15.663Z] [INFO] 📊 Token loaded: BLUEBERRY (Blueberry The Squirrel)
+[2025-07-05T22:57:15.663Z] [INFO]    • Mint: GEJJkUe2MDSsRg64iJBdKSRdsuo6V4kdUzrgyPogpump
+[2025-07-05T22:57:15.663Z] [INFO]    • Price: $0.00001044
+[2025-07-05T22:57:15.663Z] [INFO]    • Market Cap: $10,391.235
+[2025-07-05T22:57:15.663Z] [INFO]    • Volume 24h: $122.786
+[2025-07-05T22:57:15.663Z] [INFO] 📊 Token loaded: BBC (Blue Butt Cheese)
+[2025-07-05T22:57:15.663Z] [INFO]    • Mint: CmAtKbUSM2HErtaQmonrxiV7qXo3mDganWw9KEimbutt
+[2025-07-05T22:57:15.663Z] [INFO]    • Price: $0.00003869
+[2025-07-05T22:57:15.664Z] [INFO]    • Market Cap: $26,022.955
+[2025-07-05T22:57:15.664Z] [INFO]    • Volume 24h: $56.65
+[2025-07-05T22:57:15.664Z] [INFO] 📊 Token loaded: BLUECHIP (Blue Chip)
+[2025-07-05T22:57:15.664Z] [INFO]    • Mint: DHJVYXsikcimtcVo49FAZqYd1XPYPaXezYhbKArJbonk
+[2025-07-05T22:57:15.664Z] [INFO]    • Price: $0.00869791
+[2025-07-05T22:57:15.664Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:15.664Z] [INFO]    • Volume 24h: $4,721,855.303
+[2025-07-05T22:57:15.664Z] [INFO] 📊 Token loaded: BLUEFROG (Blue Frog)
+[2025-07-05T22:57:15.664Z] [INFO]    • Mint: A9ZjTkTXQ43kuoTZLZ3nx55nrBEjoDy1nFVwYCFRAcVk
+[2025-07-05T22:57:15.664Z] [INFO]    • Price: $9.8554e-7
+[2025-07-05T22:57:15.664Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:15.664Z] [INFO]    • Volume 24h: $57.072
+[2025-07-05T22:57:15.664Z] [INFO] 📊 Token loaded: BLUE (Blue)
+[2025-07-05T22:57:15.664Z] [INFO]    • Mint: CWQVqTKuH1iU8zSfFfvaUXaVzLzqU1E8GYU5d6EcGBNe
+[2025-07-05T22:57:15.664Z] [INFO]    • Price: $0.00026203
+[2025-07-05T22:57:15.664Z] [INFO]    • Market Cap: $0
+[2025-07-05T22:57:15.664Z] [INFO]    • Volume 24h: $10.189
+[2025-07-05T22:57:15.664Z] [INFO] 📊 Token loaded: BST (Blue Signing Token)
+[2025-07-05T22:57:15.664Z] [INFO]    • Mint: VjMa3mzfBgCyKRTQHg8pSuZRKCvKF8zMqVXQMU3pump
+[2025-07-05T22:57:15.664Z] [INFO]    • Price: $0.00020879
+[2025-07-05T22:57:15.664Z] [INFO]    • Market Cap: $208,573.3
+[2025-07-05T22:57:15.664Z] [INFO]    • Volume 24h: $1,679.892
+[2025-07-05T22:57:15.664Z] [INFO] 📊 Token loaded: WHALE (Blue Whale)
+[2025-07-05T22:57:15.664Z] [INFO]    • Mint: kub2QX17qMx6jLuyG5gR4kSmmbiRtvUHt4gxqNd4wZB
+[2025-07-05T22:57:15.664Z] [INFO]    • Price: $0.00000125
+[2025-07-05T22:57:15.664Z] [INFO]    • Market Cap: $29,972.959
+[2025-07-05T22:57:15.664Z] [INFO]    • Volume 24h: $511.834
+[2025-07-05T22:57:15.664Z] [INFO] 📊 Token loaded: BLUFF (BluffCat)
+[2025-07-05T22:57:15.664Z] [INFO]    • Mint: ERuVbcuTrs3UCQ64391JfrpVdv4JLkqABCiZNujxpump
+[2025-07-05T22:57:15.664Z] [INFO]    • Price: $0.00007088
+[2025-07-05T22:57:15.664Z] [INFO]    • Market Cap: $70,879.558
+[2025-07-05T22:57:15.664Z] [INFO]    • Volume 24h: $1.202
+[2025-07-05T22:57:15.664Z] [INFO] 📊 Token loaded: BOB (BOB)
+[2025-07-05T22:57:15.664Z] [INFO]    • Mint: 7qpKH1bkvoZPDGbtmjHa9opCGnzfeycD34iuDrJBpump
+[2025-07-05T22:57:15.664Z] [INFO]    • Price: $0.00001773
+[2025-07-05T22:57:15.664Z] [INFO]    • Market Cap: $17,675.077
+[2025-07-05T22:57:15.664Z] [INFO]    • Volume 24h: $107.645
+[2025-07-05T22:57:15.664Z] [INFO] 📊 Token loaded: BOB (BOB)
+[2025-07-05T22:57:15.664Z] [INFO]    • Mint: 2AkzNQ23RafGboTrPxW9p4D4g4hpY71Jc1pgQ4Ycpump
+[2025-07-05T22:57:15.664Z] [INFO]    • Price: $0.00000856
+[2025-07-05T22:57:15.664Z] [INFO]    • Market Cap: $8,490.711
+[2025-07-05T22:57:15.664Z] [INFO]    • Volume 24h: $53.768
+[2025-07-05T22:57:15.664Z] [INFO] 📊 Token loaded: BOBAOPPA (Boba Oppa)
+[2025-07-05T22:57:15.664Z] [INFO]    • Mint: bobaM3u8QmqZhY1HwAtnvze9DLXvkgKYk3td3t8MLva
+[2025-07-05T22:57:15.664Z] [INFO]    • Price: $0.00048643
+[2025-07-05T22:57:15.664Z] [INFO]    • Market Cap: $9,644,585.157
+[2025-07-05T22:57:15.664Z] [INFO]    • Volume 24h: $1,985.972
+[2025-07-05T22:57:15.664Z] [INFO] Batch completed: 490 tokens with price data
+[2025-07-05T22:57:15.664Z] [INFO] Waiting 5 seconds before next batch...
+[2025-07-05T22:57:20.665Z] [INFO] Fetching batch 11: tokens 501-550
+[2025-07-05T22:57:20.740Z] [WARN] Rate limit exceeded. Waiting 60000ms before retry 1/2

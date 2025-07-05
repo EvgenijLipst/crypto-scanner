@@ -58,6 +58,9 @@ export class TokenAnalyzer {
   private analysisInterval = 10 * 60 * 1000; // 10 минут между анализами
   private lastAnalysisTime = 0;
 
+  // Временный режим принудительного обновления
+  private forceRefreshMode = true; // ВКЛЮЧАЕМ ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ
+
   constructor(
     coingecko: CoinGeckoAPI,
     jupiter: JupiterAPI,
@@ -76,6 +79,40 @@ export class TokenAnalyzer {
   async getTopTokensForMonitoring(): Promise<SolanaToken[]> {
     try {
       const now = Date.now();
+      
+      // ПРОВЕРЯЕМ РЕЖИМ ПРИНУДИТЕЛЬНОГО ОБНОВЛЕНИЯ
+      if (this.forceRefreshMode) {
+        log('🔄 FORCE REFRESH MODE: Skipping cache and database, fetching fresh tokens from CoinGecko...');
+        
+        // Получаем топ-2000 токенов напрямую из CoinGecko
+        const tokens = await this.coingecko.getTopSolanaTokens(2000);
+        log(`CoinGecko returned ${tokens.length} tokens in force refresh mode`);
+        
+        if (tokens.length === 0) {
+          log('No tokens received from CoinGecko in force refresh mode', 'WARN');
+          return this.topTokensCache; // Возвращаем старый кэш
+        }
+
+        // Применяем базовые фильтры
+        const filteredTokens = this.applyBasicFilters(tokens);
+        log(`Force refresh: ${filteredTokens.length} tokens after basic filters`);
+
+        // СОХРАНЯЕМ ТОКЕНЫ БАТЧАМИ ПО 50 ШТУК
+        log(`🔄 FORCE SAVE: Saving ${filteredTokens.length} tokens to database in batches of 50...`);
+        await this.saveTokensInBatches(filteredTokens, 50);
+        log(`✅ FORCE SAVE: All token batches saved successfully`);
+
+        // Кэшируем результат
+        this.topTokensCache = filteredTokens;
+        this.topTokensCacheTime = now;
+        this.lastFullRefresh = now;
+
+        // Обновляем список для мониторинга
+        this.updateMonitoredTokens(filteredTokens);
+
+        log(`✅ Force refresh complete: ${filteredTokens.length} tokens cached for monitoring`);
+        return filteredTokens;
+      }
       
       // Проверяем кэш в памяти (быстрая проверка)
       if (this.topTokensCache.length > 0 && 
@@ -127,10 +164,10 @@ export class TokenAnalyzer {
       const filteredTokens = this.applyBasicFilters(tokens);
       log(`CoinGecko refresh: ${filteredTokens.length} tokens after basic filters`);
 
-      // Сохраняем все токены в coin_data таблицу
-      log(`🔄 Attempting to save ${filteredTokens.length} tokens to coin_data table...`);
-      await this.saveTokensToCoinData(filteredTokens);
-      log(`✅ saveTokensToCoinData completed successfully`);
+      // СОХРАНЯЕМ ТОКЕНЫ БАТЧАМИ ПО 50 ШТУК
+      log(`🔄 Attempting to save ${filteredTokens.length} tokens to database in batches of 50...`);
+      await this.saveTokensInBatches(filteredTokens, 50);
+      log(`✅ All token batches saved successfully`);
 
       // Кэшируем результат
       this.topTokensCache = filteredTokens;
@@ -209,14 +246,95 @@ export class TokenAnalyzer {
       });
 
       log(`🔄 Calling database.saveCoinDataBatch with ${coinDataTokens.length} tokens...`);
+      log(`🔄 Database connection status: ${this.database ? 'Connected' : 'Not connected'}`);
+      
+      // Проверяем, что у нас есть токены для сохранения
+      if (coinDataTokens.length === 0) {
+        log(`⚠️ WARNING: No tokens to save! Original tokens array length: ${tokens.length}`);
+        return;
+      }
+
+      // Проверяем, что все токены имеют необходимые поля
+      const validTokens = coinDataTokens.filter(token => 
+        token.coinId && token.mint && token.symbol && token.name
+      );
+      
+      if (validTokens.length !== coinDataTokens.length) {
+        log(`⚠️ WARNING: ${coinDataTokens.length - validTokens.length} tokens have missing required fields`);
+        log(`Valid tokens: ${validTokens.length}, Total tokens: ${coinDataTokens.length}`);
+      }
+
       await this.database.saveCoinDataBatch(coinDataTokens);
       log(`💾 Saved ${coinDataTokens.length} tokens to coin_data table`);
+      log(`✅ Database save operation completed successfully`);
+      
     } catch (error) {
       log(`❌ Error saving tokens to coin_data: ${error}`, 'ERROR');
       if (error instanceof Error) {
         log(`❌ Error details: ${error.message}`);
         log(`❌ Error stack: ${error.stack}`);
       }
+      
+      // Попробуем сохранить по одному для диагностики
+      log(`🔄 Attempting individual saves for debugging...`);
+      let savedCount = 0;
+      for (const token of tokens.slice(0, 5)) { // Пробуем только первые 5
+        try {
+          await this.database.saveCoinData(
+            token.coinId,
+            token.mint,
+            token.symbol,
+            token.name,
+            'Solana',
+            token.priceUsd,
+            token.volume24h,
+            token.marketCap,
+            token.fdv
+          );
+          savedCount++;
+          log(`✅ Individual save successful for ${token.symbol}`);
+        } catch (individualError) {
+          log(`❌ Failed to save token ${token.symbol}: ${individualError}`, 'ERROR');
+        }
+      }
+      log(`Individual save result: ${savedCount}/5 tokens saved`);
+    }
+  }
+
+  /**
+   * Сохранить токены в coin_data таблицу в пакетах
+   */
+  private async saveTokensInBatches(tokens: SolanaToken[], batchSize: number): Promise<void> {
+    try {
+      log(`🔄 Starting batch save of ${tokens.length} tokens in batches of ${batchSize}...`);
+      
+      const batches = this.createBatches(tokens, batchSize);
+      log(`📦 Created ${batches.length} batches for saving`);
+      
+      let totalSaved = 0;
+      let totalBatches = batches.length;
+      
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        try {
+          log(`🔄 Saving batch ${i + 1}/${totalBatches} with ${batch.length} tokens...`);
+          await this.saveTokensToCoinData(batch);
+          totalSaved += batch.length;
+          log(`✅ Successfully saved batch ${i + 1}/${totalBatches} (${batch.length} tokens). Total saved: ${totalSaved}/${tokens.length}`);
+        } catch (error) {
+          log(`❌ Error saving batch ${i + 1}/${totalBatches} (${batch.length} tokens): ${error}`, 'ERROR');
+          if (error instanceof Error) {
+            log(`❌ Error details: ${error.message}`);
+          }
+          // Продолжаем с следующим батчем, не останавливаем весь процесс
+        }
+      }
+      
+      log(`✅ Batch save completed: ${totalSaved}/${tokens.length} tokens saved successfully`);
+      
+    } catch (error) {
+      log(`❌ Critical error in batch save process: ${error}`, 'ERROR');
+      throw error;
     }
   }
 

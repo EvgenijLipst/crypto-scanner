@@ -1,0 +1,10 @@
+
+> solana-signal-bot@1.0.0 start
+> node start-signal-bot.js
+
+=== SIGNAL BOT STARTED ===
+🔄 Starting initialization process...
+⏰ Start time: 2025-07-05T22:32:36.339Z
+[dotenv@17.0.1] injecting env (19) from .env – [tip] encrypt with dotenvx: https://dotenvx.com
+✅ Environment variables loaded
+❌ Missing required environment variable: HELIUS_API_KEY

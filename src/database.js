@@ -181,33 +181,33 @@ class Database {
      */
     async saveCoinData(coinId, mint, symbol, name, network, price, volume, marketCap, fdv) {
         try {
-            // Пробуем с ON CONFLICT (если есть уникальное ограничение)
-            await this.pool.query(`
-        INSERT INTO coin_data (coin_id, mint, symbol, name, network, price, volume, market_cap, fdv, timestamp)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-        ON CONFLICT ON CONSTRAINT coin_data_coin_network_uidx DO UPDATE SET
-          mint = EXCLUDED.mint,
-          symbol = EXCLUDED.symbol,
-          name = EXCLUDED.name,
-          price = EXCLUDED.price,
-          volume = EXCLUDED.volume,
-          market_cap = EXCLUDED.market_cap,
-          fdv = EXCLUDED.fdv,
-          timestamp = EXCLUDED.timestamp
-      `, [coinId, mint, symbol, name, network, price, volume, marketCap, fdv]);
-        }
-        catch (error) {
-            // Если ограничения нет, используем простой INSERT
-            try {
+            // Проверяем, существует ли уже токен с таким mint адресом
+            const existingToken = await this.pool.query(`
+        SELECT coin_id, mint FROM coin_data 
+        WHERE mint = $1 AND network = $2
+        LIMIT 1
+      `, [mint, network]);
+            if (existingToken.rows.length > 0) {
+                // Обновляем существующий токен
+                await this.pool.query(`
+          UPDATE coin_data 
+          SET coin_id = $1, symbol = $2, name = $3, price = $4, volume = $5, market_cap = $6, fdv = $7, timestamp = NOW()
+          WHERE mint = $8 AND network = $9
+        `, [coinId, symbol, name, price, volume, marketCap, fdv, mint, network]);
+                (0, utils_1.log)(`🔄 Updated existing token: ${symbol} (${mint})`);
+            }
+            else {
+                // Вставляем новый токен
                 await this.pool.query(`
           INSERT INTO coin_data (coin_id, mint, symbol, name, network, price, volume, market_cap, fdv, timestamp)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
         `, [coinId, mint, symbol, name, network, price, volume, marketCap, fdv]);
+                (0, utils_1.log)(`➕ Inserted new token: ${symbol} (${mint})`);
             }
-            catch (insertError) {
-                (0, utils_1.log)(`Error saving coin data (fallback): ${insertError}`, 'ERROR');
-                // Не бросаем ошибку, чтобы не сломать весь процесс
-            }
+        }
+        catch (error) {
+            (0, utils_1.log)(`Error saving coin data: ${error}`, 'ERROR');
+            throw error;
         }
     }
     /**
@@ -220,50 +220,49 @@ class Database {
             const client = await this.pool.connect();
             try {
                 await client.query('BEGIN');
+                let savedCount = 0;
+                let updatedCount = 0;
                 for (const token of tokens) {
                     try {
-                        // Пробуем с ON CONFLICT (если есть уникальное ограничение)
-                        await client.query(`
-              INSERT INTO coin_data (coin_id, mint, symbol, name, network, price, volume, market_cap, fdv, timestamp)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-              ON CONFLICT ON CONSTRAINT coin_data_coin_network_uidx DO UPDATE SET
-                mint = EXCLUDED.mint,
-                symbol = EXCLUDED.symbol,
-                name = EXCLUDED.name,
-                price = EXCLUDED.price,
-                volume = EXCLUDED.volume,
-                market_cap = EXCLUDED.market_cap,
-                fdv = EXCLUDED.fdv,
-                timestamp = EXCLUDED.timestamp
-            `, [token.coinId, token.mint, token.symbol, token.name, token.network, token.price, token.volume, token.marketCap, token.fdv]);
+                        // Проверяем, существует ли уже токен с таким mint адресом
+                        const existingToken = await client.query(`
+              SELECT coin_id, mint FROM coin_data 
+              WHERE mint = $1 AND network = $2
+              LIMIT 1
+            `, [token.mint, token.network]);
+                        if (existingToken.rows.length > 0) {
+                            // Обновляем существующий токен
+                            await client.query(`
+                UPDATE coin_data 
+                SET coin_id = $1, symbol = $2, name = $3, price = $4, volume = $5, market_cap = $6, fdv = $7, timestamp = NOW()
+                WHERE mint = $8 AND network = $9
+              `, [token.coinId, token.symbol, token.name, token.price, token.volume, token.marketCap, token.fdv, token.mint, token.network]);
+                            updatedCount++;
+                            (0, utils_1.log)(`🔄 Updated existing token: ${token.symbol} (${token.mint})`);
+                        }
+                        else {
+                            // Вставляем новый токен
+                            await client.query(`
+                INSERT INTO coin_data (coin_id, mint, symbol, name, network, price, volume, market_cap, fdv, timestamp)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+              `, [token.coinId, token.mint, token.symbol, token.name, token.network, token.price, token.volume, token.marketCap, token.fdv]);
+                            savedCount++;
+                            (0, utils_1.log)(`➕ Inserted new token: ${token.symbol} (${token.mint})`);
+                        }
                     }
-                    catch (conflictError) {
-                        // Если ограничения нет, используем простой INSERT
-                        await client.query(`
-              INSERT INTO coin_data (coin_id, mint, symbol, name, network, price, volume, market_cap, fdv, timestamp)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-            `, [token.coinId, token.mint, token.symbol, token.name, token.network, token.price, token.volume, token.marketCap, token.fdv]);
+                    catch (error) {
+                        (0, utils_1.log)(`❌ Error processing token ${token.symbol} (${token.mint}): ${error}`, 'ERROR');
+                        // Продолжаем с следующим токеном
                     }
                 }
                 await client.query('COMMIT');
-                (0, utils_1.log)(`✅ Saved ${tokens.length} tokens to coin_data table`);
+                (0, utils_1.log)(`✅ Database operation completed: ${savedCount} new tokens inserted, ${updatedCount} existing tokens updated`);
+                (0, utils_1.log)(`📊 Total tokens processed: ${savedCount + updatedCount}/${tokens.length}`);
             }
             catch (error) {
                 await client.query('ROLLBACK');
                 (0, utils_1.log)(`Error in transaction: ${error}`, 'ERROR');
-                // Попробуем сохранить по одному для диагностики
-                (0, utils_1.log)('Attempting individual saves for debugging...');
-                let savedCount = 0;
-                for (const token of tokens) {
-                    try {
-                        await this.saveCoinData(token.coinId, token.mint, token.symbol, token.name, token.network, token.price, token.volume, token.marketCap, token.fdv);
-                        savedCount++;
-                    }
-                    catch (individualError) {
-                        (0, utils_1.log)(`Failed to save token ${token.coinId}: ${individualError}`, 'ERROR');
-                    }
-                }
-                (0, utils_1.log)(`Successfully saved ${savedCount}/${tokens.length} tokens individually`);
+                throw error;
             }
             finally {
                 client.release();
@@ -271,7 +270,7 @@ class Database {
         }
         catch (error) {
             (0, utils_1.log)(`Error saving coin data batch: ${error}`, 'ERROR');
-            // Не бросаем ошибку, чтобы не сломать весь процесс
+            throw error;
         }
     }
     /**
