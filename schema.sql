@@ -40,16 +40,17 @@ CREATE TABLE IF NOT EXISTS trades (
 
 -- Таблица для кеширования данных CoinGecko
 CREATE TABLE IF NOT EXISTS coin_data (
-  coin_id TEXT PRIMARY KEY,
-  mint TEXT UNIQUE,
-  symbol TEXT,
-  name TEXT,
-  price_usd NUMERIC,
+  id SERIAL PRIMARY KEY,
+  coin_id TEXT NOT NULL,
+  mint TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  name TEXT NOT NULL,
+  network TEXT NOT NULL DEFAULT 'Solana',
+  price NUMERIC NOT NULL,
+  volume NUMERIC NOT NULL,
   market_cap NUMERIC,
-  volume_24h NUMERIC,
   fdv NUMERIC,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  timestamp TIMESTAMP DEFAULT NOW()
 );
 
 -- Индексы для оптимизации

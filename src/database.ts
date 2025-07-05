@@ -80,9 +80,14 @@ export class Database {
             CREATE TABLE IF NOT EXISTS coin_data (
               id SERIAL PRIMARY KEY,
               coin_id TEXT NOT NULL,
+              mint TEXT NOT NULL,
+              symbol TEXT NOT NULL,
+              name TEXT NOT NULL,
               network TEXT NOT NULL DEFAULT 'Solana',
               price NUMERIC NOT NULL,
               volume NUMERIC NOT NULL,
+              market_cap NUMERIC,
+              fdv NUMERIC,
               timestamp TIMESTAMP DEFAULT NOW()
             );
           `);
@@ -196,24 +201,29 @@ export class Database {
   /**
    * Сохранить данные токена в coin_data
    */
-  async saveCoinData(coinId: string, network: string, price: number, volume: number): Promise<void> {
+  async saveCoinData(coinId: string, mint: string, symbol: string, name: string, network: string, price: number, volume: number, marketCap: number, fdv: number): Promise<void> {
     try {
       // Пробуем с ON CONFLICT (если есть уникальное ограничение)
       await this.pool.query(`
-        INSERT INTO coin_data (coin_id, network, price, volume, timestamp)
-        VALUES ($1, $2, $3, $4, NOW())
+        INSERT INTO coin_data (coin_id, mint, symbol, name, network, price, volume, market_cap, fdv, timestamp)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
         ON CONFLICT ON CONSTRAINT coin_data_coin_network_uidx DO UPDATE SET
+          mint = EXCLUDED.mint,
+          symbol = EXCLUDED.symbol,
+          name = EXCLUDED.name,
           price = EXCLUDED.price,
           volume = EXCLUDED.volume,
+          market_cap = EXCLUDED.market_cap,
+          fdv = EXCLUDED.fdv,
           timestamp = EXCLUDED.timestamp
-      `, [coinId, network, price, volume]);
+      `, [coinId, mint, symbol, name, network, price, volume, marketCap, fdv]);
     } catch (error) {
       // Если ограничения нет, используем простой INSERT
       try {
         await this.pool.query(`
-          INSERT INTO coin_data (coin_id, network, price, volume, timestamp)
-          VALUES ($1, $2, $3, $4, NOW())
-        `, [coinId, network, price, volume]);
+          INSERT INTO coin_data (coin_id, mint, symbol, name, network, price, volume, market_cap, fdv, timestamp)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+        `, [coinId, mint, symbol, name, network, price, volume, marketCap, fdv]);
       } catch (insertError) {
         log(`Error saving coin data (fallback): ${insertError}`, 'ERROR');
         // Не бросаем ошибку, чтобы не сломать весь процесс
@@ -224,7 +234,7 @@ export class Database {
   /**
    * Сохранить батч токенов в coin_data
    */
-  async saveCoinDataBatch(tokens: Array<{coinId: string, network: string, price: number, volume: number}>): Promise<void> {
+  async saveCoinDataBatch(tokens: Array<{coinId: string, mint: string, symbol: string, name: string, network: string, price: number, volume: number, marketCap: number, fdv: number}>): Promise<void> {
     if (tokens.length === 0) return;
     
     try {
@@ -236,19 +246,24 @@ export class Database {
           try {
             // Пробуем с ON CONFLICT (если есть уникальное ограничение)
             await client.query(`
-              INSERT INTO coin_data (coin_id, network, price, volume, timestamp)
-              VALUES ($1, $2, $3, $4, NOW())
+              INSERT INTO coin_data (coin_id, mint, symbol, name, network, price, volume, market_cap, fdv, timestamp)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
               ON CONFLICT ON CONSTRAINT coin_data_coin_network_uidx DO UPDATE SET
+                mint = EXCLUDED.mint,
+                symbol = EXCLUDED.symbol,
+                name = EXCLUDED.name,
                 price = EXCLUDED.price,
                 volume = EXCLUDED.volume,
+                market_cap = EXCLUDED.market_cap,
+                fdv = EXCLUDED.fdv,
                 timestamp = EXCLUDED.timestamp
-            `, [token.coinId, token.network, token.price, token.volume]);
+            `, [token.coinId, token.mint, token.symbol, token.name, token.network, token.price, token.volume, token.marketCap, token.fdv]);
           } catch (conflictError) {
             // Если ограничения нет, используем простой INSERT
             await client.query(`
-              INSERT INTO coin_data (coin_id, network, price, volume, timestamp)
-              VALUES ($1, $2, $3, $4, NOW())
-            `, [token.coinId, token.network, token.price, token.volume]);
+              INSERT INTO coin_data (coin_id, mint, symbol, name, network, price, volume, market_cap, fdv, timestamp)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+            `, [token.coinId, token.mint, token.symbol, token.name, token.network, token.price, token.volume, token.marketCap, token.fdv]);
           }
         }
         
@@ -263,7 +278,7 @@ export class Database {
         let savedCount = 0;
         for (const token of tokens) {
           try {
-            await this.saveCoinData(token.coinId, token.network, token.price, token.volume);
+            await this.saveCoinData(token.coinId, token.mint, token.symbol, token.name, token.network, token.price, token.volume, token.marketCap, token.fdv);
             savedCount++;
           } catch (individualError) {
             log(`Failed to save token ${token.coinId}: ${individualError}`, 'ERROR');
@@ -304,7 +319,7 @@ export class Database {
   async getFreshTokensFromCoinData(network: string = 'Solana', maxAgeHours: number = 24): Promise<any[]> {
     try {
       const res = await this.pool.query(`
-        SELECT coin_id, network, price, volume, timestamp 
+        SELECT coin_id, mint, symbol, name, network, price, volume, market_cap, fdv, timestamp 
         FROM coin_data 
         WHERE network = $1 
         AND timestamp > NOW() - INTERVAL '${maxAgeHours} hours'

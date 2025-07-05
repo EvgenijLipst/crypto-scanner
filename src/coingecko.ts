@@ -76,7 +76,7 @@ export class CoinGeckoAPI {
   
   // Счетчик использования API
   private dailyUsage = 0;
-  private dailyLimit = 300; // Жесткий лимит на день
+  private dailyLimit = 280; // Жесткий лимит на день (оставляем запас)
   private lastResetDate = new Date().toDateString();
 
   constructor(apiKey: string) {
@@ -170,7 +170,7 @@ export class CoinGeckoAPI {
   /**
    * Получить топ Solana токены (оптимизированная версия)
    */
-  async getTopSolanaTokens(limit: number = 500): Promise<SolanaToken[]> {
+  async getTopSolanaTokens(limit: number = 2000): Promise<SolanaToken[]> {
     try {
       log(`🔄 Fetching top ${limit} Solana tokens (optimized)...`);
       
@@ -182,7 +182,7 @@ export class CoinGeckoAPI {
         return [];
       }
 
-      // Шаг 2: Получить рыночные данные только для топ токенов
+      // Шаг 2: Получить рыночные данные для первых N токенов
       const tokensToAnalyze = Math.min(solanaTokens.length, limit);
       const topTokens = await this.getMarketDataForTokens(solanaTokens.slice(0, tokensToAnalyze));
       
@@ -246,7 +246,7 @@ export class CoinGeckoAPI {
       log(`Getting market data for ${tokens.length} tokens...`);
       
       const results: SolanaToken[] = [];
-      const batchSize = 25; // Очень маленькие батчи для экономии
+      const batchSize = 50; // Увеличиваем батч для получения большего количества токенов
       
       for (let i = 0; i < tokens.length; i += batchSize) {
         // Проверяем лимит перед каждым батчем

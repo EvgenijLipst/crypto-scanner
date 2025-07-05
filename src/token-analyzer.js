@@ -55,8 +55,8 @@ class TokenAnalyzer {
             }
             // Если в базе нет свежих токенов - запрашиваем CoinGecko
             (0, utils_1.log)('🔄 No fresh tokens in database, fetching from CoinGecko...');
-            // Получаем только топ-500 токенов (экономим CoinGecko кредиты)
-            const tokens = await this.coingecko.getTopSolanaTokens(500);
+            // Получаем топ-2000 токенов (согласно требованиям)
+            const tokens = await this.coingecko.getTopSolanaTokens(2000);
             if (tokens.length === 0) {
                 (0, utils_1.log)('No tokens received from CoinGecko', 'WARN');
                 return this.topTokensCache; // Возвращаем старый кэш
@@ -88,11 +88,11 @@ class TokenAnalyzer {
             const freshTokens = await this.database.getFreshTokensFromCoinData('Solana', 24);
             // Преобразуем данные из базы в формат SolanaToken
             const tokens = freshTokens.map(row => ({
-                mint: `${row.coin_id}_mint_placeholder`, // Нет mint в coin_data, используем placeholder
-                symbol: row.coin_id.toUpperCase(),
-                name: row.coin_id,
-                marketCap: row.price * 1000000, // Примерная оценка
-                fdv: row.price * 1000000,
+                mint: row.mint || `${row.coin_id}_mint_placeholder`, // Используем реальный mint или placeholder
+                symbol: row.symbol || row.coin_id.toUpperCase(),
+                name: row.name || row.coin_id,
+                marketCap: row.market_cap || (row.price * 1000000), // Используем реальную рыночную капитализацию
+                fdv: row.fdv || (row.price * 1000000),
                 volume24h: row.volume,
                 priceUsd: row.price,
                 priceChange24h: 0,
@@ -114,9 +114,14 @@ class TokenAnalyzer {
         try {
             const coinDataTokens = tokens.map(token => ({
                 coinId: token.symbol.toLowerCase(),
+                mint: token.mint,
+                symbol: token.symbol,
+                name: token.name,
                 network: 'Solana',
                 price: token.priceUsd,
-                volume: token.volume24h
+                volume: token.volume24h,
+                marketCap: token.marketCap,
+                fdv: token.fdv
             }));
             await this.database.saveCoinDataBatch(coinDataTokens);
             (0, utils_1.log)(`💾 Saved ${coinDataTokens.length} tokens to coin_data table`);
