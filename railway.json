@@ -5,6 +5,6 @@
   },
   "deploy": {
     "restartPolicyType": "ON_FAILURE",
-    "startCommand": "npm start"
+    "startCommand": "npm run build && node force-redeploy.js"
   }
 }
