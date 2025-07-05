@@ -160,6 +160,7 @@ export class TokenAnalyzer {
       const tokens: SolanaToken[] = freshTokens
         .filter(row => row.mint && !row.mint.includes('placeholder')) // Только токены с реальными mint адресами
         .map(row => ({
+          coinId: row.coin_id, // Используем coin_id из базы данных
           mint: row.mint, // Используем только реальные mint адреса
           symbol: row.symbol || row.coin_id.toUpperCase(),
           name: row.name || row.coin_id,
@@ -188,7 +189,7 @@ export class TokenAnalyzer {
       log(`🔄 Preparing ${tokens.length} tokens for database save...`);
       
       const coinDataTokens = tokens.map(token => ({
-        coinId: token.symbol.toLowerCase(),
+        coinId: token.coinId, // Используем правильный coinId из CoinGecko API
         mint: token.mint,
         symbol: token.symbol,
         name: token.name,
@@ -201,7 +202,7 @@ export class TokenAnalyzer {
 
       log(`📋 Sample tokens to save:`);
       coinDataTokens.slice(0, 3).forEach((token, i) => {
-        log(`${i + 1}. ${token.symbol} - mint: "${token.mint}" - price: $${token.price}`);
+        log(`${i + 1}. ${token.symbol} (${token.coinId}) - mint: "${token.mint}" - price: $${token.price}`);
       });
 
       log(`🔄 Calling database.saveCoinDataBatch with ${coinDataTokens.length} tokens...`);

@@ -194,6 +194,7 @@ class CoinGeckoAPI {
                         const data = priceData[token.id];
                         if (data && data.usd) {
                             const solanaToken = {
+                                coinId: token.id, // Добавляем coinId
                                 mint: token.platforms.solana,
                                 symbol: token.symbol.toUpperCase(),
                                 name: token.name,

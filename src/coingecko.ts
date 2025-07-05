@@ -46,6 +46,7 @@ export interface CoinListItem {
 }
 
 export interface SolanaToken {
+  coinId: string; // Добавляем coinId из CoinGecko API
   mint: string;
   symbol: string;
   name: string;
@@ -287,6 +288,7 @@ export class CoinGeckoAPI {
             const data = priceData[token.id];
             if (data && data.usd) {
               const solanaToken = {
+                coinId: token.id, // Добавляем coinId
                 mint: token.platforms!.solana!,
                 symbol: token.symbol.toUpperCase(),
                 name: token.name,
