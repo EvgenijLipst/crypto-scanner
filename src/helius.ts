@@ -1,118 +1,142 @@
-// helius.ts - Работа с Helius WebSocket (только logsSubscribe, swap/init)
-
+// helius.ts - WebSocket подключение к Helius для мониторинга транзакций
 import WebSocket from 'ws';
 import fetch from 'cross-fetch';
 import { Database } from './database';
-import { passesAge, log } from './utils';
-import { PoolRow } from './types';
-
-const RAYDIUM_PROGRAM = '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8';
-const ORCA_PROGRAM = 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc';
+import { TelegramBot } from './telegram';
+import { log, passesAge } from './utils';
 
 export class HeliusWebSocket {
   private ws: WebSocket | null = null;
   private apiKey: string;
   private database: Database;
+  private telegram: TelegramBot;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 10;
+  private reconnectDelay = 5000;
   private isConnected = false;
-  private reconnectTimeout: NodeJS.Timeout | null = null;
-  private pingInterval: NodeJS.Timeout | null = null;
+  private shouldReconnect = true;
   
-  // Статистика активности
+  // Callback для обработки свапов
+  public onSwap: ((mint: string, swapData: any) => void) | null = null;
+  
+  // Статистика
   private stats = {
-    startTime: Date.now(),
-    lastActivity: Date.now(),
     messagesReceived: 0,
-    programNotifications: 0,
-    swapEventsProcessed: 0,
     poolEventsProcessed: 0,
-    otherMessages: 0,
-    errorsEncountered: 0
+    swapEventsProcessed: 0,
+    errorsEncountered: 0,
+    lastActivityTime: Date.now()
   };
 
-  constructor(apiKey: string, database: Database) {
+  constructor(apiKey: string, database: Database, telegram: TelegramBot) {
     this.apiKey = apiKey;
     this.database = database;
+    this.telegram = telegram;
   }
 
-  connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const wsUrl = `wss://mainnet.helius-rpc.com/?api-key=${this.apiKey}`;
-      log('Connecting to Helius WebSocket...');
-      this.ws = new WebSocket(wsUrl);
+  async connect(): Promise<void> {
+    try {
+      log('🔌 Connecting to Helius WebSocket...');
+      
+      if (this.ws) {
+        this.ws.close();
+      }
 
+      this.ws = new WebSocket('wss://atlas-mainnet.helius-rpc.com/?api-key=' + this.apiKey);
+      
       this.ws.on('open', () => {
-        log('Helius WebSocket connected');
+        log('✅ Helius WebSocket connected');
         this.isConnected = true;
-        this.stats.startTime = Date.now();
-        this.startPing();
+        this.reconnectAttempts = 0;
         this.subscribeToLogs();
-        resolve();
       });
 
-      this.ws.on('message', (data: Buffer) => {
-        this.handleMessage(data);
+      this.ws.on('message', (data) => {
+        this.handleMessage(data.toString());
+      });
+
+      this.ws.on('close', (code, reason) => {
+        log(`❌ Helius WebSocket closed: ${code} ${reason}`);
+        this.isConnected = false;
+        
+        if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.scheduleReconnect();
+        }
       });
 
       this.ws.on('error', (error) => {
-        log(`WebSocket error: ${error.message}`, 'ERROR');
-        this.isConnected = false;
+        log(`❌ Helius WebSocket error: ${error}`, 'ERROR');
         this.stats.errorsEncountered++;
-        reject(error);
       });
 
-      this.ws.on('close', () => {
-        log('WebSocket connection closed', 'WARN');
-        this.isConnected = false;
-        if (this.pingInterval) {
-          clearInterval(this.pingInterval);
-          this.pingInterval = null;
-        }
-        setTimeout(() => {
-          log('Attempting to reconnect...');
-          this.connect();
-        }, 5000);
-      });
-    });
+    } catch (error) {
+      log(`❌ Failed to connect to Helius: ${error}`, 'ERROR');
+      throw error;
+    }
+  }
+
+  async disconnect(): Promise<void> {
+    log('🔌 Disconnecting from Helius WebSocket...');
+    this.shouldReconnect = false;
+    
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    
+    this.isConnected = false;
+    log('✅ Helius WebSocket disconnected');
+  }
+
+  private scheduleReconnect(): void {
+    this.reconnectAttempts++;
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+    
+    log(`🔄 Scheduling reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
+    
+    setTimeout(() => {
+      if (this.shouldReconnect) {
+        this.connect().catch(error => {
+          log(`❌ Reconnect failed: ${error}`, 'ERROR');
+        });
+      }
+    }, delay);
   }
 
   private subscribeToLogs(): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      log('WebSocket not ready for subscription', 'ERROR');
-      return;
-    }
-    // Raydium
-    this.ws.send(JSON.stringify({
-      jsonrpc: '2.0', id: 1, method: 'logsSubscribe',
-      params: [{ mentions: [RAYDIUM_PROGRAM] }, { commitment: 'confirmed' }]
-    }));
-    log('✅ Subscribed to Raydium logs');
-    // Orca
-    this.ws.send(JSON.stringify({
-      jsonrpc: '2.0', id: 2, method: 'logsSubscribe',
-      params: [{ mentions: [ORCA_PROGRAM] }, { commitment: 'confirmed' }]
-    }));
-    log('✅ Subscribed to Orca logs');
+    if (!this.ws) return;
+
+    const subscription = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'logsSubscribe',
+      params: [
+        {
+          mentions: ['11111111111111111111111111111112'] // System Program for all transactions
+        },
+        {
+          commitment: 'confirmed'
+        }
+      ]
+    };
+
+    this.ws.send(JSON.stringify(subscription));
+    log('📡 Subscribed to transaction logs');
   }
 
-  private async handleMessage(data: Buffer): Promise<void> {
+  private handleMessage(message: string): void {
     try {
       this.stats.messagesReceived++;
-      this.stats.lastActivity = Date.now();
+      this.stats.lastActivityTime = Date.now();
       
-      const msg = JSON.parse(data.toString('utf8'));
-      if (msg.method === 'logsNotification') {
-        this.stats.programNotifications++;
-        log(`📨 Received programNotification, total program notifications: ${this.stats.programNotifications}`);
-        await this.handleLogsNotification(msg.params);
-      } else if (msg.method === 'accountNotification') {
-        this.stats.otherMessages++;
-        log(`📈 Received accountNotification (SOL account update), total other: ${this.stats.otherMessages}`);
-      } else {
-        this.stats.otherMessages++;
-        log(`📊 Received other message type: ${msg.method || 'unknown'}, total other: ${this.stats.otherMessages}`);
+      const data = JSON.parse(message);
+      
+      if (data.method === 'logsNotification') {
+        this.handleLogsNotification(data.params);
       }
+      
     } catch (error) {
-      log(`Error parsing WebSocket message: ${error}`, 'ERROR');
+      log(`❌ Error handling message: ${error}`, 'ERROR');
       this.stats.errorsEncountered++;
     }
   }
@@ -191,6 +215,16 @@ export class HeliusWebSocket {
       const ts = tx.timestamp || Math.floor(Date.now()/1000);
       await this.database.ingestSwap(targetMint, priceUsd, amount * priceUsd, ts);
       log(`💱 Swap: ${targetMint} $${priceUsd.toFixed(6)} x${amount}`);
+      
+      // Вызываем callback для обработки свапа
+      if (this.onSwap) {
+        this.onSwap(targetMint, {
+          priceUsd,
+          volumeUsd: amount * priceUsd,
+          timestamp: ts
+        });
+      }
+      
     } catch (error) {
       log(`Error in handleSwap: ${error}`, 'ERROR');
       this.stats.errorsEncountered++;
@@ -215,42 +249,46 @@ export class HeliusWebSocket {
     }
   }
 
-  private startPing(): void {
-    if (this.pingInterval) clearInterval(this.pingInterval);
-    this.pingInterval = setInterval(() => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.ws.ping();
-        log('Ping sent to WebSocket');
-      }
-    }, 30000);
+  /**
+   * Отправить отчет о активности WebSocket
+   */
+  async sendWebSocketActivityReport(): Promise<void> {
+    try {
+      const uptime = Math.floor(process.uptime() / 60);
+      const lastActivity = Math.floor((Date.now() - this.stats.lastActivityTime) / 1000);
+      
+      const report = `📡 **WebSocket Activity Report**
+
+🔌 **Connection Status:** ${this.isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+⏱️ **Uptime:** ${uptime} minutes
+🔄 **Last Activity:** ${lastActivity} seconds ago
+
+📊 **Statistics:**
+• Messages Received: ${this.stats.messagesReceived.toLocaleString()}
+• Pool Events: ${this.stats.poolEventsProcessed.toLocaleString()}
+• Swap Events: ${this.stats.swapEventsProcessed.toLocaleString()}
+• Errors: ${this.stats.errorsEncountered.toLocaleString()}
+
+🎯 **Performance:** ${this.stats.messagesReceived > 0 ? 'Active' : 'Waiting for activity'}`;
+
+      await this.telegram.sendMessage(report);
+      
+    } catch (error) {
+      log(`Error sending WebSocket activity report: ${error}`, 'ERROR');
+    }
   }
 
   /**
-   * Получить статистику WebSocket активности
+   * Получить статистику
    */
-  getActivityStats() {
-    const now = Date.now();
-    const uptimeMs = now - this.stats.startTime;
-    const lastActivityMs = now - this.stats.lastActivity;
-    
-    return {
-      messagesReceived: this.stats.messagesReceived,
-      programNotifications: this.stats.programNotifications,
-      logsNotifications: this.stats.programNotifications, // Для совместимости со старым API
-      swapEventsProcessed: this.stats.swapEventsProcessed,
-      poolEventsProcessed: this.stats.poolEventsProcessed,
-      otherMessages: this.stats.otherMessages,
-      errorsEncountered: this.stats.errorsEncountered,
-      uptimeMinutes: Math.floor(uptimeMs / 60000),
-      lastActivityMinutes: Math.floor(lastActivityMs / 60000),
-      isConnected: this.isConnected,
-      messagesPerMinute: uptimeMs > 0 ? (this.stats.messagesReceived / (uptimeMs / 60000)).toFixed(1) : '0.0'
-    };
+  getStats() {
+    return { ...this.stats };
   }
 
-  close(): void {
-    if (this.pingInterval) clearInterval(this.pingInterval);
-    if (this.ws) this.ws.close();
-    this.ws = null;
+  /**
+   * Проверить статус подключения
+   */
+  isConnectedToHelius(): boolean {
+    return this.isConnected;
   }
 } 

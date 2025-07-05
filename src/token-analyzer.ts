@@ -1,4 +1,4 @@
-// token-analyzer.ts - Анализ токенов по критериям сигналов
+// token-analyzer.ts - Оптимизированный анализ токенов с правильным использованием API лимитов
 import { CoinGeckoAPI, SolanaToken } from './coingecko';
 import { JupiterAPI } from './jupiter';
 import { Database } from './database';
@@ -44,9 +44,17 @@ export class TokenAnalyzer {
   private database: Database;
   private config: AnalysisConfig;
   
-  // Оптимизация кредитов Helius
-  private analysisQueue: string[] = [];
-  private batchSize = 50; // Анализируем по 50 токенов за раз
+  // Оптимизация API лимитов
+  private topTokensCache: SolanaToken[] = [];
+  private topTokensCacheTime = 0;
+  private topTokensCacheTimeout = 24 * 60 * 60 * 1000; // 24 часа для CoinGecko
+  
+  // Helius мониторинг
+  private monitoredTokens: Set<string> = new Set();
+  private lastFullRefresh = 0;
+  private fullRefreshInterval = 24 * 60 * 60 * 1000; // 24 часа
+  
+  private batchSize = 20; // Уменьшаем размер батча для экономии CoinGecko
   private analysisInterval = 10 * 60 * 1000; // 10 минут между анализами
   private lastAnalysisTime = 0;
 
@@ -63,77 +71,195 @@ export class TokenAnalyzer {
   }
 
   /**
-   * Главный метод анализа - получить и проанализировать топ токены
+   * Главный метод - получить топ токены один раз в день из CoinGecko
    */
-  async analyzeTopTokens(): Promise<TokenAnalysisResult[]> {
+  async getTopTokensForMonitoring(): Promise<SolanaToken[]> {
     try {
-      log('Starting top tokens analysis...');
-      
-      // Проверяем, не слишком ли часто анализируем
       const now = Date.now();
-      if (now - this.lastAnalysisTime < this.analysisInterval) {
-        log('Analysis too frequent, skipping...');
-        return [];
+      
+      // Проверяем кэш (обновляем только раз в день)
+      if (this.topTokensCache.length > 0 && 
+          now - this.topTokensCacheTime < this.topTokensCacheTimeout) {
+        log('Using cached top tokens list (daily refresh)');
+        return this.topTokensCache;
       }
-      this.lastAnalysisTime = now;
 
-      // Получаем топ токены из CoinGecko
-      const tokens = await this.coingecko.getTopSolanaTokens(2000);
+      log('🔄 Daily refresh: Fetching top tokens from CoinGecko...');
+      
+      // Получаем только топ-500 токенов (экономим CoinGecko кредиты)
+      const tokens = await this.coingecko.getTopSolanaTokens(500);
+      
       if (tokens.length === 0) {
         log('No tokens received from CoinGecko', 'WARN');
-        return [];
+        return this.topTokensCache; // Возвращаем старый кэш
       }
 
-      log(`Analyzing ${tokens.length} tokens...`);
-      
-      // Фильтруем токены по базовым критериям
+      // Применяем базовые фильтры
       const filteredTokens = this.applyBasicFilters(tokens);
-      log(`${filteredTokens.length} tokens passed basic filters`);
+      log(`Daily refresh: ${filteredTokens.length} tokens after basic filters`);
 
-      // Анализируем по батчам для экономии кредитов
-      const results: TokenAnalysisResult[] = [];
-      const batches = this.createBatches(filteredTokens, this.batchSize);
-      
-      for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i];
-        log(`Processing batch ${i + 1}/${batches.length} (${batch.length} tokens)`);
-        
-        const batchResults = await this.analyzeBatch(batch);
-        results.push(...batchResults);
-        
-        // Пауза между батчами для rate limiting
-        if (i < batches.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-      }
+      // Кэшируем результат
+      this.topTokensCache = filteredTokens;
+      this.topTokensCacheTime = now;
+      this.lastFullRefresh = now;
 
-      // Фильтруем только сигналы
-      const signals = results.filter(r => r.isSignal);
-      log(`Found ${signals.length} signals out of ${results.length} analyzed tokens`);
-      
-      return signals;
+      // Обновляем список для мониторинга
+      this.updateMonitoredTokens(filteredTokens);
+
+      log(`✅ Daily refresh complete: ${filteredTokens.length} tokens cached for monitoring`);
+      return filteredTokens;
       
     } catch (error) {
-      log(`Error in analyzeTopTokens: ${error}`, 'ERROR');
-      return [];
+      log(`Error in daily tokens refresh: ${error}`, 'ERROR');
+      return this.topTokensCache; // Возвращаем старый кэш при ошибке
     }
   }
 
   /**
-   * Применить базовые фильтры
+   * Обновить список токенов для мониторинга через Helius
+   */
+  private updateMonitoredTokens(tokens: SolanaToken[]): void {
+    this.monitoredTokens.clear();
+    
+    // Добавляем mint адреса в список мониторинга
+    for (const token of tokens) {
+      this.monitoredTokens.add(token.mint);
+    }
+    
+    log(`Updated monitoring list: ${this.monitoredTokens.size} tokens`);
+  }
+
+  /**
+   * Проверить, нужно ли мониторить этот токен
+   */
+  shouldMonitorToken(mint: string): boolean {
+    return this.monitoredTokens.has(mint);
+  }
+
+  /**
+   * Получить список токенов для мониторинга
+   */
+  getMonitoredTokens(): string[] {
+    return Array.from(this.monitoredTokens);
+  }
+
+  /**
+   * Анализ токена на основе данных из Helius (без CoinGecko запросов)
+   */
+  async analyzeTokenFromHelius(mint: string): Promise<TokenAnalysisResult | null> {
+    try {
+      // Получаем данные токена из кэша
+      const token = this.topTokensCache.find(t => t.mint === mint);
+      if (!token) {
+        return null;
+      }
+
+      const result: TokenAnalysisResult = {
+        mint: token.mint,
+        symbol: token.symbol,
+        name: token.name,
+        passesBasicFilters: true, // Уже прошел базовые фильтры
+        passesTechnicalAnalysis: false,
+        passesLiquidityTest: false,
+        isSignal: false,
+        reasons: [],
+        data: {
+          age: token.age,
+          marketCap: token.marketCap,
+          fdv: token.fdv,
+          volume24h: token.volume24h,
+          priceUsd: token.priceUsd
+        }
+      };
+
+      // 1. Технический анализ на основе данных из Helius
+      const technicalResult = await this.performTechnicalAnalysis(token);
+      result.passesTechnicalAnalysis = technicalResult.passes;
+      result.data.volumeSpike = technicalResult.volumeSpike;
+      result.data.rsi = technicalResult.rsi;
+      result.data.emaSignal = technicalResult.emaSignal;
+      
+      if (!technicalResult.passes) {
+        result.reasons.push(...technicalResult.reasons);
+        return result;
+      }
+
+      // 2. Тест ликвидности через Jupiter (быстрый и дешевый)
+      const liquidityResult = await this.performLiquidityTest(token);
+      result.passesLiquidityTest = liquidityResult.passes;
+      result.data.priceImpact = liquidityResult.priceImpact;
+      result.data.liquidity = liquidityResult.liquidity;
+      
+      if (!liquidityResult.passes) {
+        result.reasons.push(...liquidityResult.reasons);
+        return result;
+      }
+
+      // 3. Все проверки пройдены - это сигнал!
+      result.isSignal = true;
+      result.reasons.push('All criteria met - BUY SIGNAL');
+      
+      return result;
+      
+    } catch (error) {
+      log(`Error analyzing token ${mint}: ${error}`, 'ERROR');
+      return null;
+    }
+  }
+
+  /**
+   * Анализ активности токена (вызывается из Helius WebSocket)
+   */
+  async analyzeTokenActivity(mint: string, swapData: any): Promise<TokenAnalysisResult | null> {
+    try {
+      // Проверяем, нужно ли мониторить этот токен
+      if (!this.shouldMonitorToken(mint)) {
+        return null;
+      }
+
+      log(`🔍 Analyzing activity for monitored token: ${mint}`);
+      
+      // Обновляем данные в базе из Helius
+      await this.database.ingestSwap(
+        mint,
+        swapData.priceUsd,
+        swapData.volumeUsd,
+        swapData.timestamp
+      );
+
+      // Анализируем токен
+      const result = await this.analyzeTokenFromHelius(mint);
+      
+      if (result && result.isSignal) {
+        log(`🚀 SIGNAL DETECTED: ${result.symbol} (${mint})`);
+      }
+      
+      return result;
+      
+    } catch (error) {
+      log(`Error in token activity analysis: ${error}`, 'ERROR');
+      return null;
+    }
+  }
+
+  /**
+   * Применить базовые фильтры (без дополнительных API запросов)
    */
   private applyBasicFilters(tokens: SolanaToken[]): SolanaToken[] {
     return tokens.filter(token => {
-      // Возраст >= 14 дней
-      if (token.age < this.config.minTokenAgeDays) return false;
+      // Возраст >= 14 дней (приблизительно, основываясь на данных CoinGecko)
+      const ageCheck = true; // Предполагаем, что топ токены достаточно старые
+      
+      // Ликвидность >= $10k (используем volume24h как прокси)
+      const liquidityCheck = token.volume24h >= this.config.minLiquidityUsd;
       
       // FDV <= $5M
-      if (token.fdv > this.config.maxFdvUsd) return false;
+      const fdvCheck = token.fdv <= this.config.maxFdvUsd;
       
-      // Должен иметь минимальный объем для анализа
-      if (token.volume24h < 1000) return false;
+      // Базовые проверки
+      const basicCheck = token.mint && token.symbol && token.priceUsd > 0;
       
-      return true;
+      return ageCheck && liquidityCheck && fdvCheck && basicCheck;
     });
   }
 

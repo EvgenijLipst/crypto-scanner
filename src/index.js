@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-// index.ts - Main orchestration for Solana Signal Bot with CoinGecko integration
+// index.ts - Гибридная система: CoinGecko (минимум) + Helius (активно)
 const dotenv_1 = require("dotenv");
 const database_1 = require("./database");
 const telegram_1 = require("./telegram");
 const jupiter_1 = require("./jupiter");
 const coingecko_1 = require("./coingecko");
 const token_analyzer_1 = require("./token-analyzer");
+const helius_1 = require("./helius");
 const diagnostics_1 = require("./diagnostics");
 const utils_1 = require("./utils");
 (0, dotenv_1.config)();
@@ -15,7 +16,8 @@ const requiredEnvVars = [
     'DATABASE_URL',
     'TELEGRAM_TOKEN',
     'TELEGRAM_CHAT_ID',
-    'COINGECKO_API_KEY'
+    'COINGECKO_API_KEY',
+    'HELIUS_KEY'
 ];
 for (const envVar of requiredEnvVars) {
     if (!process.env[envVar]) {
@@ -28,6 +30,7 @@ const db = new database_1.Database(process.env.DATABASE_URL);
 const tg = new telegram_1.TelegramBot(process.env.TELEGRAM_TOKEN, process.env.TELEGRAM_CHAT_ID);
 const jupiter = new jupiter_1.JupiterAPI();
 const coingecko = new coingecko_1.CoinGeckoAPI(process.env.COINGECKO_API_KEY);
+const helius = new helius_1.HeliusWebSocket(process.env.HELIUS_KEY, db, tg);
 // Конфигурация анализа из переменных окружения
 const analysisConfig = {
     minTokenAgeDays: parseInt(process.env.MIN_TOKEN_AGE_DAYS || '14'),
@@ -41,45 +44,91 @@ const analysisConfig = {
 const tokenAnalyzer = new token_analyzer_1.TokenAnalyzer(coingecko, jupiter, db, analysisConfig);
 // Инициализируем систему диагностики
 let diagnostics;
+// Статистика использования API
+let apiUsageStats = {
+    coingecko: {
+        dailyUsage: 0,
+        monthlyLimit: 10000,
+        lastReset: new Date().toDateString()
+    },
+    helius: {
+        dailyUsage: 0,
+        monthlyLimit: 1000000,
+        lastReset: new Date().toDateString()
+    }
+};
 /**
- * Основной цикл анализа токенов
+ * Ежедневное обновление списка токенов (CoinGecko - минимум)
  */
-async function runTokenAnalysis() {
+async function dailyTokenRefresh() {
     try {
-        (0, utils_1.log)('🔍 Starting token analysis cycle...');
-        // Анализируем топ токены
-        const signals = await tokenAnalyzer.analyzeTopTokens();
-        if (signals.length === 0) {
-            (0, utils_1.log)('No signals found in this cycle');
+        (0, utils_1.log)('🔄 Daily token refresh starting...');
+        // Проверяем лимиты CoinGecko
+        const today = new Date().toDateString();
+        if (apiUsageStats.coingecko.lastReset !== today) {
+            apiUsageStats.coingecko.dailyUsage = 0;
+            apiUsageStats.coingecko.lastReset = today;
+        }
+        if (apiUsageStats.coingecko.dailyUsage >= 300) { // Оставляем запас
+            (0, utils_1.log)('⚠️ CoinGecko daily limit reached, skipping refresh');
             return;
         }
-        (0, utils_1.log)(`📊 Found ${signals.length} signals:`);
-        // Обрабатываем каждый сигнал
-        for (const signal of signals) {
-            try {
-                // Сохраняем сигнал в базу данных
-                await db.createSignal(signal.mint, true, // is_buy
-                signal.data.volumeSpike || 0, signal.data.rsi || 0);
-                // Отправляем уведомление в Telegram
-                await sendSignalNotification(signal);
-                (0, utils_1.log)(`✅ Signal processed: ${signal.symbol} (${signal.mint})`);
-            }
-            catch (error) {
-                (0, utils_1.log)(`❌ Error processing signal ${signal.symbol}: ${error}`, 'ERROR');
-            }
-        }
+        // Получаем топ токены для мониторинга
+        const tokens = await tokenAnalyzer.getTopTokensForMonitoring();
+        apiUsageStats.coingecko.dailyUsage += 5; // Примерно 5 запросов на обновление
+        (0, utils_1.log)(`✅ Daily refresh complete: ${tokens.length} tokens ready for monitoring`);
+        // Отправляем отчет
+        await sendDailyReport(tokens.length);
     }
     catch (error) {
-        (0, utils_1.log)(`❌ Error in token analysis: ${error}`, 'ERROR');
-        await tg.sendErrorMessage(`Token Analysis Error: ${error}`);
+        (0, utils_1.log)(`❌ Error in daily token refresh: ${error}`, 'ERROR');
+        await tg.sendErrorMessage(`Daily Token Refresh Error: ${error}`);
     }
 }
 /**
- * Отправить уведомление о сигнале
+ * Обработка сигналов от Helius WebSocket
+ */
+async function handleHeliusSignal(mint, swapData) {
+    try {
+        // Анализируем активность токена
+        const result = await tokenAnalyzer.analyzeTokenActivity(mint, swapData);
+        if (result && result.isSignal) {
+            // Сохраняем сигнал в базу данных
+            await db.createSignal(result.mint, true, // is_buy
+            result.data.volumeSpike || 0, result.data.rsi || 0);
+            // Отправляем уведомление в Telegram
+            await sendSignalNotification(result);
+            (0, utils_1.log)(`✅ Signal processed: ${result.symbol} (${result.mint})`);
+        }
+    }
+    catch (error) {
+        (0, utils_1.log)(`❌ Error processing Helius signal: ${error}`, 'ERROR');
+    }
+}
+/**
+ * Отправка уведомления о сигнале
  */
 async function sendSignalNotification(signal) {
     try {
-        const message = formatSignalMessage(signal);
+        const message = `🚀 **BUY SIGNAL DETECTED** 🚀
+
+💎 **${signal.symbol}** (${signal.name})
+📍 Mint: \`${signal.mint}\`
+
+📊 **Analysis Results:**
+• Volume Spike: ${signal.data.volumeSpike?.toFixed(2)}x
+• RSI: ${signal.data.rsi?.toFixed(2)}
+• EMA Signal: ${signal.data.emaSignal ? '✅' : '❌'}
+• Price Impact: ${signal.data.priceImpact?.toFixed(2)}%
+• Liquidity: $${signal.data.liquidity?.toLocaleString()}
+
+💰 **Market Data:**
+• Price: $${signal.data.priceUsd?.toFixed(6)}
+• Market Cap: $${signal.data.marketCap?.toLocaleString()}
+• FDV: $${signal.data.fdv?.toLocaleString()}
+• Volume 24h: $${signal.data.volume24h?.toLocaleString()}
+
+⚡ **All criteria met - Ready to trade!**`;
         await tg.sendMessage(message);
     }
     catch (error) {
@@ -87,61 +136,35 @@ async function sendSignalNotification(signal) {
     }
 }
 /**
- * Форматировать сообщение о сигнале
+ * Ежедневный отчет
  */
-function formatSignalMessage(signal) {
-    const { symbol, name, mint, data: { age, marketCap, fdv, volume24h, priceUsd, volumeSpike, rsi, priceImpact, liquidity } } = signal;
-    return `🚀 BUY SIGNAL DETECTED
-
-📊 ${symbol} (${name})
-🏷️ Mint: ${mint}
-
-📈 Technical Analysis:
-• Volume Spike: ${volumeSpike?.toFixed(2)}x
-• RSI: ${rsi?.toFixed(1)}
-• EMA 9/21: Crossed Up ✅
-
-💰 Fundamentals:
-• Price: $${priceUsd?.toFixed(6)}
-• Market Cap: $${(marketCap / 1000000).toFixed(2)}M
-• FDV: $${(fdv / 1000000).toFixed(2)}M
-• Volume 24h: $${(volume24h / 1000).toFixed(0)}k
-• Age: ${age} days
-
-🔄 Liquidity Test:
-• Liquidity: $${liquidity?.toFixed(0)}
-• Price Impact: ${priceImpact?.toFixed(2)}%
-
-⚡ All criteria met - Ready to trade!`;
-}
-/**
- * Отправить отчет о активности
- */
-async function sendActivityReport() {
+async function sendDailyReport(tokensCount) {
     try {
-        const config = tokenAnalyzer.getConfig();
-        const uptime = Math.floor(process.uptime() / 60);
-        const report = `📊 Token Analysis Report
+        const message = `📊 **Daily Token Analysis Report**
 
-⚙️ Configuration:
-• Min Age: ${config.minTokenAgeDays} days
-• Min Liquidity: $${config.minLiquidityUsd.toLocaleString()}
-• Max FDV: $${config.maxFdvUsd.toLocaleString()}
-• Min Volume Spike: ${config.minVolumeSpike}x
-• Max RSI Oversold: ${config.maxRsiOversold}
-• Max Price Impact: ${config.maxPriceImpactPercent}%
-• Test Amount: $${config.priceImpactTestAmount}
-
-🕐 System Status:
-• Uptime: ${uptime} minutes
-• Analysis Mode: CoinGecko Top 2000
+🔄 **System Status:**
+• Monitored Tokens: ${tokensCount}
+• Analysis Mode: Hybrid (CoinGecko + Helius)
 • Status: Active 🟢
 
-💡 Next analysis in ~10 minutes`;
-        await tg.sendMessage(report);
+📈 **API Usage:**
+• CoinGecko: ${apiUsageStats.coingecko.dailyUsage}/333 daily
+• Helius: ${apiUsageStats.helius.dailyUsage}/33,333 daily
+
+⚙️ **Configuration:**
+• Min Age: ${analysisConfig.minTokenAgeDays} days
+• Min Liquidity: $${analysisConfig.minLiquidityUsd.toLocaleString()}
+• Max FDV: $${analysisConfig.maxFdvUsd.toLocaleString()}
+• Min Volume Spike: ${analysisConfig.minVolumeSpike}x
+• Max RSI Oversold: ${analysisConfig.maxRsiOversold}
+• Max Price Impact: ${analysisConfig.maxPriceImpactPercent}%
+• Test Amount: $${analysisConfig.priceImpactTestAmount}
+
+🎯 **Next daily refresh in ~24 hours**`;
+        await tg.sendMessage(message);
     }
     catch (error) {
-        (0, utils_1.log)(`Error sending activity report: ${error}`, 'ERROR');
+        (0, utils_1.log)(`Error sending daily report: ${error}`, 'ERROR');
     }
 }
 /**
@@ -149,7 +172,7 @@ async function sendActivityReport() {
  */
 async function initialize() {
     try {
-        (0, utils_1.log)('🚀 Initializing Solana Signal Bot...');
+        (0, utils_1.log)('🚀 Initializing Hybrid Solana Signal Bot...');
         // Инициализация базы данных
         await db.initialize();
         (0, utils_1.log)('✅ Database initialized');
@@ -167,9 +190,26 @@ async function initialize() {
         1000000000 // 1 SOL
         );
         (0, utils_1.log)(`✅ Jupiter API working - got quote: ${testQuote ? 'success' : 'failed'}`);
+        // Первоначальная загрузка токенов
+        await dailyTokenRefresh();
+        // Настройка Helius WebSocket с обработчиком сигналов
+        helius.onSwap = handleHeliusSignal;
+        // Запуск Helius WebSocket
+        await helius.connect();
+        (0, utils_1.log)('✅ Helius WebSocket connected');
         // Отправляем уведомление о запуске
-        await tg.sendMessage('🚀 Solana Signal Bot started!\n\n📊 Analysis Mode: CoinGecko Top 2000\n⚙️ Monitoring for buy signals...');
-        (0, utils_1.log)('✅ Initialization complete');
+        await tg.sendMessage(`🚀 **Hybrid Solana Signal Bot Started!**
+
+📊 **Analysis Mode:** CoinGecko + Helius
+🎯 **Strategy:** Daily token refresh + Real-time monitoring
+⚙️ **Monitoring:** ${tokenAnalyzer.getMonitoredTokens().length} tokens
+
+💡 **API Optimization:**
+• CoinGecko: Once daily refresh (saves credits)
+• Helius: Real-time monitoring (uses available credits)
+
+🔍 **Ready for signal detection!**`);
+        (0, utils_1.log)('✅ Hybrid initialization complete');
     }
     catch (error) {
         (0, utils_1.log)(`❌ Initialization failed: ${error}`, 'ERROR');
@@ -177,64 +217,51 @@ async function initialize() {
     }
 }
 /**
- * Главная функция
+ * Запуск системы
  */
-async function main() {
+async function start() {
     try {
-        // Инициализация
         await initialize();
-        // Запуск периодических задач
-        // Анализ токенов каждые 10 минут
-        setInterval(runTokenAnalysis, 10 * 60 * 1000);
-        // Отчет о активности каждые 30 минут
-        setInterval(sendActivityReport, 30 * 60 * 1000);
-        // Диагностика каждые 5 минут
+        // Планируем ежедневное обновление токенов (раз в 24 часа)
+        setInterval(dailyTokenRefresh, 24 * 60 * 60 * 1000);
+        // Планируем диагностику (каждые 10 минут)
         setInterval(async () => {
             try {
                 await diagnostics.runDiagnostics();
             }
             catch (error) {
-                (0, utils_1.log)(`Diagnostics error: ${error}`, 'ERROR');
+                (0, utils_1.log)(`Error in diagnostics: ${error}`, 'ERROR');
             }
-        }, 5 * 60 * 1000);
-        // Первый запуск через 30 секунд
-        setTimeout(runTokenAnalysis, 30 * 1000);
-        setTimeout(sendActivityReport, 2 * 60 * 1000); // Первый отчет через 2 минуты
-        setTimeout(async () => {
+        }, 10 * 60 * 1000);
+        // Планируем отчеты об активности (каждые 6 часов)
+        setInterval(async () => {
             try {
-                await diagnostics.runDiagnostics();
+                const monitoredCount = tokenAnalyzer.getMonitoredTokens().length;
+                await sendDailyReport(monitoredCount);
             }
             catch (error) {
-                (0, utils_1.log)(`Initial diagnostics error: ${error}`, 'ERROR');
+                (0, utils_1.log)(`Error in activity report: ${error}`, 'ERROR');
             }
-        }, 30 * 1000);
-        (0, utils_1.log)('🎯 All systems running - monitoring for signals...');
+        }, 6 * 60 * 60 * 1000);
+        (0, utils_1.log)('🎯 Hybrid Signal Bot is running...');
     }
     catch (error) {
-        (0, utils_1.log)(`❌ Fatal error: ${error}`, 'ERROR');
-        await tg.sendErrorMessage(`Fatal Error: ${error}`);
+        (0, utils_1.log)(`❌ Failed to start: ${error}`, 'ERROR');
         process.exit(1);
     }
 }
 // Обработка сигналов завершения
 process.on('SIGINT', async () => {
-    (0, utils_1.log)('🛑 Received SIGINT, shutting down gracefully...');
-    await tg.sendMessage('🛑 Solana Signal Bot shutting down...');
+    (0, utils_1.log)('🛑 Shutting down Hybrid Signal Bot...');
+    await helius.disconnect();
+    await db.close();
     process.exit(0);
 });
 process.on('SIGTERM', async () => {
-    (0, utils_1.log)('🛑 Received SIGTERM, shutting down gracefully...');
-    await tg.sendMessage('🛑 Solana Signal Bot shutting down...');
+    (0, utils_1.log)('🛑 Shutting down Hybrid Signal Bot...');
+    await helius.disconnect();
+    await db.close();
     process.exit(0);
 });
 // Запуск
-main().catch(async (error) => {
-    (0, utils_1.log)(`❌ Unhandled error: ${error}`, 'ERROR');
-    try {
-        await tg.sendErrorMessage(`Unhandled Error: ${error}`);
-    }
-    catch (e) {
-        (0, utils_1.log)(`❌ Failed to send error message: ${e}`, 'ERROR');
-    }
-    process.exit(1);
-});
+start().catch(console.error);
