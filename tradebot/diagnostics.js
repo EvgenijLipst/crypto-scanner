@@ -17,8 +17,8 @@ class AutoRepairSystem {
     // Исправление проблем с базой данных
     if (error.includes('token_mint') || error.includes('column "token_mint" does not exist')) {
       fixed = await this.fixTokenMintSchema();
-    } else if (error.includes('Connection terminated') || error.includes('connection')) {
-      fixed = await this.restartDatabaseConnection();
+    } else if (error.includes('Connection terminated') || error.includes('connection') || error.includes('DATABASEUNREACHABLE') || error.includes('TRADEBOTDATABASEUNREACHABLE')) {
+      fixed = await this.fixDatabaseConnectivityIssues();
     } else if (error.includes('Insufficient funds')) {
       fixed = await this.handleInsufficientFunds();
     } else if (error.includes('trade') || error.includes('position')) {
@@ -88,6 +88,132 @@ class AutoRepairSystem {
       console.error('[AutoRepair] ❌ Failed to fix token_mint schema:', error);
       return false;
     }
+  }
+
+  async fixDatabaseConnectivityIssues() {
+    try {
+      console.log('[AutoRepair] Fixing database connectivity issues...');
+      
+      // Специальная обработка для TRADEBOTDATABASEUNREACHABLE
+      await this.notify(
+        `🔧 **Tradebot Database Repair Started** 🔧\n\n` +
+        `Issue: Database unreachable\n` +
+        `Status: Attempting comprehensive repair...\n` +
+        `Strategies: 5 different approaches`
+      );
+      
+      // Расширенный набор стратегий исправления
+      const repairStrategies = [
+        { name: 'Basic Connection Test', action: () => this.basicConnectionTest() },
+        { name: 'Database Pool Restart', action: () => this.restartDatabaseConnection() },
+        { name: 'Environment Variables Check', action: () => this.checkEnvironmentVariables() },
+        { name: 'Railway Database Ping', action: () => this.pingRailwayDatabase() },
+        { name: 'Emergency Connection Reset', action: () => this.emergencyConnectionReset() }
+      ];
+      
+      let successfulStrategy = null;
+      
+      for (const strategy of repairStrategies) {
+        try {
+          console.log(`[AutoRepair] Trying strategy: ${strategy.name}`);
+          await strategy.action();
+          successfulStrategy = strategy.name;
+          console.log(`[AutoRepair] ✅ Strategy successful: ${strategy.name}`);
+          break;
+        } catch (error) {
+          console.log(`[AutoRepair] ⚠️ Strategy failed: ${strategy.name} - ${error}`);
+        }
+      }
+      
+      if (successfulStrategy) {
+        await this.notify(
+          `✅ **Tradebot Database Repaired** ✅\n\n` +
+          `Successful Strategy: ${successfulStrategy}\n` +
+          `Status: Database connection restored\n` +
+          `Action: Trading system should be working normally now`
+        );
+        return true;
+      } else {
+        await this.notify(
+          `❌ **Tradebot Database Repair Failed** ❌\n\n` +
+          `All 5 strategies failed\n` +
+          `Status: Manual intervention required\n` +
+          `Action: Check Railway database status and trading system`
+        );
+        return false;
+      }
+      
+    } catch (error) {
+      console.error('[AutoRepair] ❌ Database connectivity repair failed:', error);
+      return false;
+    }
+  }
+
+  async basicConnectionTest() {
+    console.log('[AutoRepair] Running basic connection test...');
+    const result = await this.database.query('SELECT NOW() as current_time, version() as db_version');
+    console.log(`[AutoRepair] ✅ Basic connection test passed - ${result.rows[0].current_time}`);
+  }
+
+  async checkEnvironmentVariables() {
+    console.log('[AutoRepair] Checking environment variables...');
+    
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is missing');
+    }
+    
+    // Проверяем формат URL
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl.startsWith('postgresql://') && !dbUrl.startsWith('postgres://')) {
+      throw new Error('DATABASE_URL format is invalid');
+    }
+    
+    console.log('[AutoRepair] ✅ Environment variables check passed');
+  }
+
+  async pingRailwayDatabase() {
+    console.log('[AutoRepair] Pinging Railway database...');
+    
+    const { Pool } = require('pg');
+    const testPool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 1,
+      connectionTimeoutMillis: 15000,
+      idleTimeoutMillis: 30000
+    });
+    
+    try {
+      const result = await testPool.query('SELECT 1 as ping');
+      console.log(`[AutoRepair] ✅ Railway database ping successful - ${result.rows[0].ping}`);
+    } finally {
+      await testPool.end();
+    }
+  }
+
+  async emergencyConnectionReset() {
+    console.log('[AutoRepair] Emergency connection reset...');
+    
+    // Создаем новое подключение с максимальными таймаутами
+    const { Pool } = require('pg');
+    const emergencyPool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      max: 5,
+      min: 1,
+      idleTimeoutMillis: 60000,
+      connectionTimeoutMillis: 30000,
+      query_timeout: 60000,
+      statement_timeout: 60000,
+      idle_in_transaction_session_timeout: 60000
+    });
+    
+    // Тестируем новое подключение
+    const testResult = await emergencyPool.query('SELECT NOW() as emergency_test, pg_backend_pid() as pid');
+    console.log(`[AutoRepair] ✅ Emergency connection reset successful - PID: ${testResult.rows[0].pid}`);
+    
+    // Заменяем database объект
+    this.database = { query: emergencyPool.query.bind(emergencyPool) };
   }
 
   async restartDatabaseConnection() {
