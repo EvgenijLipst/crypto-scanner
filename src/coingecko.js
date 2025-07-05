@@ -68,12 +68,17 @@ class CoinGeckoAPI {
                 const response = await (0, cross_fetch_1.default)(`${url}?${params}`, { headers });
                 this.dailyUsage++; // Увеличиваем счетчик использования
                 if (response.status === 429) {
-                    // Rate limit exceeded - ждем дольше
+                    // Rate limit exceeded - ждем дольше, но не зависаем навсегда
                     const waitTime = 60000; // 1 минута
                     (0, utils_1.log)(`Rate limit exceeded. Waiting ${waitTime}ms before retry ${attempt}/${this.maxRetries}`, 'WARN');
                     if (attempt < this.maxRetries) {
                         await new Promise(resolve => setTimeout(resolve, waitTime));
                         continue;
+                    }
+                    else {
+                        // Если исчерпали попытки - возвращаем пустой результат вместо зависания
+                        (0, utils_1.log)(`Max retries exceeded for rate limit, returning empty result`, 'WARN');
+                        return [];
                     }
                 }
                 if (!response.ok) {
@@ -106,8 +111,9 @@ class CoinGeckoAPI {
             if (solanaTokens.length === 0) {
                 return [];
             }
-            // Шаг 2: Получить рыночные данные для первых N токенов
-            const tokensToAnalyze = Math.min(solanaTokens.length, limit);
+            // Шаг 2: Получить рыночные данные для первых N токенов (ограничиваем до 500 для избежания rate limit)
+            const maxTokensPerRequest = Math.min(500, limit); // Ограничиваем до 500 токенов за раз
+            const tokensToAnalyze = Math.min(solanaTokens.length, maxTokensPerRequest);
             const topTokens = await this.getMarketDataForTokens(solanaTokens.slice(0, tokensToAnalyze));
             (0, utils_1.log)(`✅ Successfully fetched ${topTokens.length} Solana tokens (used ${this.dailyUsage}/${this.dailyLimit} daily credits)`);
             return topTokens;
@@ -210,7 +216,16 @@ class CoinGeckoAPI {
                 }
                 catch (error) {
                     (0, utils_1.log)(`Error processing batch: ${error}`, 'ERROR');
-                    break; // Прерываем при ошибке для экономии кредитов
+                    // Если это rate limit - ждем и продолжаем, иначе прерываем
+                    if (error instanceof Error && error.message.includes('429')) {
+                        (0, utils_1.log)(`Rate limit hit, waiting 60 seconds before continuing...`);
+                        await new Promise(resolve => setTimeout(resolve, 60000));
+                        continue; // Продолжаем с того же батча
+                    }
+                    else {
+                        (0, utils_1.log)(`Non-rate-limit error, stopping batch processing`);
+                        break; // Прерываем при других ошибках
+                    }
                 }
             }
             // Сортируем по market cap
