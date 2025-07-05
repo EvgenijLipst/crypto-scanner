@@ -193,7 +193,7 @@ class CoinGeckoAPI {
                     for (const token of batch) {
                         const data = priceData[token.id];
                         if (data && data.usd) {
-                            results.push({
+                            const solanaToken = {
                                 mint: token.platforms.solana,
                                 symbol: token.symbol.toUpperCase(),
                                 name: token.name,
@@ -204,7 +204,17 @@ class CoinGeckoAPI {
                                 priceChange24h: data.usd_24h_change || 0,
                                 age: 0,
                                 lastUpdated: data.last_updated_at ? new Date(data.last_updated_at * 1000).toISOString() : new Date().toISOString()
-                            });
+                            };
+                            results.push(solanaToken);
+                            // Логируем каждый токен детально
+                            (0, utils_1.log)(`📊 Token loaded: ${solanaToken.symbol} (${solanaToken.name})`);
+                            (0, utils_1.log)(`   • Mint: ${solanaToken.mint}`);
+                            (0, utils_1.log)(`   • Price: $${solanaToken.priceUsd}`);
+                            (0, utils_1.log)(`   • Market Cap: $${solanaToken.marketCap.toLocaleString()}`);
+                            (0, utils_1.log)(`   • Volume 24h: $${solanaToken.volume24h.toLocaleString()}`);
+                        }
+                        else {
+                            (0, utils_1.log)(`⚠️ No price data for token: ${token.symbol} (${token.id})`);
                         }
                     }
                     (0, utils_1.log)(`Batch completed: ${results.length} tokens with price data`);
@@ -231,6 +241,19 @@ class CoinGeckoAPI {
             // Сортируем по market cap
             results.sort((a, b) => b.marketCap - a.marketCap);
             (0, utils_1.log)(`Successfully retrieved market data for ${results.length} Solana tokens`);
+            // Итоговая сводка всех токенов
+            (0, utils_1.log)(`\n📋 === FINAL TOKEN SUMMARY ===`);
+            (0, utils_1.log)(`Total tokens loaded: ${results.length}`);
+            if (results.length > 0) {
+                (0, utils_1.log)(`Top 10 tokens by market cap:`);
+                results.slice(0, 10).forEach((token, i) => {
+                    (0, utils_1.log)(`${i + 1}. ${token.symbol} - $${token.priceUsd} - MC: $${token.marketCap.toLocaleString()}`);
+                    (0, utils_1.log)(`   Mint: ${token.mint}`);
+                });
+                (0, utils_1.log)(`\nTokens with real mint addresses: ${results.filter(t => t.mint && t.mint.length > 20).length}`);
+                (0, utils_1.log)(`Tokens without mint: ${results.filter(t => !t.mint || t.mint.length < 20).length}`);
+            }
+            (0, utils_1.log)(`=== END SUMMARY ===\n`);
             return results;
         }
         catch (error) {

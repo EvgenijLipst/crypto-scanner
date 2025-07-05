@@ -286,7 +286,7 @@ export class CoinGeckoAPI {
           for (const token of batch) {
             const data = priceData[token.id];
             if (data && data.usd) {
-              results.push({
+              const solanaToken = {
                 mint: token.platforms!.solana!,
                 symbol: token.symbol.toUpperCase(),
                 name: token.name,
@@ -297,7 +297,18 @@ export class CoinGeckoAPI {
                 priceChange24h: data.usd_24h_change || 0,
                 age: 0,
                 lastUpdated: data.last_updated_at ? new Date(data.last_updated_at * 1000).toISOString() : new Date().toISOString()
-              });
+              };
+              
+              results.push(solanaToken);
+              
+              // Логируем каждый токен детально
+              log(`📊 Token loaded: ${solanaToken.symbol} (${solanaToken.name})`);
+              log(`   • Mint: ${solanaToken.mint}`);
+              log(`   • Price: $${solanaToken.priceUsd}`);
+              log(`   • Market Cap: $${solanaToken.marketCap.toLocaleString()}`);
+              log(`   • Volume 24h: $${solanaToken.volume24h.toLocaleString()}`);
+            } else {
+              log(`⚠️ No price data for token: ${token.symbol} (${token.id})`);
             }
           }
           
@@ -328,6 +339,22 @@ export class CoinGeckoAPI {
       results.sort((a, b) => b.marketCap - a.marketCap);
       
       log(`Successfully retrieved market data for ${results.length} Solana tokens`);
+      
+      // Итоговая сводка всех токенов
+      log(`\n📋 === FINAL TOKEN SUMMARY ===`);
+      log(`Total tokens loaded: ${results.length}`);
+      if (results.length > 0) {
+        log(`Top 10 tokens by market cap:`);
+        results.slice(0, 10).forEach((token, i) => {
+          log(`${i + 1}. ${token.symbol} - $${token.priceUsd} - MC: $${token.marketCap.toLocaleString()}`);
+          log(`   Mint: ${token.mint}`);
+        });
+        
+        log(`\nTokens with real mint addresses: ${results.filter(t => t.mint && t.mint.length > 20).length}`);
+        log(`Tokens without mint: ${results.filter(t => !t.mint || t.mint.length < 20).length}`);
+      }
+      log(`=== END SUMMARY ===\n`);
+      
       return results;
       
     } catch (error) {
