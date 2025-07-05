@@ -47,7 +47,7 @@ npm install
 DATABASE_URL=postgres://username:password@host:port/database?ssl=true
 
 # Helius API Configuration
-HELIUS_KEY=your_helius_api_key_here
+HELIUS_API_KEY=your_helius_api_key_here
 
 # Telegram Bot Configuration
 TELEGRAM_TOKEN=your_telegram_bot_token_here

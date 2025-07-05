@@ -69,7 +69,7 @@ DATABASE_URL=postgresql://...
 TELEGRAM_TOKEN=your_telegram_bot_token
 TELEGRAM_CHAT_ID=your_chat_id
 COINGECKO_API_KEY=your_coingecko_api_key
-HELIUS_KEY=your_helius_api_key
+HELIUS_API_KEY=your_helius_api_key
 
 # Опциональные (настройки анализа)
 MIN_TOKEN_AGE_DAYS=14
