@@ -58,7 +58,8 @@ class CoinGeckoAPI {
         const url = `${this.baseUrl}/coins/markets`;
         const params = new URLSearchParams({
             vs_currency: 'usd',
-            category: 'solana-ecosystem',
+            // Убираем category для demo API - используем общий список
+            // category: 'solana-ecosystem',
             order: 'market_cap_desc',
             per_page: perPage.toString(),
             page: page.toString(),
@@ -72,7 +73,9 @@ class CoinGeckoAPI {
             }
         });
         if (!response.ok) {
-            throw new Error(`CoinGecko API error: ${response.status} ${response.statusText}`);
+            const errorText = await response.text();
+            (0, utils_1.log)(`CoinGecko API error details: ${errorText}`, 'ERROR');
+            throw new Error(`CoinGecko API error: ${response.status} ${response.statusText} - ${errorText}`);
         }
         const data = await response.json();
         return data
