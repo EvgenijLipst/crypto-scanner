@@ -87,16 +87,42 @@ export class Database {
             );
           `);
           
-          // Добавляем уникальный индекс для coin_id + network
-          try {
-            await client.query(`
-              ALTER TABLE coin_data 
-              ADD CONSTRAINT coin_data_coin_network_uidx UNIQUE (coin_id, network);
+          // Проверяем, есть ли уже уникальное ограничение
+          const constraintCheck = await client.query(`
+            SELECT constraint_name 
+            FROM information_schema.table_constraints 
+            WHERE table_name = 'coin_data' 
+            AND constraint_type = 'UNIQUE' 
+            AND constraint_name = 'coin_data_coin_network_uidx'
+          `);
+          
+          if (constraintCheck.rows.length === 0) {
+            log('Unique constraint not found, creating it...');
+            
+            // Сначала удаляем дубликаты (оставляем самые свежие записи)
+            log('Removing duplicates from coin_data...');
+            const duplicatesResult = await client.query(`
+              DELETE FROM coin_data a
+              USING coin_data b
+              WHERE a.ctid < b.ctid
+                AND a.coin_id = b.coin_id
+                AND a.network = b.network
             `);
-            log('Added unique constraint for coin_data');
-          } catch (constraintError) {
-            // Ограничение уже существует или другая ошибка
-            log(`Unique constraint already exists or error: ${constraintError}`, 'WARN');
+            log(`Removed ${duplicatesResult.rowCount || 0} duplicate records`);
+            
+            // Теперь создаем уникальное ограничение
+            try {
+              await client.query(`
+                ALTER TABLE coin_data 
+                ADD CONSTRAINT coin_data_coin_network_uidx UNIQUE (coin_id, network);
+              `);
+              log('✅ Successfully added unique constraint for coin_data');
+            } catch (constraintError) {
+              log(`❌ Failed to add unique constraint: ${constraintError}`, 'ERROR');
+              // Если не получилось создать ограничение, будем использовать простые INSERT
+            }
+          } else {
+            log('✅ Unique constraint already exists');
           }
           
           // Добавляем обычные индексы если их нет
@@ -172,6 +198,7 @@ export class Database {
    */
   async saveCoinData(coinId: string, network: string, price: number, volume: number): Promise<void> {
     try {
+      // Пробуем с ON CONFLICT (если есть уникальное ограничение)
       await this.pool.query(`
         INSERT INTO coin_data (coin_id, network, price, volume, timestamp)
         VALUES ($1, $2, $3, $4, NOW())
@@ -181,8 +208,16 @@ export class Database {
           timestamp = EXCLUDED.timestamp
       `, [coinId, network, price, volume]);
     } catch (error) {
-      log(`Error saving coin data: ${error}`, 'ERROR');
-      // Не бросаем ошибку, чтобы не сломать весь процесс
+      // Если ограничения нет, используем простой INSERT
+      try {
+        await this.pool.query(`
+          INSERT INTO coin_data (coin_id, network, price, volume, timestamp)
+          VALUES ($1, $2, $3, $4, NOW())
+        `, [coinId, network, price, volume]);
+      } catch (insertError) {
+        log(`Error saving coin data (fallback): ${insertError}`, 'ERROR');
+        // Не бросаем ошибку, чтобы не сломать весь процесс
+      }
     }
   }
 
@@ -198,14 +233,23 @@ export class Database {
         await client.query('BEGIN');
         
         for (const token of tokens) {
-          await client.query(`
-            INSERT INTO coin_data (coin_id, network, price, volume, timestamp)
-            VALUES ($1, $2, $3, $4, NOW())
-            ON CONFLICT ON CONSTRAINT coin_data_coin_network_uidx DO UPDATE SET
-              price = EXCLUDED.price,
-              volume = EXCLUDED.volume,
-              timestamp = EXCLUDED.timestamp
-          `, [token.coinId, token.network, token.price, token.volume]);
+          try {
+            // Пробуем с ON CONFLICT (если есть уникальное ограничение)
+            await client.query(`
+              INSERT INTO coin_data (coin_id, network, price, volume, timestamp)
+              VALUES ($1, $2, $3, $4, NOW())
+              ON CONFLICT ON CONSTRAINT coin_data_coin_network_uidx DO UPDATE SET
+                price = EXCLUDED.price,
+                volume = EXCLUDED.volume,
+                timestamp = EXCLUDED.timestamp
+            `, [token.coinId, token.network, token.price, token.volume]);
+          } catch (conflictError) {
+            // Если ограничения нет, используем простой INSERT
+            await client.query(`
+              INSERT INTO coin_data (coin_id, network, price, volume, timestamp)
+              VALUES ($1, $2, $3, $4, NOW())
+            `, [token.coinId, token.network, token.price, token.volume]);
+          }
         }
         
         await client.query('COMMIT');
