@@ -241,7 +241,7 @@ export class Database {
       const client = await this.pool.connect();
       try {
         await client.query('BEGIN');
-        
+        let savedCount = 0;
         for (const token of tokens) {
           try {
             // Пробуем с ON CONFLICT (если есть уникальное ограничение)
@@ -258,21 +258,21 @@ export class Database {
                 fdv = EXCLUDED.fdv,
                 timestamp = EXCLUDED.timestamp
             `, [token.coinId, token.mint, token.symbol, token.name, token.network, token.price, token.volume, token.marketCap, token.fdv]);
+            savedCount++;
           } catch (conflictError) {
             // Если ограничения нет, используем простой INSERT
             await client.query(`
               INSERT INTO coin_data (coin_id, mint, symbol, name, network, price, volume, market_cap, fdv, timestamp)
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
             `, [token.coinId, token.mint, token.symbol, token.name, token.network, token.price, token.volume, token.marketCap, token.fdv]);
+            savedCount++;
           }
         }
-        
         await client.query('COMMIT');
-        log(`✅ Saved ${tokens.length} tokens to coin_data table`);
+        log(`✅ Saved ${savedCount}/${tokens.length} tokens to coin_data table`);
       } catch (error) {
         await client.query('ROLLBACK');
         log(`Error in transaction: ${error}`, 'ERROR');
-        
         // Попробуем сохранить по одному для диагностики
         log('Attempting individual saves for debugging...');
         let savedCount = 0;

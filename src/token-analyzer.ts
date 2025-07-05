@@ -116,6 +116,7 @@ export class TokenAnalyzer {
       
       // Получаем топ-2000 токенов (согласно требованиям)
       const tokens = await this.coingecko.getTopSolanaTokens(2000);
+      log(`CoinGecko returned ${tokens.length} tokens`);
       
       if (tokens.length === 0) {
         log('No tokens received from CoinGecko', 'WARN');
@@ -127,8 +128,8 @@ export class TokenAnalyzer {
       log(`CoinGecko refresh: ${filteredTokens.length} tokens after basic filters`);
 
       // Сохраняем все токены в coin_data таблицу
-      log(`🔄 Attempting to save ${tokens.length} tokens to coin_data table...`);
-      await this.saveTokensToCoinData(tokens);
+      log(`🔄 Attempting to save ${filteredTokens.length} tokens to coin_data table...`);
+      await this.saveTokensToCoinData(filteredTokens);
       log(`✅ saveTokensToCoinData completed successfully`);
 
       // Кэшируем результат

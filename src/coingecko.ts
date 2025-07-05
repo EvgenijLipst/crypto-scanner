@@ -187,12 +187,12 @@ export class CoinGeckoAPI {
         return [];
       }
 
-      // Шаг 2: Получить рыночные данные для первых N токенов (ограничиваем до 500 для избежания rate limit)
-      const maxTokensPerRequest = Math.min(500, limit); // Ограничиваем до 500 токенов за раз
+      // Шаг 2: Получить рыночные данные для первых N токенов (до 2000)
+      const maxTokensPerRequest = Math.min(2000, limit); // Увеличиваем лимит до 2000
       const tokensToAnalyze = Math.min(solanaTokens.length, maxTokensPerRequest);
+      log(`Preparing to fetch market data for ${tokensToAnalyze} tokens`);
       const topTokens = await this.getMarketDataForTokens(solanaTokens.slice(0, tokensToAnalyze));
-      
-      log(`✅ Successfully fetched ${topTokens.length} Solana tokens (used ${this.dailyUsage}/${this.dailyLimit} daily credits)`);
+      log(`✅ Successfully fetched market data for ${topTokens.length} Solana tokens (used ${this.dailyUsage}/${this.dailyLimit} daily credits)`);
       return topTokens;
       
     } catch (error) {
