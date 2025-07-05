@@ -1,3 +1,4 @@
+console.log('=== SIGNAL BOT STARTED ===');
 // index.ts - Гибридная система: CoinGecko (минимум) + Helius (активно)
 import { config } from 'dotenv';
 import { Database } from './database';
