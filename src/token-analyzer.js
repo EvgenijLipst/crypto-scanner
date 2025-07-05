@@ -43,6 +43,8 @@ class TokenAnalyzer {
             // Применяем базовые фильтры
             const filteredTokens = this.applyBasicFilters(tokens);
             (0, utils_1.log)(`Daily refresh: ${filteredTokens.length} tokens after basic filters`);
+            // Сохраняем все токены в coin_data таблицу
+            await this.saveTokensToCoinData(tokens);
             // Кэшируем результат
             this.topTokensCache = filteredTokens;
             this.topTokensCacheTime = now;
@@ -55,6 +57,24 @@ class TokenAnalyzer {
         catch (error) {
             (0, utils_1.log)(`Error in daily tokens refresh: ${error}`, 'ERROR');
             return this.topTokensCache; // Возвращаем старый кэш при ошибке
+        }
+    }
+    /**
+     * Сохранить токены в coin_data таблицу
+     */
+    async saveTokensToCoinData(tokens) {
+        try {
+            const coinDataTokens = tokens.map(token => ({
+                coinId: token.symbol.toLowerCase(),
+                network: 'Solana',
+                price: token.priceUsd,
+                volume: token.volume24h
+            }));
+            await this.database.saveCoinDataBatch(coinDataTokens);
+            (0, utils_1.log)(`💾 Saved ${coinDataTokens.length} tokens to coin_data table`);
+        }
+        catch (error) {
+            (0, utils_1.log)(`Error saving tokens to coin_data: ${error}`, 'ERROR');
         }
     }
     /**

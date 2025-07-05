@@ -115,6 +115,79 @@ class Database {
     `, [mint, firstSeenTs, liqUsd, fdvUsd]);
     }
     /**
+     * Сохранить данные токена в coin_data
+     */
+    async saveCoinData(coinId, network, price, volume) {
+        try {
+            await this.pool.query(`
+        INSERT INTO coin_data (coin_id, network, price, volume, timestamp)
+        VALUES ($1, $2, $3, $4, NOW())
+        ON CONFLICT (coin_id, network) DO UPDATE SET
+          price = EXCLUDED.price,
+          volume = EXCLUDED.volume,
+          timestamp = EXCLUDED.timestamp
+      `, [coinId, network, price, volume]);
+        }
+        catch (error) {
+            (0, utils_1.log)(`Error saving coin data: ${error}`, 'ERROR');
+            throw error;
+        }
+    }
+    /**
+     * Сохранить батч токенов в coin_data
+     */
+    async saveCoinDataBatch(tokens) {
+        if (tokens.length === 0)
+            return;
+        try {
+            const client = await this.pool.connect();
+            try {
+                await client.query('BEGIN');
+                for (const token of tokens) {
+                    await client.query(`
+            INSERT INTO coin_data (coin_id, network, price, volume, timestamp)
+            VALUES ($1, $2, $3, $4, NOW())
+            ON CONFLICT (coin_id, network) DO UPDATE SET
+              price = EXCLUDED.price,
+              volume = EXCLUDED.volume,
+              timestamp = EXCLUDED.timestamp
+          `, [token.coinId, token.network, token.price, token.volume]);
+                }
+                await client.query('COMMIT');
+                (0, utils_1.log)(`✅ Saved ${tokens.length} tokens to coin_data table`);
+            }
+            catch (error) {
+                await client.query('ROLLBACK');
+                throw error;
+            }
+            finally {
+                client.release();
+            }
+        }
+        catch (error) {
+            (0, utils_1.log)(`Error saving coin data batch: ${error}`, 'ERROR');
+            throw error;
+        }
+    }
+    /**
+     * Получить данные токена из coin_data
+     */
+    async getCoinData(coinId, network = 'Solana') {
+        try {
+            const res = await this.pool.query(`
+        SELECT * FROM coin_data 
+        WHERE coin_id = $1 AND network = $2
+        ORDER BY timestamp DESC
+        LIMIT 1
+      `, [coinId, network]);
+            return res.rows[0] || null;
+        }
+        catch (error) {
+            (0, utils_1.log)(`Error getting coin data: ${error}`, 'ERROR');
+            return null;
+        }
+    }
+    /**
      * Получить информацию о пуле
      */
     async getPool(mint) {
