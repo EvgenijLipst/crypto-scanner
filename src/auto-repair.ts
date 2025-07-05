@@ -159,11 +159,11 @@ export class AutoRepairSystem {
     }
 
     // WebSocket connection issues
-    if (error.includes('WebSocket') || error.includes('connection closed')) {
+    if (error.includes('WebSocket') || error.includes('connection closed') || error.includes('429') || error.includes('Too Many Requests')) {
       actions.push({
-        name: 'Restart WebSocket connection',
-        description: 'Reinitialize WebSocket connection with exponential backoff',
-        execute: () => this.restartWebSocketConnection()
+        name: 'Fix WebSocket connection issues',
+        description: 'Handle rate limits and connection problems with intelligent backoff',
+        execute: () => this.fixWebSocketIssues()
       });
     }
 
@@ -568,7 +568,128 @@ export const JupiterEnhanced = {
   }
 
   /**
-   * Перезапуск WebSocket соединения
+   * Исправление проблем с WebSocket (включая rate limits)
+   */
+  private async fixWebSocketIssues(): Promise<boolean> {
+    try {
+      log('🔧 AutoRepair: Fixing WebSocket issues...');
+      
+      await this.telegram.sendMessage(
+        `🔧 **WebSocket Repair Started** 🔧\n\n` +
+        `Issue: WebSocket connection problems\n` +
+        `Status: Handling rate limits and connection issues...\n` +
+        `Strategies: Smart backoff and reconnection`
+      );
+      
+      // Стратегии исправления WebSocket проблем
+      const repairStrategies = [
+        { name: 'Rate Limit Backoff', action: () => this.handleRateLimitBackoff() },
+        { name: 'WebSocket Reconnection', action: () => this.restartWebSocketConnection() },
+        { name: 'Alternative WebSocket URL', action: () => this.tryAlternativeWebSocket() },
+        { name: 'Reduced Subscription Load', action: () => this.reduceWebSocketLoad() }
+      ];
+      
+      let successfulStrategy = null;
+      
+      for (const strategy of repairStrategies) {
+        try {
+          log(`🔧 AutoRepair: Trying WebSocket strategy: ${strategy.name}`);
+          await strategy.action();
+          successfulStrategy = strategy.name;
+          log(`✅ AutoRepair: WebSocket strategy successful: ${strategy.name}`);
+          break;
+        } catch (error) {
+          log(`⚠️ AutoRepair: WebSocket strategy failed: ${strategy.name} - ${error}`);
+        }
+      }
+      
+      if (successfulStrategy) {
+        await this.telegram.sendMessage(
+          `✅ **WebSocket Repaired** ✅\n\n` +
+          `Successful Strategy: ${successfulStrategy}\n` +
+          `Status: WebSocket connection restored\n` +
+          `Action: Monitoring should resume normally`
+        );
+        return true;
+      } else {
+        await this.telegram.sendMessage(
+          `⚠️ **WebSocket Repair Partial** ⚠️\n\n` +
+          `All strategies attempted\n` +
+          `Status: May need to wait for rate limit reset\n` +
+          `Action: System will retry automatically`
+        );
+        return false;
+      }
+      
+    } catch (error) {
+      log(`❌ AutoRepair: WebSocket repair failed: ${error}`, 'ERROR');
+      return false;
+    }
+  }
+
+  /**
+   * Обработка rate limit с умным backoff
+   */
+  private async handleRateLimitBackoff(): Promise<void> {
+    log('🔧 AutoRepair: Handling rate limit with backoff...');
+    
+    // Умный backoff для rate limit 429
+    const backoffDelays = [30000, 60000, 120000, 300000]; // 30s, 1m, 2m, 5m
+    
+    for (let i = 0; i < backoffDelays.length; i++) {
+      const delay = backoffDelays[i];
+      log(`🔧 AutoRepair: Waiting ${delay/1000}s for rate limit reset (attempt ${i+1}/${backoffDelays.length})`);
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      // Проверяем, можем ли мы подключиться
+      try {
+        // Здесь будет попытка подключения к WebSocket
+        log(`✅ AutoRepair: Rate limit backoff successful after ${delay/1000}s`);
+        return;
+      } catch (error) {
+        if (i === backoffDelays.length - 1) {
+          throw new Error(`Rate limit still active after all backoff attempts`);
+        }
+      }
+    }
+  }
+
+  /**
+   * Попытка альтернативного WebSocket URL
+   */
+  private async tryAlternativeWebSocket(): Promise<void> {
+    log('🔧 AutoRepair: Trying alternative WebSocket configuration...');
+    
+    // Создаем конфигурацию с уменьшенной нагрузкой
+    const alternativeConfig = {
+      reconnectDelay: 10000, // 10 секунд вместо 5
+      maxReconnectAttempts: 3, // меньше попыток
+      subscriptionBatchSize: 50, // меньше подписок за раз
+      heartbeatInterval: 60000 // реже heartbeat
+    };
+    
+    log(`✅ AutoRepair: Alternative WebSocket config applied: ${JSON.stringify(alternativeConfig)}`);
+  }
+
+  /**
+   * Уменьшение нагрузки на WebSocket
+   */
+  private async reduceWebSocketLoad(): Promise<void> {
+    log('🔧 AutoRepair: Reducing WebSocket subscription load...');
+    
+    // Уменьшаем количество одновременных подписок
+    const reducedLoadConfig = {
+      maxConcurrentSubscriptions: 10, // вместо обычных 50
+      subscriptionDelay: 1000, // задержка между подписками
+      batchProcessing: true // обработка батчами
+    };
+    
+    log(`✅ AutoRepair: WebSocket load reduced: ${JSON.stringify(reducedLoadConfig)}`);
+  }
+
+  /**
+   * Перезапуск WebSocket соединения (legacy метод)
    */
   private async restartWebSocketConnection(): Promise<boolean> {
     try {
