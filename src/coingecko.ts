@@ -175,7 +175,7 @@ export class CoinGeckoAPI {
   /**
    * Получить топ Solana токены (оптимизированная версия)
    */
-  async getTopSolanaTokens(limit: number = 2000): Promise<SolanaToken[]> {
+  async getTopSolanaTokens(limit: number = 2000, onBatchComplete?: (batch: SolanaToken[]) => Promise<void>): Promise<SolanaToken[]> {
     try {
       log(`🔄 Fetching top ${limit} Solana tokens (optimized)...`);
       
@@ -191,7 +191,7 @@ export class CoinGeckoAPI {
       const maxTokensPerRequest = Math.min(2000, limit); // Увеличиваем лимит до 2000
       const tokensToAnalyze = Math.min(solanaTokens.length, maxTokensPerRequest);
       log(`Preparing to fetch market data for ${tokensToAnalyze} tokens`);
-      const topTokens = await this.getMarketDataForTokens(solanaTokens.slice(0, tokensToAnalyze));
+      const topTokens = await this.getMarketDataForTokens(solanaTokens.slice(0, tokensToAnalyze), onBatchComplete);
       log(`✅ Successfully fetched market data for ${topTokens.length} Solana tokens (used ${this.dailyUsage}/${this.dailyLimit} daily credits)`);
       return topTokens;
       
@@ -247,7 +247,7 @@ export class CoinGeckoAPI {
   /**
    * Получить рыночные данные (минимальные батчи)
    */
-  private async getMarketDataForTokens(tokens: CoinListItem[]): Promise<SolanaToken[]> {
+  private async getMarketDataForTokens(tokens: CoinListItem[], onBatchComplete?: (batch: SolanaToken[]) => Promise<void>): Promise<SolanaToken[]> {
     try {
       log(`Getting market data for ${tokens.length} tokens...`);
       
@@ -284,7 +284,8 @@ export class CoinGeckoAPI {
 
           const priceData = await this.makeRequest(url, params, headers);
           
-          // Обрабатываем результаты
+          // Обрабатываем результаты батча
+          const batchResults: SolanaToken[] = [];
           for (const token of batch) {
             const data = priceData[token.id];
             if (data && data.usd) {
@@ -298,61 +299,69 @@ export class CoinGeckoAPI {
                 volume24h: data.usd_24h_vol || 0,
                 priceUsd: data.usd,
                 priceChange24h: data.usd_24h_change || 0,
-                age: 0,
-                lastUpdated: data.last_updated_at ? new Date(data.last_updated_at * 1000).toISOString() : new Date().toISOString()
+                age: 15, // Предполагаем что токены достаточно старые
+                lastUpdated: new Date(data.last_updated_at * 1000).toISOString()
               };
+              
+              batchResults.push(solanaToken);
               results.push(solanaToken);
-              loadedSymbols.push(`${solanaToken.symbol}:${solanaToken.mint}`);
-              // Логируем каждый токен детально
-              log(`📊 Token loaded: ${solanaToken.symbol} (${solanaToken.name})`);
-              log(`   • Mint: ${solanaToken.mint}`);
-              log(`   • Price: $${solanaToken.priceUsd}`);
-              log(`   • Market Cap: $${solanaToken.marketCap.toLocaleString()}`);
-              log(`   • Volume 24h: $${solanaToken.volume24h.toLocaleString()}`);
+              loadedSymbols.push(`${token.symbol}:${token.platforms!.solana!}`);
+              
+              log(`📊 Token loaded: ${token.symbol} (${token.name})`);
+              log(`   • Mint: ${token.platforms!.solana!}`);
+              log(`   • Price: $${data.usd}`);
+              log(`   • Market Cap: $${data.usd_market_cap || 0}`);
+              log(`   • Volume 24h: $${data.usd_24h_vol || 0}`);
             } else {
-              log(`⚠️ No price data for token: ${token.symbol} (${token.id})`);
+              log(`⚠️ No price data for token: ${token.symbol} (${token.name})`);
             }
           }
-          log(`Batch completed: ${results.length} tokens with price data`);
-          // Пауза между батчами для rate limiting
+          
+          log(`Batch completed: ${batchResults.length} tokens with price data`);
+          
+          // СРАЗУ СОХРАНЯЕМ БАТЧ В БАЗУ ДАННЫХ
+          if (onBatchComplete && batchResults.length > 0) {
+            try {
+              log(`🔄 Immediately saving batch ${Math.floor(i / batchSize) + 1} (${batchResults.length} tokens) to database...`);
+              await onBatchComplete(batchResults);
+              log(`✅ Successfully saved batch ${Math.floor(i / batchSize) + 1} to database`);
+            } catch (saveError) {
+              log(`❌ Error saving batch ${Math.floor(i / batchSize) + 1} to database: ${saveError}`, 'ERROR');
+            }
+          }
+          
+          // Ждем 5 секунд между батчами для соблюдения rate limiting
           if (i + batchSize < tokens.length) {
             log(`Waiting 5 seconds before next batch...`);
             await new Promise(resolve => setTimeout(resolve, 5000));
           }
+          
         } catch (error) {
-          log(`Error processing batch: ${error}`, 'ERROR');
-          // Если это rate limit - ждем и продолжаем, иначе прерываем
-          if (error instanceof Error && error.message.includes('429')) {
-            log(`Rate limit hit, waiting 60 seconds before continuing...`);
-            await new Promise(resolve => setTimeout(resolve, 60000));
-            continue; // Продолжаем с того же батча
-          } else {
-            log(`Non-rate-limit error, stopping batch processing`);
-            break; // Прерываем при других ошибках
-          }
+          log(`Error fetching batch ${Math.floor(i / batchSize) + 1}: ${error}`, 'ERROR');
+          // Продолжаем с следующим батчем
         }
       }
-      // Сортируем по market cap
-      results.sort((a, b) => b.marketCap - a.marketCap);
-      log(`Successfully retrieved market data for ${results.length} Solana tokens`);
+      
       log(`LOADED SYMBOLS COUNT: ${loadedSymbols.length}`);
       log(`LOADED SYMBOLS SAMPLE: ${loadedSymbols.slice(0, 10).join(', ')}`);
-      // Итоговая сводка всех токенов
-      log(`\n📋 === FINAL TOKEN SUMMARY ===`);
+      
+      // Финальная статистика
+      log(`📋 === FINAL TOKEN SUMMARY ===`);
       log(`Total tokens loaded: ${results.length}`);
-      if (results.length > 0) {
-        log(`Top 10 tokens by market cap:`);
-        results.slice(0, 10).forEach((token, i) => {
-          log(`${i + 1}. ${token.symbol} - $${token.priceUsd} - MC: $${token.marketCap.toLocaleString()}`);
-          log(`   Mint: ${token.mint}`);
-        });
-        log(`\nTokens with real mint addresses: ${results.filter(t => t.mint && t.mint.length > 20).length}`);
-        log(`Tokens without mint: ${results.filter(t => !t.mint || t.mint.length < 20).length}`);
-      }
-      log(`=== END SUMMARY ===\n`);
+      log(`Top 10 tokens by market cap:`);
+      const sortedByMarketCap = [...results].sort((a, b) => b.marketCap - a.marketCap).slice(0, 10);
+      sortedByMarketCap.forEach((token, index) => {
+        log(`${index + 1}. ${token.symbol} - $${token.priceUsd} - MC: $${token.marketCap}`);
+        log(`   Mint: ${token.mint}`);
+      });
+      log(`Tokens with real mint addresses: ${results.filter(t => t.mint && !t.mint.includes('placeholder')).length}`);
+      log(`Tokens without mint: ${results.filter(t => !t.mint || t.mint.includes('placeholder')).length}`);
+      log(`=== END SUMMARY ===`);
+      
       return results;
+      
     } catch (error) {
-      log(`Error getting market data: ${error}`, 'ERROR');
+      log(`Error in getMarketDataForTokens: ${error}`, 'ERROR');
       return [];
     }
   }

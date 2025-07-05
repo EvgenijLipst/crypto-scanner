@@ -32,8 +32,19 @@ class TokenAnalyzer {
             // ПРОВЕРЯЕМ РЕЖИМ ПРИНУДИТЕЛЬНОГО ОБНОВЛЕНИЯ
             if (this.forceRefreshMode) {
                 (0, utils_1.log)('🔄 FORCE REFRESH MODE: Skipping cache and database, fetching fresh tokens from CoinGecko...');
-                // Получаем топ-2000 токенов напрямую из CoinGecko
-                const tokens = await this.coingecko.getTopSolanaTokens(2000);
+                // Создаем callback для немедленного сохранения батчей
+                const saveBatchCallback = async (batch) => {
+                    try {
+                        (0, utils_1.log)(`🔄 FORCE SAVE BATCH: Saving ${batch.length} tokens immediately to database...`);
+                        await this.saveTokensToCoinData(batch);
+                        (0, utils_1.log)(`✅ FORCE SAVE BATCH: Successfully saved ${batch.length} tokens to database`);
+                    }
+                    catch (error) {
+                        (0, utils_1.log)(`❌ FORCE SAVE BATCH ERROR: ${error}`, 'ERROR');
+                    }
+                };
+                // Получаем топ-2000 токенов напрямую из CoinGecko с callback для сохранения
+                const tokens = await this.coingecko.getTopSolanaTokens(2000, saveBatchCallback);
                 (0, utils_1.log)(`CoinGecko returned ${tokens.length} tokens in force refresh mode`);
                 if (tokens.length === 0) {
                     (0, utils_1.log)('No tokens received from CoinGecko in force refresh mode', 'WARN');
@@ -42,10 +53,6 @@ class TokenAnalyzer {
                 // Применяем базовые фильтры
                 const filteredTokens = this.applyBasicFilters(tokens);
                 (0, utils_1.log)(`Force refresh: ${filteredTokens.length} tokens after basic filters`);
-                // СОХРАНЯЕМ ТОКЕНЫ БАТЧАМИ ПО 50 ШТУК
-                (0, utils_1.log)(`🔄 FORCE SAVE: Saving ${filteredTokens.length} tokens to database in batches of 50...`);
-                await this.saveTokensInBatches(filteredTokens, 50);
-                (0, utils_1.log)(`✅ FORCE SAVE: All token batches saved successfully`);
                 // Кэшируем результат
                 this.topTokensCache = filteredTokens;
                 this.topTokensCacheTime = now;
@@ -83,8 +90,19 @@ class TokenAnalyzer {
             }
             // Если в базе нет свежих токенов - запрашиваем CoinGecko
             (0, utils_1.log)('🔄 No fresh tokens in database, fetching from CoinGecko...');
-            // Получаем топ-2000 токенов (согласно требованиям)
-            const tokens = await this.coingecko.getTopSolanaTokens(2000);
+            // Создаем callback для немедленного сохранения батчей
+            const saveBatchCallback = async (batch) => {
+                try {
+                    (0, utils_1.log)(`🔄 SAVE BATCH: Saving ${batch.length} tokens immediately to database...`);
+                    await this.saveTokensToCoinData(batch);
+                    (0, utils_1.log)(`✅ SAVE BATCH: Successfully saved ${batch.length} tokens to database`);
+                }
+                catch (error) {
+                    (0, utils_1.log)(`❌ SAVE BATCH ERROR: ${error}`, 'ERROR');
+                }
+            };
+            // Получаем топ-2000 токенов (согласно требованиям) с callback для сохранения
+            const tokens = await this.coingecko.getTopSolanaTokens(2000, saveBatchCallback);
             (0, utils_1.log)(`CoinGecko returned ${tokens.length} tokens`);
             if (tokens.length === 0) {
                 (0, utils_1.log)('No tokens received from CoinGecko', 'WARN');
@@ -93,10 +111,6 @@ class TokenAnalyzer {
             // Применяем базовые фильтры
             const filteredTokens = this.applyBasicFilters(tokens);
             (0, utils_1.log)(`CoinGecko refresh: ${filteredTokens.length} tokens after basic filters`);
-            // СОХРАНЯЕМ ТОКЕНЫ БАТЧАМИ ПО 50 ШТУК
-            (0, utils_1.log)(`🔄 Attempting to save ${filteredTokens.length} tokens to database in batches of 50...`);
-            await this.saveTokensInBatches(filteredTokens, 50);
-            (0, utils_1.log)(`✅ All token batches saved successfully`);
             // Кэшируем результат
             this.topTokensCache = filteredTokens;
             this.topTokensCacheTime = now;

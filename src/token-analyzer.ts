@@ -84,8 +84,19 @@ export class TokenAnalyzer {
       if (this.forceRefreshMode) {
         log('🔄 FORCE REFRESH MODE: Skipping cache and database, fetching fresh tokens from CoinGecko...');
         
-        // Получаем топ-2000 токенов напрямую из CoinGecko
-        const tokens = await this.coingecko.getTopSolanaTokens(2000);
+        // Создаем callback для немедленного сохранения батчей
+        const saveBatchCallback = async (batch: SolanaToken[]): Promise<void> => {
+          try {
+            log(`🔄 FORCE SAVE BATCH: Saving ${batch.length} tokens immediately to database...`);
+            await this.saveTokensToCoinData(batch);
+            log(`✅ FORCE SAVE BATCH: Successfully saved ${batch.length} tokens to database`);
+          } catch (error) {
+            log(`❌ FORCE SAVE BATCH ERROR: ${error}`, 'ERROR');
+          }
+        };
+        
+        // Получаем топ-2000 токенов напрямую из CoinGecko с callback для сохранения
+        const tokens = await this.coingecko.getTopSolanaTokens(2000, saveBatchCallback);
         log(`CoinGecko returned ${tokens.length} tokens in force refresh mode`);
         
         if (tokens.length === 0) {
@@ -96,11 +107,6 @@ export class TokenAnalyzer {
         // Применяем базовые фильтры
         const filteredTokens = this.applyBasicFilters(tokens);
         log(`Force refresh: ${filteredTokens.length} tokens after basic filters`);
-
-        // СОХРАНЯЕМ ТОКЕНЫ БАТЧАМИ ПО 50 ШТУК
-        log(`🔄 FORCE SAVE: Saving ${filteredTokens.length} tokens to database in batches of 50...`);
-        await this.saveTokensInBatches(filteredTokens, 50);
-        log(`✅ FORCE SAVE: All token batches saved successfully`);
 
         // Кэшируем результат
         this.topTokensCache = filteredTokens;
@@ -151,8 +157,19 @@ export class TokenAnalyzer {
       // Если в базе нет свежих токенов - запрашиваем CoinGecko
       log('🔄 No fresh tokens in database, fetching from CoinGecko...');
       
-      // Получаем топ-2000 токенов (согласно требованиям)
-      const tokens = await this.coingecko.getTopSolanaTokens(2000);
+      // Создаем callback для немедленного сохранения батчей
+      const saveBatchCallback = async (batch: SolanaToken[]): Promise<void> => {
+        try {
+          log(`🔄 SAVE BATCH: Saving ${batch.length} tokens immediately to database...`);
+          await this.saveTokensToCoinData(batch);
+          log(`✅ SAVE BATCH: Successfully saved ${batch.length} tokens to database`);
+        } catch (error) {
+          log(`❌ SAVE BATCH ERROR: ${error}`, 'ERROR');
+        }
+      };
+      
+      // Получаем топ-2000 токенов (согласно требованиям) с callback для сохранения
+      const tokens = await this.coingecko.getTopSolanaTokens(2000, saveBatchCallback);
       log(`CoinGecko returned ${tokens.length} tokens`);
       
       if (tokens.length === 0) {
@@ -163,11 +180,6 @@ export class TokenAnalyzer {
       // Применяем базовые фильтры
       const filteredTokens = this.applyBasicFilters(tokens);
       log(`CoinGecko refresh: ${filteredTokens.length} tokens after basic filters`);
-
-      // СОХРАНЯЕМ ТОКЕНЫ БАТЧАМИ ПО 50 ШТУК
-      log(`🔄 Attempting to save ${filteredTokens.length} tokens to database in batches of 50...`);
-      await this.saveTokensInBatches(filteredTokens, 50);
-      log(`✅ All token batches saved successfully`);
 
       // Кэшируем результат
       this.topTokensCache = filteredTokens;
