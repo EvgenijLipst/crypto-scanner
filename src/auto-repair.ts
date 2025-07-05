@@ -240,14 +240,118 @@ export class AutoRepairSystem {
     try {
       log('🔧 AutoRepair: Restarting database connection...');
       
-      // Создаем новый пул подключений
-      await this.database.initialize();
+      // Пытаемся несколько способов восстановления подключения
+      const repairStrategies = [
+        () => this.database.initialize(),
+        () => this.waitAndRetryConnection(),
+        () => this.createNewDatabasePool(),
+        () => this.restartDatabaseService()
+      ];
       
-      log('✅ AutoRepair: Database connection restarted');
-      return true;
+      for (const strategy of repairStrategies) {
+        try {
+          await strategy();
+          log('✅ AutoRepair: Database connection restarted successfully');
+          return true;
+        } catch (error) {
+          log(`⚠️ AutoRepair: Strategy failed, trying next: ${error}`);
+        }
+      }
+      
+      log('❌ AutoRepair: All database repair strategies failed');
+      return false;
     } catch (error) {
       log(`❌ AutoRepair: Failed to restart database connection: ${error}`, 'ERROR');
       return false;
+    }
+  }
+
+  /**
+   * Ожидание и повторная попытка подключения
+   */
+  private async waitAndRetryConnection(): Promise<void> {
+    log('🔧 AutoRepair: Waiting and retrying database connection...');
+    
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+        await this.database.initialize();
+        log(`✅ AutoRepair: Database connected on attempt ${attempt}`);
+        return;
+      } catch (error) {
+        log(`⚠️ AutoRepair: Connection attempt ${attempt} failed: ${error}`);
+        if (attempt === 5) throw error;
+      }
+    }
+  }
+
+  /**
+   * Создание нового пула подключений
+   */
+  private async createNewDatabasePool(): Promise<void> {
+    log('🔧 AutoRepair: Creating new database pool...');
+    
+    try {
+      // Закрываем старый пул
+      if ((this.database as any).pool) {
+        await (this.database as any).pool.end();
+      }
+      
+      // Создаем новый пул с улучшенными настройками
+      const { Pool } = require('pg');
+      const newPool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+        max: 10,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 10000,
+        query_timeout: 30000,
+        statement_timeout: 30000,
+        idle_in_transaction_session_timeout: 30000
+      });
+      
+      // Тестируем новый пул
+      const testResult = await newPool.query('SELECT NOW()');
+      log(`✅ AutoRepair: New database pool created and tested: ${testResult.rows[0].now}`);
+      
+      // Заменяем старый пул
+      (this.database as any).pool = newPool;
+      
+    } catch (error) {
+      log(`❌ AutoRepair: Failed to create new database pool: ${error}`, 'ERROR');
+      throw error;
+    }
+  }
+
+  /**
+   * Перезапуск сервиса базы данных (симуляция)
+   */
+  private async restartDatabaseService(): Promise<void> {
+    log('🔧 AutoRepair: Attempting to restart database service...');
+    
+    // В Railway мы не можем перезапустить сервис напрямую, 
+    // но можем попытаться "разбудить" соединение
+    try {
+      const { Pool } = require('pg');
+      const tempPool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+        max: 1,
+        connectionTimeoutMillis: 5000
+      });
+      
+      // Делаем простой запрос для "пробуждения" базы данных
+      await tempPool.query('SELECT 1');
+      await tempPool.end();
+      
+      // Теперь пытаемся восстановить основное соединение
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      await this.database.initialize();
+      
+      log('✅ AutoRepair: Database service restart simulation completed');
+    } catch (error) {
+      log(`❌ AutoRepair: Database service restart failed: ${error}`, 'ERROR');
+      throw error;
     }
   }
 

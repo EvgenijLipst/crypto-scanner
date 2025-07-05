@@ -93,12 +93,109 @@ class AutoRepairSystem {
   async restartDatabaseConnection() {
     try {
       console.log('[AutoRepair] Restarting database connection...');
-      // В tradebot это будет обработано на уровне основного цикла
-      console.log('[AutoRepair] ✅ Database connection restart initiated');
-      return true;
+      
+      // Пытаемся несколько способов восстановления подключения
+      const repairStrategies = [
+        () => this.basicReconnection(),
+        () => this.waitAndRetryConnection(),
+        () => this.createNewDatabasePool(),
+        () => this.restartDatabaseService()
+      ];
+      
+      for (const strategy of repairStrategies) {
+        try {
+          await strategy();
+          console.log('[AutoRepair] ✅ Database connection restarted successfully');
+          return true;
+        } catch (error) {
+          console.log(`[AutoRepair] ⚠️ Strategy failed, trying next: ${error}`);
+        }
+      }
+      
+      console.log('[AutoRepair] ❌ All database repair strategies failed');
+      return false;
     } catch (error) {
       console.error('[AutoRepair] ❌ Failed to restart database connection:', error);
       return false;
+    }
+  }
+
+  async basicReconnection() {
+    console.log('[AutoRepair] Attempting basic reconnection...');
+    // Простая попытка переподключения
+    const testResult = await this.database.query('SELECT NOW()');
+    console.log(`[AutoRepair] Basic reconnection successful: ${testResult.rows[0].now}`);
+  }
+
+  async waitAndRetryConnection() {
+    console.log('[AutoRepair] Waiting and retrying database connection...');
+    
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+        const testResult = await this.database.query('SELECT 1');
+        console.log(`[AutoRepair] ✅ Database connected on attempt ${attempt}`);
+        return;
+      } catch (error) {
+        console.log(`[AutoRepair] ⚠️ Connection attempt ${attempt} failed: ${error}`);
+        if (attempt === 5) throw error;
+      }
+    }
+  }
+
+  async createNewDatabasePool() {
+    console.log('[AutoRepair] Creating new database pool...');
+    
+    try {
+      const { Pool } = require('pg');
+      const newPool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+        max: 10,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 10000,
+        query_timeout: 30000,
+        statement_timeout: 30000,
+        idle_in_transaction_session_timeout: 30000
+      });
+      
+      // Тестируем новый пул
+      const testResult = await newPool.query('SELECT NOW()');
+      console.log(`[AutoRepair] ✅ New database pool created and tested: ${testResult.rows[0].now}`);
+      
+      // Заменяем database объект
+      this.database = { query: newPool.query.bind(newPool) };
+      
+    } catch (error) {
+      console.error(`[AutoRepair] ❌ Failed to create new database pool: ${error}`);
+      throw error;
+    }
+  }
+
+  async restartDatabaseService() {
+    console.log('[AutoRepair] Attempting to restart database service...');
+    
+    try {
+      const { Pool } = require('pg');
+      const tempPool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+        max: 1,
+        connectionTimeoutMillis: 5000
+      });
+      
+      // Делаем простой запрос для "пробуждения" базы данных
+      await tempPool.query('SELECT 1');
+      await tempPool.end();
+      
+      // Теперь пытаемся восстановить основное соединение
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      const testResult = await this.database.query('SELECT NOW()');
+      
+      console.log(`[AutoRepair] ✅ Database service restart simulation completed: ${testResult.rows[0].now}`);
+    } catch (error) {
+      console.error(`[AutoRepair] ❌ Database service restart failed: ${error}`);
+      throw error;
     }
   }
 
