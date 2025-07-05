@@ -1,168 +1,240 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-// index.ts - Main orchestration for Solana Signal Bot
+// index.ts - Main orchestration for Solana Signal Bot with CoinGecko integration
 const dotenv_1 = require("dotenv");
 const database_1 = require("./database");
-const helius_1 = require("./helius");
 const telegram_1 = require("./telegram");
 const jupiter_1 = require("./jupiter");
+const coingecko_1 = require("./coingecko");
+const token_analyzer_1 = require("./token-analyzer");
 const diagnostics_1 = require("./diagnostics");
 const utils_1 = require("./utils");
-const indicators_1 = require("./indicators");
-const types_1 = require("./types");
 (0, dotenv_1.config)();
+// Проверяем обязательные переменные окружения
+const requiredEnvVars = [
+    'DATABASE_URL',
+    'TELEGRAM_TOKEN',
+    'TELEGRAM_CHAT_ID',
+    'COINGECKO_API_KEY'
+];
+for (const envVar of requiredEnvVars) {
+    if (!process.env[envVar]) {
+        console.error(`❌ Missing required environment variable: ${envVar}`);
+        process.exit(1);
+    }
+}
+// Инициализация компонентов
 const db = new database_1.Database(process.env.DATABASE_URL);
-const helius = new helius_1.HeliusWebSocket(process.env.HELIUS_KEY, db);
 const tg = new telegram_1.TelegramBot(process.env.TELEGRAM_TOKEN, process.env.TELEGRAM_CHAT_ID);
 const jupiter = new jupiter_1.JupiterAPI();
+const coingecko = new coingecko_1.CoinGeckoAPI(process.env.COINGECKO_API_KEY);
+// Конфигурация анализа из переменных окружения
+const analysisConfig = {
+    minTokenAgeDays: parseInt(process.env.MIN_TOKEN_AGE_DAYS || '14'),
+    minLiquidityUsd: parseInt(process.env.MIN_LIQUIDITY_USD || '10000'),
+    maxFdvUsd: parseInt(process.env.MAX_FDV_USD || '5000000'),
+    minVolumeSpike: parseFloat(process.env.MIN_VOLUME_SPIKE || '3'),
+    maxRsiOversold: parseInt(process.env.MAX_RSI_OVERSOLD || '35'),
+    maxPriceImpactPercent: parseFloat(process.env.MAX_PRICE_IMPACT_PERCENT || '3'),
+    priceImpactTestAmount: parseFloat(process.env.PRICE_IMPACT_TEST_AMOUNT || '10')
+};
+const tokenAnalyzer = new token_analyzer_1.TokenAnalyzer(coingecko, jupiter, db, analysisConfig);
 // Инициализируем систему диагностики
 let diagnostics;
-async function indicatorSweep() {
+/**
+ * Основной цикл анализа токенов
+ */
+async function runTokenAnalysis() {
     try {
-        const pools = await db.getOldPools();
-        for (const pool of pools) {
-            const candles = await db.getCandles(pool.mint, 40);
-            if (candles.length < types_1.MIN_HISTORY_CANDLES)
-                continue;
-            const indicators = (0, indicators_1.calculateIndicators)(candles);
-            if (!indicators)
-                continue;
-            if ((0, indicators_1.checkBuySignal)(indicators)) {
-                await db.createSignal(pool.mint, true, indicators.volSpike, indicators.rsi);
-                (0, utils_1.log)(`🚦 Signal candidate: ${pool.mint}`);
+        (0, utils_1.log)('🔍 Starting token analysis cycle...');
+        // Анализируем топ токены
+        const signals = await tokenAnalyzer.analyzeTopTokens();
+        if (signals.length === 0) {
+            (0, utils_1.log)('No signals found in this cycle');
+            return;
+        }
+        (0, utils_1.log)(`📊 Found ${signals.length} signals:`);
+        // Обрабатываем каждый сигнал
+        for (const signal of signals) {
+            try {
+                // Сохраняем сигнал в базу данных
+                await db.createSignal(signal.mint, true, // is_buy
+                signal.data.volumeSpike || 0, signal.data.rsi || 0);
+                // Отправляем уведомление в Telegram
+                await sendSignalNotification(signal);
+                (0, utils_1.log)(`✅ Signal processed: ${signal.symbol} (${signal.mint})`);
+            }
+            catch (error) {
+                (0, utils_1.log)(`❌ Error processing signal ${signal.symbol}: ${error}`, 'ERROR');
             }
         }
     }
-    catch (e) {
-        (0, utils_1.log)(`Error in indicatorSweep: ${e}`, 'ERROR');
-        await tg.sendErrorMessage(`Indicator Sweep Error: ${e}`);
+    catch (error) {
+        (0, utils_1.log)(`❌ Error in token analysis: ${error}`, 'ERROR');
+        await tg.sendErrorMessage(`Token Analysis Error: ${error}`);
     }
 }
-async function notifySweep() {
+/**
+ * Отправить уведомление о сигнале
+ */
+async function sendSignalNotification(signal) {
     try {
-        (0, utils_1.log)('🔍 Starting notifySweep...');
-        (0, utils_1.log)('📋 Getting unnotified signals...');
-        const signals = await db.getUnnotifiedSignals();
-        (0, utils_1.log)(`📋 Found ${signals.length} unnotified signals`);
-        for (const sig of signals) {
-            (0, utils_1.log)(`🔍 Processing signal: ${JSON.stringify(sig)}`);
-            (0, utils_1.log)(`📋 Getting pool info for mint: ${sig.mint}`);
-            const pool = await db.getPool(sig.mint);
-            if (!pool) {
-                (0, utils_1.log)(`❌ No pool found for mint: ${sig.mint}`);
-                continue;
-            }
-            (0, utils_1.log)(`📋 Pool info: ${JSON.stringify(pool)}`);
-            if (Number(pool.liq_usd) < types_1.MIN_LIQUIDITY_USD) {
-                (0, utils_1.log)(`❌ Liquidity too low: ${pool.liq_usd} < ${types_1.MIN_LIQUIDITY_USD}`);
-                continue;
-            }
-            if (Number(pool.fdv_usd) > types_1.MAX_FDV_USD) {
-                (0, utils_1.log)(`❌ FDV too high: ${pool.fdv_usd} > ${types_1.MAX_FDV_USD}`);
-                continue;
-            }
-            // Проверка price impact через Jupiter
-            (0, utils_1.log)(`🔍 Getting Jupiter quote for ${sig.mint}...`);
-            const quote = await jupiter.getQuote('EPjFWdd5AufqSSqeM2qA9G4KJ9b9wiG9vG7bG6wGw7bS', sig.mint, 200 * 1e6); // USDC mint, $200
-            if (!quote || Number(quote.priceImpactPct) * 100 > types_1.MAX_PRICE_IMPACT_PERCENT) {
-                (0, utils_1.log)(`❌ Price impact check failed for ${sig.mint}`);
-                continue;
-            }
-            (0, utils_1.log)(`✅ All checks passed for ${sig.mint}, sending to Telegram...`);
-            // Passed all filters — send to Telegram
-            await tg.sendBuySignal(sig, pool, Number(quote.priceImpactPct) * 100);
-            (0, utils_1.log)(`📋 Marking signal ${sig.id} as notified...`);
-            await db.markSignalNotified(sig.id);
-            (0, utils_1.log)(`📢 Sent signal for ${sig.mint}`);
-        }
-        (0, utils_1.log)('✅ notifySweep completed successfully');
+        const message = formatSignalMessage(signal);
+        await tg.sendMessage(message);
     }
-    catch (e) {
-        (0, utils_1.log)(`Error in notifySweep: ${e}`, 'ERROR');
-        (0, utils_1.log)(`Error stack: ${e instanceof Error ? e.stack : 'No stack trace'}`, 'ERROR');
-        await tg.sendErrorMessage(`Notification Sweep Error: ${e}`);
+    catch (error) {
+        (0, utils_1.log)(`Error sending signal notification: ${error}`, 'ERROR');
     }
 }
-async function runDiagnostics() {
+/**
+ * Форматировать сообщение о сигнале
+ */
+function formatSignalMessage(signal) {
+    const { symbol, name, mint, data: { age, marketCap, fdv, volume24h, priceUsd, volumeSpike, rsi, priceImpact, liquidity } } = signal;
+    return `🚀 BUY SIGNAL DETECTED
+
+📊 ${symbol} (${name})
+🏷️ Mint: ${mint}
+
+📈 Technical Analysis:
+• Volume Spike: ${volumeSpike?.toFixed(2)}x
+• RSI: ${rsi?.toFixed(1)}
+• EMA 9/21: Crossed Up ✅
+
+💰 Fundamentals:
+• Price: $${priceUsd?.toFixed(6)}
+• Market Cap: $${(marketCap / 1000000).toFixed(2)}M
+• FDV: $${(fdv / 1000000).toFixed(2)}M
+• Volume 24h: $${(volume24h / 1000).toFixed(0)}k
+• Age: ${age} days
+
+🔄 Liquidity Test:
+• Liquidity: $${liquidity?.toFixed(0)}
+• Price Impact: ${priceImpact?.toFixed(2)}%
+
+⚡ All criteria met - Ready to trade!`;
+}
+/**
+ * Отправить отчет о активности
+ */
+async function sendActivityReport() {
     try {
-        (0, utils_1.log)('🔧 Starting diagnostics check...');
-        (0, utils_1.log)(`🔍 Diagnostics system initialized: ${!!diagnostics}`);
-        const health = await diagnostics.runDiagnostics();
-        (0, utils_1.log)(`🔍 Diagnostics completed: ${health.overallStatus}, found ${health.issues.length} issues`);
-        // Детальное логирование каждой проблемы
-        health.issues.forEach((issue, index) => {
-            (0, utils_1.log)(`🚨 Issue ${index + 1}: ${issue.issue} (${issue.severity})`);
-            (0, utils_1.log)(`   Description: ${issue.description}`);
-            (0, utils_1.log)(`   Solution: ${issue.solution}`);
-            (0, utils_1.log)(`   Has auto-fix: ${!!issue.autoFix}`);
-        });
-        if (health.overallStatus === 'CRITICAL') {
-            const message = `🚨 **CRITICAL SYSTEM ISSUES DETECTED** 🚨\n\n` +
-                `Issues found: ${health.issues.length}\n` +
-                `Status: ${health.overallStatus}\n\n` +
-                health.issues.map(i => `• ${i.issue}: ${i.description}`).join('\n');
-            (0, utils_1.log)('📢 Sending critical diagnostics alert to Telegram');
-            await tg.sendMessage(message);
-        }
-        else if (health.overallStatus === 'WARNING') {
-            (0, utils_1.log)(`⚠️ System warnings detected: ${health.issues.length} issues`);
-            // Отправляем предупреждения в Telegram только если их много
-            if (health.issues.length > 3) {
-                const message = `⚠️ **SYSTEM WARNINGS** ⚠️\n\n` +
-                    `Issues found: ${health.issues.length}\n\n` +
-                    health.issues.slice(0, 5).map(i => `• ${i.issue}: ${i.description}`).join('\n') +
-                    (health.issues.length > 5 ? `\n... и еще ${health.issues.length - 5} проблем` : '');
-                await tg.sendMessage(message);
-            }
-        }
-        else {
-            (0, utils_1.log)('✅ System health check passed');
-        }
+        const config = tokenAnalyzer.getConfig();
+        const uptime = Math.floor(process.uptime() / 60);
+        const report = `📊 Token Analysis Report
+
+⚙️ Configuration:
+• Min Age: ${config.minTokenAgeDays} days
+• Min Liquidity: $${config.minLiquidityUsd.toLocaleString()}
+• Max FDV: $${config.maxFdvUsd.toLocaleString()}
+• Min Volume Spike: ${config.minVolumeSpike}x
+• Max RSI Oversold: ${config.maxRsiOversold}
+• Max Price Impact: ${config.maxPriceImpactPercent}%
+• Test Amount: $${config.priceImpactTestAmount}
+
+🕐 System Status:
+• Uptime: ${uptime} minutes
+• Analysis Mode: CoinGecko Top 2000
+• Status: Active 🟢
+
+💡 Next analysis in ~10 minutes`;
+        await tg.sendMessage(report);
     }
-    catch (e) {
-        (0, utils_1.log)(`Error in diagnostics: ${e}`, 'ERROR');
-        (0, utils_1.log)(`Diagnostics error stack: ${e instanceof Error ? e.stack : 'No stack trace'}`, 'ERROR');
-        await tg.sendErrorMessage(`Diagnostics Error: ${e}`);
+    catch (error) {
+        (0, utils_1.log)(`Error sending activity report: ${error}`, 'ERROR');
     }
 }
-async function sendWebSocketActivityReport() {
+/**
+ * Инициализация системы
+ */
+async function initialize() {
     try {
-        (0, utils_1.log)('📊 Sending WebSocket Activity Report...');
-        const stats = helius.getActivityStats();
-        await tg.sendActivityReport(stats);
-        (0, utils_1.log)('✅ WebSocket Activity Report sent successfully');
+        (0, utils_1.log)('🚀 Initializing Solana Signal Bot...');
+        // Инициализация базы данных
+        await db.initialize();
+        (0, utils_1.log)('✅ Database initialized');
+        // Инициализация диагностики
+        diagnostics = new diagnostics_1.DiagnosticsSystem(db, tg);
+        (0, utils_1.log)('✅ Diagnostics system initialized');
+        // Тестирование CoinGecko API
+        (0, utils_1.log)('🧪 Testing CoinGecko API...');
+        const testTokens = await coingecko.getTopSolanaTokens(10);
+        (0, utils_1.log)(`✅ CoinGecko API working - fetched ${testTokens.length} test tokens`);
+        // Тестирование Jupiter API
+        (0, utils_1.log)('🧪 Testing Jupiter API...');
+        const testQuote = await jupiter.getQuote('So11111111111111111111111111111111111111112', // SOL
+        'EPjFWdd5AufqSSqeM2qA9G4KJ9b9wiG9vG7bG6wGw7bS', // USDC
+        1000000000 // 1 SOL
+        );
+        (0, utils_1.log)(`✅ Jupiter API working - got quote: ${testQuote ? 'success' : 'failed'}`);
+        // Отправляем уведомление о запуске
+        await tg.sendMessage('🚀 Solana Signal Bot started!\n\n📊 Analysis Mode: CoinGecko Top 2000\n⚙️ Monitoring for buy signals...');
+        (0, utils_1.log)('✅ Initialization complete');
     }
-    catch (e) {
-        (0, utils_1.log)(`Error sending WebSocket Activity Report: ${e}`, 'ERROR');
-        await tg.sendErrorMessage(`WebSocket Activity Report Error: ${e}`);
+    catch (error) {
+        (0, utils_1.log)(`❌ Initialization failed: ${error}`, 'ERROR');
+        throw error;
     }
 }
+/**
+ * Главная функция
+ */
 async function main() {
-    await db.initialize();
-    // Инициализируем диагностику после базы данных
-    diagnostics = new diagnostics_1.DiagnosticsSystem(db, tg);
-    await tg.sendMessage('🚀 Signal Bot запущен с системой автодиагностики!');
-    await helius.connect();
-    // Основные интервалы
-    setInterval(indicatorSweep, 60000);
-    setInterval(notifySweep, 20000);
-    // Диагностика каждые 5 минут
-    setInterval(runDiagnostics, 5 * 60 * 1000);
-    // WebSocket Activity Report каждые 10 минут
-    setInterval(sendWebSocketActivityReport, 10 * 60 * 1000);
-    // Первая диагностика через 30 секунд после запуска
-    setTimeout(runDiagnostics, 30000);
-    // Первый отчет о WebSocket активности через 2 минуты
-    setTimeout(sendWebSocketActivityReport, 2 * 60 * 1000);
-    // Очистка логов каждые 6 часов
-    setInterval(() => {
-        try {
-            tg.cleanupTelegramLogs();
-        }
-        catch (e) {
-            (0, utils_1.log)(`Error cleaning telegram logs: ${e}`, 'ERROR');
-        }
-    }, 6 * 60 * 60 * 1000); // 6 hours
-    (0, utils_1.log)('Signal bot started with diagnostics system.');
+    try {
+        // Инициализация
+        await initialize();
+        // Запуск периодических задач
+        // Анализ токенов каждые 10 минут
+        setInterval(runTokenAnalysis, 10 * 60 * 1000);
+        // Отчет о активности каждые 30 минут
+        setInterval(sendActivityReport, 30 * 60 * 1000);
+        // Диагностика каждые 5 минут
+        setInterval(async () => {
+            try {
+                await diagnostics.runDiagnostics();
+            }
+            catch (error) {
+                (0, utils_1.log)(`Diagnostics error: ${error}`, 'ERROR');
+            }
+        }, 5 * 60 * 1000);
+        // Первый запуск через 30 секунд
+        setTimeout(runTokenAnalysis, 30 * 1000);
+        setTimeout(sendActivityReport, 2 * 60 * 1000); // Первый отчет через 2 минуты
+        setTimeout(async () => {
+            try {
+                await diagnostics.runDiagnostics();
+            }
+            catch (error) {
+                (0, utils_1.log)(`Initial diagnostics error: ${error}`, 'ERROR');
+            }
+        }, 30 * 1000);
+        (0, utils_1.log)('🎯 All systems running - monitoring for signals...');
+    }
+    catch (error) {
+        (0, utils_1.log)(`❌ Fatal error: ${error}`, 'ERROR');
+        await tg.sendErrorMessage(`Fatal Error: ${error}`);
+        process.exit(1);
+    }
 }
-main().catch(console.error);
+// Обработка сигналов завершения
+process.on('SIGINT', async () => {
+    (0, utils_1.log)('🛑 Received SIGINT, shutting down gracefully...');
+    await tg.sendMessage('🛑 Solana Signal Bot shutting down...');
+    process.exit(0);
+});
+process.on('SIGTERM', async () => {
+    (0, utils_1.log)('🛑 Received SIGTERM, shutting down gracefully...');
+    await tg.sendMessage('🛑 Solana Signal Bot shutting down...');
+    process.exit(0);
+});
+// Запуск
+main().catch(async (error) => {
+    (0, utils_1.log)(`❌ Unhandled error: ${error}`, 'ERROR');
+    try {
+        await tg.sendErrorMessage(`Unhandled Error: ${error}`);
+    }
+    catch (e) {
+        (0, utils_1.log)(`❌ Failed to send error message: ${e}`, 'ERROR');
+    }
+    process.exit(1);
+});

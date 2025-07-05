@@ -1,0 +1,2 @@
+{"timestamp":"2025-07-05T11:25:17.761Z","status":"HEALTHY","issuesCount":0,"metrics":{"errorRate":0,"dbConnections":1,"telegramErrors":0,"uptime":0.572},"issues":[]}
+{"timestamp":"2025-07-05T11:29:47.746Z","status":"HEALTHY","issuesCount":0,"metrics":{"errorRate":0,"dbConnections":1,"telegramErrors":0,"uptime":0.563},"issues":[]}

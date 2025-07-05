@@ -8,15 +8,17 @@ exports.DiagnosticsSystem = void 0;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const utils_1 = require("./utils");
+const auto_repair_1 = require("./auto-repair");
 class DiagnosticsSystem {
     constructor(database, telegram) {
         this.errorPatterns = new Map();
         this.database = database;
         this.telegram = telegram;
+        this.autoRepair = new auto_repair_1.AutoRepairSystem(database, telegram);
         this.logFilePath = path_1.default.join(process.cwd(), 'telegram.log');
         this.diagnosticsLogPath = path_1.default.join(process.cwd(), 'diagnostics.log');
         this.initializeErrorPatterns();
-        (0, utils_1.log)('🔧 Diagnostics system initialized');
+        (0, utils_1.log)('🔧 Diagnostics system initialized with auto-repair capabilities');
     }
     initializeErrorPatterns() {
         // Ошибки сигнального бота
@@ -148,10 +150,10 @@ class DiagnosticsSystem {
         // Записываем результаты диагностики
         (0, utils_1.log)('💾 Logging diagnostics results...');
         await this.logDiagnostics(health);
-        // Автоисправления
+        // Автономные исправления через AutoRepairSystem
         if (issues.length > 0) {
-            (0, utils_1.log)(`🔧 Attempting auto-fixes for ${issues.length} issues...`);
-            await this.attemptAutoFixes(issues);
+            (0, utils_1.log)(`🔧 Attempting autonomous auto-repairs for ${issues.length} issues...`);
+            await this.performAutonomousRepairs(issues);
         }
         (0, utils_1.log)(`🔍 Diagnostics completed in ${health.metrics.uptime}s, found ${issues.length} issues`);
         return health;
@@ -412,7 +414,58 @@ class DiagnosticsSystem {
         }
     }
     /**
-     * Попытка автоисправлений
+     * Автономные исправления через AutoRepairSystem
+     */
+    async performAutonomousRepairs(issues) {
+        let criticalIssues = 0;
+        let fixedIssues = 0;
+        for (const issue of issues) {
+            if (issue.severity === 'CRITICAL' || issue.severity === 'HIGH') {
+                criticalIssues++;
+                try {
+                    // Используем автономную систему исправлений
+                    const fixed = await this.autoRepair.handleCriticalError(issue.issue, {
+                        severity: issue.severity,
+                        description: issue.description,
+                        solution: issue.solution
+                    });
+                    if (fixed) {
+                        fixedIssues++;
+                        (0, utils_1.log)(`✅ Autonomous repair successful: ${issue.issue}`);
+                    }
+                    else {
+                        (0, utils_1.log)(`❌ Autonomous repair failed: ${issue.issue}`);
+                        // Fallback на старый метод автоисправления
+                        if (issue.autoFix) {
+                            try {
+                                const legacyFixed = await issue.autoFix();
+                                if (legacyFixed) {
+                                    fixedIssues++;
+                                    (0, utils_1.log)(`✅ Legacy auto-fix successful: ${issue.issue}`);
+                                }
+                            }
+                            catch (error) {
+                                (0, utils_1.log)(`❌ Legacy auto-fix error for ${issue.issue}: ${error}`, 'ERROR');
+                            }
+                        }
+                    }
+                }
+                catch (error) {
+                    (0, utils_1.log)(`❌ Autonomous repair error for ${issue.issue}: ${error}`, 'ERROR');
+                }
+            }
+        }
+        // Отправляем уведомление только если есть критические проблемы
+        if (criticalIssues > 3) {
+            await this.telegram.sendMessage(`🤖 **Autonomous System Repair** 🤖\n\n` +
+                `Found ${criticalIssues} critical issues.\n` +
+                `Auto-repaired: ${fixedIssues}\n` +
+                `Status: ${fixedIssues === criticalIssues ? '✅ All issues resolved automatically' : '⚠️ Some issues may require manual intervention'}\n\n` +
+                `System is now self-healing and will continue monitoring.`);
+        }
+    }
+    /**
+     * Попытка автоисправлений (legacy метод)
      */
     async attemptAutoFixes(issues) {
         for (const issue of issues) {
