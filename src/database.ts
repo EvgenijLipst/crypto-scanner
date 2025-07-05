@@ -87,15 +87,27 @@ export class Database {
             );
           `);
           
-          // Добавляем индекс если его нет
+          // Добавляем уникальный индекс для coin_id + network
+          try {
+            await client.query(`
+              ALTER TABLE coin_data 
+              ADD CONSTRAINT coin_data_coin_network_uidx UNIQUE (coin_id, network);
+            `);
+            log('Added unique constraint for coin_data');
+          } catch (constraintError) {
+            // Ограничение уже существует или другая ошибка
+            log(`Unique constraint already exists or error: ${constraintError}`, 'WARN');
+          }
+          
+          // Добавляем обычные индексы если их нет
           await client.query(`
             CREATE INDEX IF NOT EXISTS idx_coin_data_network_timestamp 
             ON coin_data (network, timestamp DESC);
           `);
           
           await client.query(`
-            CREATE INDEX IF NOT EXISTS idx_coin_data_coin_network 
-            ON coin_data (coin_id, network);
+            CREATE INDEX IF NOT EXISTS idx_coin_data_timestamp 
+            ON coin_data (timestamp DESC);
           `);
 
           // Принудительно пересоздаем таблицу signals с правильной структурой
@@ -163,14 +175,14 @@ export class Database {
       await this.pool.query(`
         INSERT INTO coin_data (coin_id, network, price, volume, timestamp)
         VALUES ($1, $2, $3, $4, NOW())
-        ON CONFLICT (coin_id, network) DO UPDATE SET
+        ON CONFLICT ON CONSTRAINT coin_data_coin_network_uidx DO UPDATE SET
           price = EXCLUDED.price,
           volume = EXCLUDED.volume,
           timestamp = EXCLUDED.timestamp
       `, [coinId, network, price, volume]);
     } catch (error) {
       log(`Error saving coin data: ${error}`, 'ERROR');
-      throw error;
+      // Не бросаем ошибку, чтобы не сломать весь процесс
     }
   }
 
@@ -186,10 +198,13 @@ export class Database {
         await client.query('BEGIN');
         
         for (const token of tokens) {
-          // Используем INSERT ... ON CONFLICT без UNIQUE constraint
           await client.query(`
             INSERT INTO coin_data (coin_id, network, price, volume, timestamp)
             VALUES ($1, $2, $3, $4, NOW())
+            ON CONFLICT ON CONSTRAINT coin_data_coin_network_uidx DO UPDATE SET
+              price = EXCLUDED.price,
+              volume = EXCLUDED.volume,
+              timestamp = EXCLUDED.timestamp
           `, [token.coinId, token.network, token.price, token.volume]);
         }
         

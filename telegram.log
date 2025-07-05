@@ -128,3 +128,27 @@
 • Errors: 9
 
 🎯 **Performance:** Waiting for activity
+[2025-07-05T14:01:15.253Z] [SENT] 📡 **WebSocket Activity Report**
+
+🔌 **Connection Status:** 🔴 Disconnected
+⏱️ **Uptime:** 57 minutes
+🔄 **Last Activity:** 3433 seconds ago
+
+📊 **Statistics:**
+• Messages Received: 0
+• Pool Events: 0
+• Swap Events: 0
+• Errors: 10
+
+🎯 **Performance:** Waiting for activity
+[2025-07-05T14:05:57.632Z] [SENT] 🛑 **Signal Bot Shutting Down**
+
+⚠️ **Manual shutdown detected (SIGINT)**
+🔄 **Status:** Gracefully stopping all services...
+
+📊 **Final Stats:**
+• Uptime: 61 minutes
+• Monitored Tokens: 97
+• API Usage: CoinGecko 5/333
+
+🔌 **Disconnecting services...**
