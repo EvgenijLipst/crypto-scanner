@@ -17,7 +17,7 @@ const requiredEnvVars = [
   'TELEGRAM_TOKEN', 
   'TELEGRAM_CHAT_ID',
   'COINGECKO_API_KEY',
-  'HELIUS_API_KEY'
+  'HELIUS_KEY'
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -32,7 +32,7 @@ const db = new Database(process.env.DATABASE_URL!);
 const tg = new TelegramBot(process.env.TELEGRAM_TOKEN!, process.env.TELEGRAM_CHAT_ID!);
 const jupiter = new JupiterAPI();
 const coingecko = new CoinGeckoAPI(process.env.COINGECKO_API_KEY!);
-const helius = new HeliusWebSocket(process.env.HELIUS_API_KEY!, db, tg);
+const helius = new HeliusWebSocket(process.env.HELIUS_KEY!, db, tg);
 
 // Конфигурация анализа из переменных окружения
 const analysisConfig: AnalysisConfig = {
