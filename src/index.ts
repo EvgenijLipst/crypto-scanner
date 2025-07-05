@@ -205,6 +205,16 @@ async function initialize() {
   try {
     log('🚀 Initializing Hybrid Solana Signal Bot...');
     
+    // Отправляем уведомление о начале инициализации
+    await tg.sendMessage(`🚀 **Signal Bot Starting...**
+
+⚙️ **Initialization in progress...**
+• Database connection: Connecting...
+• API testing: Starting...
+• Token loading: Preparing...
+
+📡 **Status:** Initializing services...`);
+    
     // Инициализация базы данных
     await db.initialize();
     log('✅ Database initialized');
@@ -215,45 +225,98 @@ async function initialize() {
     
     // Тестирование CoinGecko API
     log('🧪 Testing CoinGecko API...');
-    const testTokens = await coingecko.getTopSolanaTokens(10);
-    log(`✅ CoinGecko API working - fetched ${testTokens.length} test tokens`);
+    let coingeckoStatus = '❌ Failed';
+    try {
+      const testTokens = await coingecko.getTopSolanaTokens(10);
+      coingeckoStatus = `✅ Working (${testTokens.length} tokens)`;
+      log(`✅ CoinGecko API working - fetched ${testTokens.length} test tokens`);
+    } catch (error) {
+      log(`❌ CoinGecko API test failed: ${error}`, 'ERROR');
+    }
     
     // Тестирование Jupiter API
     log('🧪 Testing Jupiter API...');
-    const testQuote = await jupiter.getQuote(
-      'So11111111111111111111111111111111111111112', // SOL
-      'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC (правильный адрес)
-      1000000000 // 1 SOL
-    );
-    log(`✅ Jupiter API working - got quote: ${testQuote ? 'success' : 'failed'}`);
+    let jupiterStatus = '❌ Failed';
+    try {
+      const testQuote = await jupiter.getQuote(
+        'So11111111111111111111111111111111111111112', // SOL
+        'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC (правильный адрес)
+        1000000000 // 1 SOL
+      );
+      jupiterStatus = testQuote ? '✅ Working' : '⚠️ No quote';
+      log(`✅ Jupiter API working - got quote: ${testQuote ? 'success' : 'failed'}`);
+    } catch (error) {
+      log(`❌ Jupiter API test failed: ${error}`, 'ERROR');
+    }
     
     // Первоначальная загрузка токенов
-    await tokenRefresh();
+    let tokensLoaded = 0;
+    let tokenStatus = '❌ Failed';
+    try {
+      await tokenRefresh();
+      tokensLoaded = tokenAnalyzer.getMonitoredTokens().length;
+      tokenStatus = tokensLoaded > 0 ? `✅ ${tokensLoaded} tokens` : '⚠️ No tokens';
+    } catch (error) {
+      log(`❌ Token refresh failed: ${error}`, 'ERROR');
+      tokenStatus = `❌ Error: ${error}`;
+    }
     
     // Настройка Helius WebSocket с обработчиком сигналов
     helius.onSwap = handleHeliusSignal;
     
     // Запуск Helius WebSocket
-    await helius.connect();
-    log('✅ Helius WebSocket connected');
+    let heliusStatus = '❌ Failed';
+    try {
+      await helius.connect();
+      heliusStatus = '✅ Connected';
+      log('✅ Helius WebSocket connected');
+    } catch (error) {
+      log(`❌ Helius WebSocket failed: ${error}`, 'ERROR');
+      heliusStatus = `❌ Error: ${error}`;
+    }
     
-    // Отправляем уведомление о запуске
+    // Отправляем детальное уведомление о статусе запуска
+    const systemStatus = (tokensLoaded > 0 && coingeckoStatus.includes('✅') && heliusStatus.includes('✅')) ? '🟢 OPERATIONAL' : '🟡 PARTIAL';
+    
     await tg.sendMessage(`🚀 **Hybrid Solana Signal Bot Started!**
 
-📊 **Analysis Mode:** CoinGecko + Helius
-🎯 **Strategy:** 48h token refresh + Real-time monitoring
-⚙️ **Monitoring:** ${tokenAnalyzer.getMonitoredTokens().length} tokens
+📊 **System Status:** ${systemStatus}
+
+🔧 **Component Status:**
+• Database: ✅ Connected
+• CoinGecko API: ${coingeckoStatus}
+• Jupiter API: ${jupiterStatus}
+• Helius WebSocket: ${heliusStatus}
+• Token Loading: ${tokenStatus}
+
+📈 **Configuration:**
+• Analysis Mode: CoinGecko + Helius
+• Strategy: 48h token refresh + Real-time monitoring
+• Monitoring: ${tokensLoaded} tokens
 
 💡 **API Optimization:**
 • CoinGecko: 48h refresh cycle (saves credits)
 • Helius: Real-time monitoring (uses available credits)
 
-🔍 **Ready for signal detection!**`);
+${tokensLoaded > 0 ? '🔍 **Ready for signal detection!**' : '⚠️ **Limited functionality - token loading issues**'}
+
+⏰ Started at: ${new Date().toLocaleString()}`);
     
     log('✅ Hybrid initialization complete');
     
   } catch (error) {
     log(`❌ Initialization failed: ${error}`, 'ERROR');
+    
+    // Отправляем уведомление об ошибке инициализации
+    await tg.sendMessage(`🚨 **Signal Bot Initialization Failed!**
+
+❌ **Error:** ${error}
+
+🔧 **Status:** System failed to start properly
+⚠️ **Action Required:** Check logs and restart
+
+⏰ Failed at: ${new Date().toLocaleString()}`);
+    
     throw error;
   }
 }
