@@ -154,18 +154,21 @@ export class TokenAnalyzer {
       const freshTokens = await this.database.getFreshTokensFromCoinData('Solana', 48);
       
       // Преобразуем данные из базы в формат SolanaToken
-      const tokens: SolanaToken[] = freshTokens.map(row => ({
-        mint: row.mint || `${row.coin_id}_mint_placeholder`, // Используем реальный mint или placeholder
-        symbol: row.symbol || row.coin_id.toUpperCase(),
-        name: row.name || row.coin_id,
-        marketCap: row.market_cap || (row.price * 1000000), // Используем реальную рыночную капитализацию
-        fdv: row.fdv || (row.price * 1000000),
-        volume24h: row.volume,
-        priceUsd: row.price,
-        priceChange24h: 0,
-        age: 15, // Предполагаем что токены достаточно старые
-        lastUpdated: row.timestamp
-      }));
+      // ВАЖНО: Фильтруем только токены с реальными mint адресами
+      const tokens: SolanaToken[] = freshTokens
+        .filter(row => row.mint && !row.mint.includes('placeholder')) // Только токены с реальными mint адресами
+        .map(row => ({
+          mint: row.mint, // Используем только реальные mint адреса
+          symbol: row.symbol || row.coin_id.toUpperCase(),
+          name: row.name || row.coin_id,
+          marketCap: row.market_cap || (row.price * 1000000),
+          fdv: row.fdv || (row.price * 1000000),
+          volume24h: row.volume,
+          priceUsd: row.price,
+          priceChange24h: 0,
+          age: 15, // Предполагаем что токены достаточно старые
+          lastUpdated: row.timestamp
+        }));
 
       log(`📊 Loaded ${tokens.length} tokens from coin_data table`);
       return tokens;

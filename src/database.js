@@ -322,9 +322,12 @@ class Database {
         FROM coin_data 
         WHERE network = $1 
         AND timestamp > NOW() - INTERVAL '${maxAgeHours} hours'
+        AND mint IS NOT NULL 
+        AND mint != ''
+        AND mint NOT LIKE '%placeholder%'
       `, [network]);
             const count = parseInt(res.rows[0].count);
-            (0, utils_1.log)(`🔍 Database check: ${count} fresh tokens found (need ${minCount})`);
+            (0, utils_1.log)(`🔍 Database check: ${count} fresh tokens with real mint addresses found (need ${minCount})`);
             return count >= minCount;
         }
         catch (error) {

@@ -87,11 +87,14 @@ class TokenAnalyzer {
         try {
             const freshTokens = await this.database.getFreshTokensFromCoinData('Solana', 48);
             // Преобразуем данные из базы в формат SolanaToken
-            const tokens = freshTokens.map(row => ({
-                mint: row.mint || `${row.coin_id}_mint_placeholder`, // Используем реальный mint или placeholder
+            // ВАЖНО: Фильтруем только токены с реальными mint адресами
+            const tokens = freshTokens
+                .filter(row => row.mint && !row.mint.includes('placeholder')) // Только токены с реальными mint адресами
+                .map(row => ({
+                mint: row.mint, // Используем только реальные mint адреса
                 symbol: row.symbol || row.coin_id.toUpperCase(),
                 name: row.name || row.coin_id,
-                marketCap: row.market_cap || (row.price * 1000000), // Используем реальную рыночную капитализацию
+                marketCap: row.market_cap || (row.price * 1000000),
                 fdv: row.fdv || (row.price * 1000000),
                 volume24h: row.volume,
                 priceUsd: row.price,
