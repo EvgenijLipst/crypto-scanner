@@ -44,3 +44,35 @@
 • Status: Active 🟢
 
 💡 Next analysis in ~10 minutes
+[2025-07-05T13:09:49.282Z] [SENT] 📊 **Daily Token Analysis Report**
+
+🔄 **System Status:**
+• Monitored Tokens: 97
+• Analysis Mode: Hybrid (CoinGecko + Helius)
+• Status: Active 🟢
+
+📈 **API Usage:**
+• CoinGecko: 5/333 daily
+• Helius: 0/33,333 daily
+
+⚙️ **Configuration:**
+• Min Age: 14 days
+• Min Liquidity: $10,000
+• Max FDV: $5,000,000
+• Min Volume Spike: 3x
+• Max RSI Oversold: 35
+• Max Price Impact: 3%
+• Test Amount: $10
+
+🎯 **Next daily refresh in ~24 hours**
+[2025-07-05T13:09:49.413Z] [SENT] 🚀 **Hybrid Solana Signal Bot Started!**
+
+📊 **Analysis Mode:** CoinGecko + Helius
+🎯 **Strategy:** Daily token refresh + Real-time monitoring
+⚙️ **Monitoring:** 97 tokens
+
+💡 **API Optimization:**
+• CoinGecko: Once daily refresh (saves credits)
+• Helius: Real-time monitoring (uses available credits)
+
+🔍 **Ready for signal detection!**

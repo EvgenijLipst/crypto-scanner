@@ -36,7 +36,7 @@ class HeliusWebSocket {
             if (this.ws) {
                 this.ws.close();
             }
-            this.ws = new ws_1.default('wss://atlas-mainnet.helius-rpc.com/?api-key=' + this.apiKey);
+            this.ws = new ws_1.default(`wss://mainnet.helius-rpc.com/?api-key=${this.apiKey}`);
             this.ws.on('open', () => {
                 (0, utils_1.log)('✅ Helius WebSocket connected');
                 this.isConnected = true;
