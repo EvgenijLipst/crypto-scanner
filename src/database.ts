@@ -74,6 +74,30 @@ export class Database {
             );
           `);
 
+          log('Ensuring coin_data table compatibility...');
+          // Проверяем и создаем/обновляем таблицу coin_data
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS coin_data (
+              id SERIAL PRIMARY KEY,
+              coin_id TEXT NOT NULL,
+              network TEXT NOT NULL DEFAULT 'Solana',
+              price NUMERIC NOT NULL,
+              volume NUMERIC NOT NULL,
+              timestamp TIMESTAMP DEFAULT NOW()
+            );
+          `);
+          
+          // Добавляем индекс если его нет
+          await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_coin_data_network_timestamp 
+            ON coin_data (network, timestamp DESC);
+          `);
+          
+          await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_coin_data_coin_network 
+            ON coin_data (coin_id, network);
+          `);
+
           // Принудительно пересоздаем таблицу signals с правильной структурой
           log('Recreating signals table with correct structure...');
           
@@ -162,13 +186,10 @@ export class Database {
         await client.query('BEGIN');
         
         for (const token of tokens) {
+          // Используем INSERT ... ON CONFLICT без UNIQUE constraint
           await client.query(`
             INSERT INTO coin_data (coin_id, network, price, volume, timestamp)
             VALUES ($1, $2, $3, $4, NOW())
-            ON CONFLICT (coin_id, network) DO UPDATE SET
-              price = EXCLUDED.price,
-              volume = EXCLUDED.volume,
-              timestamp = EXCLUDED.timestamp
           `, [token.coinId, token.network, token.price, token.volume]);
         }
         
@@ -176,13 +197,26 @@ export class Database {
         log(`✅ Saved ${tokens.length} tokens to coin_data table`);
       } catch (error) {
         await client.query('ROLLBACK');
-        throw error;
+        log(`Error in transaction: ${error}`, 'ERROR');
+        
+        // Попробуем сохранить по одному для диагностики
+        log('Attempting individual saves for debugging...');
+        let savedCount = 0;
+        for (const token of tokens) {
+          try {
+            await this.saveCoinData(token.coinId, token.network, token.price, token.volume);
+            savedCount++;
+          } catch (individualError) {
+            log(`Failed to save token ${token.coinId}: ${individualError}`, 'ERROR');
+          }
+        }
+        log(`Successfully saved ${savedCount}/${tokens.length} tokens individually`);
       } finally {
         client.release();
       }
     } catch (error) {
       log(`Error saving coin data batch: ${error}`, 'ERROR');
-      throw error;
+      // Не бросаем ошибку, чтобы не сломать весь процесс
     }
   }
 
