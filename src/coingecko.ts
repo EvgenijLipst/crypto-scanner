@@ -103,20 +103,35 @@ export class CoinGeckoAPI {
    */
   private async fetchSolanaTokensByCategory(limit: number): Promise<SolanaToken[]> {
     try {
-      const tokens: SolanaToken[] = [];
-      const perPage = 250;
-      const pages = Math.ceil(limit / perPage);
-
-      for (let page = 1; page <= pages; page++) {
-        const pageTokens = await this.fetchTokensPage(page, perPage);
-        tokens.push(...pageTokens);
-        
-        if (tokens.length >= limit) break;
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      log('Fetching top tokens from general market and filtering for Solana...');
+      
+      const allTokens: SolanaToken[] = [];
+      const perPage = 250; // Maximum per request
+      const totalPages = 8; // 8 pages × 250 = 2000 tokens
+      
+      for (let page = 1; page <= totalPages; page++) {
+        try {
+          log(`Fetching page ${page}/${totalPages} (${perPage} tokens per page)...`);
+          
+          const pageTokens = await this.fetchTokensPage(page, perPage);
+          allTokens.push(...pageTokens);
+          
+          log(`Page ${page}: Found ${pageTokens.length} Solana tokens (total: ${allTokens.length})`);
+          
+          // Rate limiting - wait 1 second between requests
+          if (page < totalPages) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          
+        } catch (error) {
+          log(`Error fetching page ${page}: ${error}`, 'ERROR');
+          // Continue with other pages even if one fails
+        }
       }
 
-      return tokens.slice(0, limit);
+      log(`Total Solana tokens found across all pages: ${allTokens.length}`);
+      return allTokens.slice(0, limit);
+      
     } catch (error) {
       log(`Category method error: ${error}`, 'ERROR');
       return [];
@@ -210,20 +225,24 @@ export class CoinGeckoAPI {
 
     const data: CoinGeckoToken[] = await response.json();
     
-    return data
-      .filter(token => token.platforms?.solana) // Only tokens with Solana mint
-      .map(token => ({
-        mint: token.platforms.solana!,
-        symbol: token.symbol.toUpperCase(),
-        name: token.name,
-        marketCap: token.market_cap || 0,
-        fdv: token.fully_diluted_valuation || token.market_cap || 0,
-        volume24h: token.total_volume || 0,
-        priceUsd: token.current_price || 0,
-        priceChange24h: token.price_change_percentage_24h || 0,
-        age: this.calculateTokenAge(token.ath_date),
-        lastUpdated: token.last_updated
-      }));
+    log(`Received ${data.length} tokens from CoinGecko page ${page}`);
+    
+    // Фильтруем только Solana токены
+    const solanaTokens = data.filter(token => token.platforms?.solana);
+    log(`Found ${solanaTokens.length} Solana tokens on page ${page}`);
+    
+    return solanaTokens.map(token => ({
+      mint: token.platforms.solana!,
+      symbol: token.symbol.toUpperCase(),
+      name: token.name,
+      marketCap: token.market_cap || 0,
+      fdv: token.fully_diluted_valuation || token.market_cap || 0,
+      volume24h: token.total_volume || 0,
+      priceUsd: token.current_price || 0,
+      priceChange24h: token.price_change_percentage_24h || 0,
+      age: this.calculateTokenAge(token.ath_date),
+      lastUpdated: token.last_updated
+    }));
   }
 
   /**

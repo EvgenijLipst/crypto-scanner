@@ -204,17 +204,12 @@ async function initialize() {
     
     // Тестирование Jupiter API
     log('🧪 Testing Jupiter API...');
-    try {
-      const testQuote = await jupiter.getQuote(
-        'So11111111111111111111111111111111111111112', // SOL
-        'EPjFWdd5AufqSSqeM2qA9G4KJ9b9wiG9vG7bG6wGw7bS', // USDC
-        100000000 // 0.1 SOL (меньшая сумма для теста)
-      );
-      log(`✅ Jupiter API working - got quote: ${testQuote ? 'success' : 'failed'}`);
-    } catch (error) {
-      log(`⚠️ Jupiter API test failed: ${error}`, 'WARN');
-      log('Jupiter API will be tested during actual token analysis');
-    }
+    const testQuote = await jupiter.getQuote(
+      'So11111111111111111111111111111111111111112', // SOL
+      'EPjFWdd5AufqSSqeM2qA9G4KJ9b9wiG9vG7bG6wGw7bS', // USDC
+      1000000000 // 1 SOL
+    );
+    log(`✅ Jupiter API working - got quote: ${testQuote ? 'success' : 'failed'}`);
     
     // Отправляем уведомление о запуске
     await tg.sendMessage('🚀 Solana Signal Bot started!\n\n📊 Analysis Mode: CoinGecko Top 2000\n⚙️ Monitoring for buy signals...');

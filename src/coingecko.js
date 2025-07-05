@@ -51,17 +51,28 @@ class CoinGeckoAPI {
      */
     async fetchSolanaTokensByCategory(limit) {
         try {
-            const tokens = [];
-            const perPage = 250;
-            const pages = Math.ceil(limit / perPage);
-            for (let page = 1; page <= pages; page++) {
-                const pageTokens = await this.fetchTokensPage(page, perPage);
-                tokens.push(...pageTokens);
-                if (tokens.length >= limit)
-                    break;
-                await new Promise(resolve => setTimeout(resolve, 1000));
+            (0, utils_1.log)('Fetching top tokens from general market and filtering for Solana...');
+            const allTokens = [];
+            const perPage = 250; // Maximum per request
+            const totalPages = 8; // 8 pages × 250 = 2000 tokens
+            for (let page = 1; page <= totalPages; page++) {
+                try {
+                    (0, utils_1.log)(`Fetching page ${page}/${totalPages} (${perPage} tokens per page)...`);
+                    const pageTokens = await this.fetchTokensPage(page, perPage);
+                    allTokens.push(...pageTokens);
+                    (0, utils_1.log)(`Page ${page}: Found ${pageTokens.length} Solana tokens (total: ${allTokens.length})`);
+                    // Rate limiting - wait 1 second between requests
+                    if (page < totalPages) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                }
+                catch (error) {
+                    (0, utils_1.log)(`Error fetching page ${page}: ${error}`, 'ERROR');
+                    // Continue with other pages even if one fails
+                }
             }
-            return tokens.slice(0, limit);
+            (0, utils_1.log)(`Total Solana tokens found across all pages: ${allTokens.length}`);
+            return allTokens.slice(0, limit);
         }
         catch (error) {
             (0, utils_1.log)(`Category method error: ${error}`, 'ERROR');
@@ -145,9 +156,11 @@ class CoinGeckoAPI {
             throw new Error(`CoinGecko API error: ${response.status} ${response.statusText} - ${errorText}`);
         }
         const data = await response.json();
-        return data
-            .filter(token => token.platforms?.solana) // Only tokens with Solana mint
-            .map(token => ({
+        (0, utils_1.log)(`Received ${data.length} tokens from CoinGecko page ${page}`);
+        // Фильтруем только Solana токены
+        const solanaTokens = data.filter(token => token.platforms?.solana);
+        (0, utils_1.log)(`Found ${solanaTokens.length} Solana tokens on page ${page}`);
+        return solanaTokens.map(token => ({
             mint: token.platforms.solana,
             symbol: token.symbol.toUpperCase(),
             name: token.name,
