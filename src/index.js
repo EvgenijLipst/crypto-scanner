@@ -243,6 +243,15 @@ async function start() {
                 (0, utils_1.log)(`Error in activity report: ${error}`, 'ERROR');
             }
         }, 6 * 60 * 60 * 1000);
+        // Планируем WebSocket отчеты (каждые 10 минут)
+        setInterval(async () => {
+            try {
+                await helius.sendWebSocketActivityReport();
+            }
+            catch (error) {
+                (0, utils_1.log)(`Error in WebSocket activity report: ${error}`, 'ERROR');
+            }
+        }, 10 * 60 * 1000);
         (0, utils_1.log)('🎯 Hybrid Signal Bot is running...');
     }
     catch (error) {
@@ -253,12 +262,46 @@ async function start() {
 // Обработка сигналов завершения
 process.on('SIGINT', async () => {
     (0, utils_1.log)('🛑 Shutting down Hybrid Signal Bot...');
+    // Отправляем уведомление об остановке
+    try {
+        await tg.sendMessage(`🛑 **Signal Bot Shutting Down**
+
+⚠️ **Manual shutdown detected (SIGINT)**
+🔄 **Status:** Gracefully stopping all services...
+
+📊 **Final Stats:**
+• Uptime: ${Math.floor(process.uptime() / 60)} minutes
+• Monitored Tokens: ${tokenAnalyzer.getMonitoredTokens().length}
+• API Usage: CoinGecko ${apiUsageStats.coingecko.dailyUsage}/333
+
+🔌 **Disconnecting services...**`);
+    }
+    catch (error) {
+        (0, utils_1.log)(`Error sending shutdown notification: ${error}`, 'ERROR');
+    }
     await helius.disconnect();
     await db.close();
     process.exit(0);
 });
 process.on('SIGTERM', async () => {
     (0, utils_1.log)('🛑 Shutting down Hybrid Signal Bot...');
+    // Отправляем уведомление об остановке
+    try {
+        await tg.sendMessage(`🛑 **Signal Bot Shutting Down**
+
+⚠️ **System shutdown detected (SIGTERM)**
+🔄 **Status:** Gracefully stopping all services...
+
+📊 **Final Stats:**
+• Uptime: ${Math.floor(process.uptime() / 60)} minutes
+• Monitored Tokens: ${tokenAnalyzer.getMonitoredTokens().length}
+• API Usage: CoinGecko ${apiUsageStats.coingecko.dailyUsage}/333
+
+🔌 **Disconnecting services...**`);
+    }
+    catch (error) {
+        (0, utils_1.log)(`Error sending shutdown notification: ${error}`, 'ERROR');
+    }
     await helius.disconnect();
     await db.close();
     process.exit(0);
