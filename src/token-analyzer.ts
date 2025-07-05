@@ -127,7 +127,9 @@ export class TokenAnalyzer {
       log(`CoinGecko refresh: ${filteredTokens.length} tokens after basic filters`);
 
       // Сохраняем все токены в coin_data таблицу
+      log(`🔄 Attempting to save ${tokens.length} tokens to coin_data table...`);
       await this.saveTokensToCoinData(tokens);
+      log(`✅ saveTokensToCoinData completed successfully`);
 
       // Кэшируем результат
       this.topTokensCache = filteredTokens;
@@ -183,6 +185,8 @@ export class TokenAnalyzer {
    */
   private async saveTokensToCoinData(tokens: SolanaToken[]): Promise<void> {
     try {
+      log(`🔄 Preparing ${tokens.length} tokens for database save...`);
+      
       const coinDataTokens = tokens.map(token => ({
         coinId: token.symbol.toLowerCase(),
         mint: token.mint,
@@ -195,10 +199,20 @@ export class TokenAnalyzer {
         fdv: token.fdv
       }));
 
+      log(`📋 Sample tokens to save:`);
+      coinDataTokens.slice(0, 3).forEach((token, i) => {
+        log(`${i + 1}. ${token.symbol} - mint: "${token.mint}" - price: $${token.price}`);
+      });
+
+      log(`🔄 Calling database.saveCoinDataBatch with ${coinDataTokens.length} tokens...`);
       await this.database.saveCoinDataBatch(coinDataTokens);
       log(`💾 Saved ${coinDataTokens.length} tokens to coin_data table`);
     } catch (error) {
-      log(`Error saving tokens to coin_data: ${error}`, 'ERROR');
+      log(`❌ Error saving tokens to coin_data: ${error}`, 'ERROR');
+      if (error instanceof Error) {
+        log(`❌ Error details: ${error.message}`);
+        log(`❌ Error stack: ${error.stack}`);
+      }
     }
   }
 

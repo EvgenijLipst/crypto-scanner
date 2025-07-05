@@ -65,7 +65,9 @@ class TokenAnalyzer {
             const filteredTokens = this.applyBasicFilters(tokens);
             (0, utils_1.log)(`CoinGecko refresh: ${filteredTokens.length} tokens after basic filters`);
             // Сохраняем все токены в coin_data таблицу
+            (0, utils_1.log)(`🔄 Attempting to save ${tokens.length} tokens to coin_data table...`);
             await this.saveTokensToCoinData(tokens);
+            (0, utils_1.log)(`✅ saveTokensToCoinData completed successfully`);
             // Кэшируем результат
             this.topTokensCache = filteredTokens;
             this.topTokensCacheTime = now;
@@ -115,6 +117,7 @@ class TokenAnalyzer {
      */
     async saveTokensToCoinData(tokens) {
         try {
+            (0, utils_1.log)(`🔄 Preparing ${tokens.length} tokens for database save...`);
             const coinDataTokens = tokens.map(token => ({
                 coinId: token.symbol.toLowerCase(),
                 mint: token.mint,
@@ -126,11 +129,20 @@ class TokenAnalyzer {
                 marketCap: token.marketCap,
                 fdv: token.fdv
             }));
+            (0, utils_1.log)(`📋 Sample tokens to save:`);
+            coinDataTokens.slice(0, 3).forEach((token, i) => {
+                (0, utils_1.log)(`${i + 1}. ${token.symbol} - mint: "${token.mint}" - price: $${token.price}`);
+            });
+            (0, utils_1.log)(`🔄 Calling database.saveCoinDataBatch with ${coinDataTokens.length} tokens...`);
             await this.database.saveCoinDataBatch(coinDataTokens);
             (0, utils_1.log)(`💾 Saved ${coinDataTokens.length} tokens to coin_data table`);
         }
         catch (error) {
-            (0, utils_1.log)(`Error saving tokens to coin_data: ${error}`, 'ERROR');
+            (0, utils_1.log)(`❌ Error saving tokens to coin_data: ${error}`, 'ERROR');
+            if (error instanceof Error) {
+                (0, utils_1.log)(`❌ Error details: ${error.message}`);
+                (0, utils_1.log)(`❌ Error stack: ${error.stack}`);
+            }
         }
     }
     /**
