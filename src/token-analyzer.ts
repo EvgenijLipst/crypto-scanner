@@ -188,6 +188,8 @@ export class TokenAnalyzer {
   private async saveTokensToCoinData(tokens: SolanaToken[]): Promise<void> {
     try {
       log(`🔄 Preparing ${tokens.length} tokens for database save...`);
+      log(`TOKENS TO SAVE COUNT: ${tokens.length}`);
+      log(`TOKENS TO SAVE SAMPLE: ${tokens.slice(0, 10).map(t => t.symbol + ':' + t.mint).join(', ')}`);
       
       const coinDataTokens = tokens.map(token => ({
         coinId: token.coinId, // Используем правильный coinId из CoinGecko API

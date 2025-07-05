@@ -273,24 +273,13 @@ export class Database {
       } catch (error) {
         await client.query('ROLLBACK');
         log(`Error in transaction: ${error}`, 'ERROR');
-        // Попробуем сохранить по одному для диагностики
-        log('Attempting individual saves for debugging...');
-        let savedCount = 0;
-        for (const token of tokens) {
-          try {
-            await this.saveCoinData(token.coinId, token.mint, token.symbol, token.name, token.network, token.price, token.volume, token.marketCap, token.fdv);
-            savedCount++;
-          } catch (individualError) {
-            log(`Failed to save token ${token.coinId}: ${individualError}`, 'ERROR');
-          }
-        }
-        log(`Successfully saved ${savedCount}/${tokens.length} tokens individually`);
+        throw error;
       } finally {
         client.release();
       }
     } catch (error) {
       log(`Error saving coin data batch: ${error}`, 'ERROR');
-      // Не бросаем ошибку, чтобы не сломать весь процесс
+      throw error;
     }
   }
 

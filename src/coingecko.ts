@@ -252,6 +252,7 @@ export class CoinGeckoAPI {
       log(`Getting market data for ${tokens.length} tokens...`);
       
       const results: SolanaToken[] = [];
+      const loadedSymbols: string[] = [];
       const batchSize = 50; // Увеличиваем батч для получения большего количества токенов
       
       for (let i = 0; i < tokens.length; i += batchSize) {
@@ -300,9 +301,8 @@ export class CoinGeckoAPI {
                 age: 0,
                 lastUpdated: data.last_updated_at ? new Date(data.last_updated_at * 1000).toISOString() : new Date().toISOString()
               };
-              
               results.push(solanaToken);
-              
+              loadedSymbols.push(`${solanaToken.symbol}:${solanaToken.mint}`);
               // Логируем каждый токен детально
               log(`📊 Token loaded: ${solanaToken.symbol} (${solanaToken.name})`);
               log(`   • Mint: ${solanaToken.mint}`);
@@ -313,18 +313,14 @@ export class CoinGeckoAPI {
               log(`⚠️ No price data for token: ${token.symbol} (${token.id})`);
             }
           }
-          
           log(`Batch completed: ${results.length} tokens with price data`);
-          
           // Пауза между батчами для rate limiting
           if (i + batchSize < tokens.length) {
             log(`Waiting 5 seconds before next batch...`);
             await new Promise(resolve => setTimeout(resolve, 5000));
           }
-          
         } catch (error) {
           log(`Error processing batch: ${error}`, 'ERROR');
-          
           // Если это rate limit - ждем и продолжаем, иначе прерываем
           if (error instanceof Error && error.message.includes('429')) {
             log(`Rate limit hit, waiting 60 seconds before continuing...`);
@@ -336,12 +332,11 @@ export class CoinGeckoAPI {
           }
         }
       }
-
       // Сортируем по market cap
       results.sort((a, b) => b.marketCap - a.marketCap);
-      
       log(`Successfully retrieved market data for ${results.length} Solana tokens`);
-      
+      log(`LOADED SYMBOLS COUNT: ${loadedSymbols.length}`);
+      log(`LOADED SYMBOLS SAMPLE: ${loadedSymbols.slice(0, 10).join(', ')}`);
       // Итоговая сводка всех токенов
       log(`\n📋 === FINAL TOKEN SUMMARY ===`);
       log(`Total tokens loaded: ${results.length}`);
@@ -351,14 +346,11 @@ export class CoinGeckoAPI {
           log(`${i + 1}. ${token.symbol} - $${token.priceUsd} - MC: $${token.marketCap.toLocaleString()}`);
           log(`   Mint: ${token.mint}`);
         });
-        
         log(`\nTokens with real mint addresses: ${results.filter(t => t.mint && t.mint.length > 20).length}`);
         log(`Tokens without mint: ${results.filter(t => !t.mint || t.mint.length < 20).length}`);
       }
       log(`=== END SUMMARY ===\n`);
-      
       return results;
-      
     } catch (error) {
       log(`Error getting market data: ${error}`, 'ERROR');
       return [];
