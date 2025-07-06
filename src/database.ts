@@ -624,6 +624,63 @@ export class Database {
   }
 
   /**
+   * Удалить OHLCV старше N дней
+   */
+  async cleanupOldOhlcv(days: number = 7): Promise<void> {
+    const cutoff = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
+    await this.pool.query('DELETE FROM ohlcv WHERE ts < $1', [cutoff]);
+    log(`🧹 Cleaned up OHLCV older than ${days} days`);
+  }
+
+  /**
+   * Создать таблицу для агрегированных свечей, если её нет
+   */
+  async ensureOhlcvAggTable(): Promise<void> {
+    await this.pool.query(`
+      CREATE TABLE IF NOT EXISTS ohlcv_agg (
+        mint TEXT,
+        ts   BIGINT,
+        o NUMERIC, h NUMERIC, l NUMERIC, c NUMERIC, v NUMERIC,
+        PRIMARY KEY (mint, ts)
+      );
+    `);
+    await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_ohlcv_agg_mint_ts ON ohlcv_agg (mint, ts DESC);`);
+    log('✅ ohlcv_agg table ensured');
+  }
+
+  /**
+   * Агрегировать 1m OHLCV в 1h OHLCV для старых данных
+   */
+  async aggregateOhlcvTo1h(beforeDays: number = 7): Promise<void> {
+    await this.ensureOhlcvAggTable();
+    const cutoff = Math.floor(Date.now() / 1000) - beforeDays * 24 * 60 * 60;
+    // Группируем по mint и часу
+    await this.pool.query(`
+      INSERT INTO ohlcv_agg (mint, ts, o, h, l, c, v)
+      SELECT
+        mint,
+        (FLOOR(ts / 3600) * 3600) AS hour_ts,
+        FIRST(o) AS o,
+        MAX(h) AS h,
+        MIN(l) AS l,
+        LAST(c) AS c,
+        SUM(v) AS v
+      FROM (
+        SELECT *,
+          FIRST_VALUE(o) OVER w AS o,
+          LAST_VALUE(c) OVER w AS c
+        FROM ohlcv
+        WHERE ts < $1
+        WINDOW w AS (PARTITION BY mint, FLOOR(ts / 3600) ORDER BY ts
+                     ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+      ) sub
+      GROUP BY mint, hour_ts
+      ON CONFLICT (mint, ts) DO NOTHING
+    `, [cutoff]);
+    log('🧩 Aggregated old 1m OHLCV into 1h candles');
+  }
+
+  /**
    * Закрыть соединения
    */
   async close(): Promise<void> {
