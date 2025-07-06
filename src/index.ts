@@ -15,6 +15,7 @@ import { log } from './utils';
 
 config();
 
+console.log('HELIUS_API_KEY:', process.env.HELIUS_API_KEY);
 console.log('✅ Environment variables loaded');
 
 // Проверяем обязательные переменные окружения
@@ -22,22 +23,16 @@ const requiredEnvVars = [
   'DATABASE_URL',
   'TELEGRAM_TOKEN', 
   'TELEGRAM_CHAT_ID',
-  'COINGECKO_API_KEY'
+  'COINGECKO_API_KEY',
+  'HELIUS_API_KEY'
 ];
-
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     console.error(`❌ Missing required environment variable: ${envVar}`);
     process.exit(1);
   }
 }
-
 console.log('✅ All required environment variables present');
-
-// Проверяем опциональные переменные
-if (!process.env.HELIUS_API_KEY) {
-  console.log('⚠️ HELIUS_API_KEY not provided - Helius WebSocket will be disabled');
-}
 
 // Инициализация компонентов
 console.log('🔄 Initializing components...');
@@ -46,18 +41,14 @@ const tg = new TelegramBot(process.env.TELEGRAM_TOKEN!, process.env.TELEGRAM_CHA
 const jupiter = new JupiterAPI();
 const coingecko = new CoinGeckoAPI(process.env.COINGECKO_API_KEY!);
 
-// Условная инициализация Helius
-let helius: HeliusWebSocket | null = null;
-if (process.env.HELIUS_API_KEY) {
-  helius = new HeliusWebSocket(process.env.HELIUS_API_KEY, db, tg);
-  console.log('✅ Helius WebSocket initialized');
-} else {
-  console.log('⚠️ Helius WebSocket disabled - no API key provided');
-}
+// monitoredTokens — потокобезопасный Set
+const monitoredTokens: Set<string> = new Set();
 
-console.log('✅ Components initialized');
+// HeliusWebSocket подключается сразу
+const helius = new HeliusWebSocket(process.env.HELIUS_API_KEY!, db, tg);
+console.log('✅ Helius WebSocket initialized');
 
-// Конфигурация анализа из переменных окружения
+// TokenAnalyzer и Diagnostics создаём после
 const analysisConfig: AnalysisConfig = {
   minTokenAgeDays: parseInt(process.env.MIN_TOKEN_AGE_DAYS || '14'),
   minLiquidityUsd: parseInt(process.env.MIN_LIQUIDITY_USD || '10000'),
@@ -67,17 +58,30 @@ const analysisConfig: AnalysisConfig = {
   maxPriceImpactPercent: parseFloat(process.env.MAX_PRICE_IMPACT_PERCENT || '3'),
   priceImpactTestAmount: parseFloat(process.env.PRICE_IMPACT_TEST_AMOUNT || '10')
 };
-
-console.log('✅ Analysis config loaded');
-
 const tokenAnalyzer = new TokenAnalyzer(coingecko, jupiter, db, analysisConfig);
-
 console.log('✅ TokenAnalyzer created');
 
-// Инициализируем систему диагностики
-let diagnostics: DiagnosticsSystem;
+// Diagnostics создаём после
+const diagnostics = new DiagnosticsSystem(db, tg);
+console.log('✅ Diagnostics system initialized');
 
-// Статистика использования API
+// Конфиг анализа (можно вынести в отдельный блок)
+// const analysisConfig: AnalysisConfig = {
+//   minTokenAgeDays: parseInt(process.env.MIN_TOKEN_AGE_DAYS || '14'),
+//   minLiquidityUsd: parseInt(process.env.MIN_LIQUIDITY_USD || '10000'),
+//   maxFdvUsd: parseInt(process.env.MAX_FDV_USD || '5000000'),
+//   minVolumeSpike: parseFloat(process.env.MIN_VOLUME_SPIKE || '3'),
+//   maxRsiOversold: parseInt(process.env.MAX_RSI_OVERSOLD || '35'),
+//   maxPriceImpactPercent: parseFloat(process.env.MAX_PRICE_IMPACT_PERCENT || '3'),
+//   priceImpactTestAmount: parseFloat(process.env.PRICE_IMPACT_TEST_AMOUNT || '10')
+// };
+
+// console.log('✅ Analysis config loaded');
+
+// const tokenAnalyzer = new TokenAnalyzer(coingecko, jupiter, db, analysisConfig);
+
+// console.log('✅ TokenAnalyzer created');
+
 let apiUsageStats = {
   coingecko: {
     dailyUsage: 0,
@@ -90,8 +94,6 @@ let apiUsageStats = {
     lastReset: new Date().toDateString()
   }
 };
-
-console.log('✅ API stats initialized');
 
 /**
  * Обновление списка токенов каждые 48 часов (сначала база, потом CoinGecko)
@@ -143,6 +145,7 @@ async function tokenRefresh() {
  * Обработка сигналов от Helius WebSocket
  */
 async function handleHeliusSignal(mint: string, swapData: any) {
+  if (!monitoredTokens.has(mint)) return; // фильтр
   try {
     // Анализируем активность токена
     const result = await tokenAnalyzer.analyzeTokenActivity(mint, swapData);
@@ -172,28 +175,9 @@ async function handleHeliusSignal(mint: string, swapData: any) {
  */
 async function sendSignalNotification(signal: any) {
   try {
-    const message = `🚀 **BUY SIGNAL DETECTED** 🚀
-
-💎 **${signal.symbol}** (${signal.name})
-📍 Mint: \`${signal.mint}\`
-
-📊 **Analysis Results:**
-• Volume Spike: ${signal.data.volumeSpike?.toFixed(2)}x
-• RSI: ${signal.data.rsi?.toFixed(2)}
-• EMA Signal: ${signal.data.emaSignal ? '✅' : '❌'}
-• Price Impact: ${signal.data.priceImpact?.toFixed(2)}%
-• Liquidity: $${signal.data.liquidity?.toLocaleString()}
-
-💰 **Market Data:**
-• Price: $${signal.data.priceUsd?.toFixed(6)}
-• Market Cap: $${signal.data.marketCap?.toLocaleString()}
-• FDV: $${signal.data.fdv?.toLocaleString()}
-• Volume 24h: $${signal.data.volume24h?.toLocaleString()}
-
-⚡ **All criteria met - Ready to trade!**`;
-
+    const d = signal.data;
+    const message = `🚀 **BUY SIGNAL DETECTED** 🚀\n\n💎 **${signal.symbol}** (${signal.name})\n📍 Mint: \`${signal.mint}\`\n\n📊 **Analysis Results:**\n• Volume Spike: ${d.volumeSpike?.toFixed(2)}x\n• RSI: ${d.rsi?.toFixed(2)}\n• EMA Bull: ${d.emaBull ? '✅' : '❌'}\n• ATR: ${d.atr?.toFixed(4)}\n• NetFlow: ${d.netFlow?.toFixed(2)}\n• Unique Buyers (5m): ${d.uniqueBuyers}\n• Liquidity Boost: ${d.liquidityBoost ? 'Yes' : 'No'}\n• Avg Vol 60m: $${d.avgVol60m?.toFixed(0)}\n• Vol 5m: $${d.vol5m?.toFixed(0)}\n\n⚡ **All criteria met - Ready to trade!**`;
     await tg.sendMessage(message);
-    
   } catch (error) {
     log(`Error sending signal notification: ${error}`, 'ERROR');
   }
@@ -256,7 +240,7 @@ async function initialize() {
     log('✅ Database initialized');
     
     // Инициализация диагностики
-    diagnostics = new DiagnosticsSystem(db, tg);
+    // diagnostics = new DiagnosticsSystem(db, tg); // This line is removed as per new_code
     log('✅ Diagnostics system initialized');
     
     // Тестирование CoinGecko API
@@ -298,24 +282,23 @@ async function initialize() {
     }
     
     // Настройка и запуск Helius WebSocket (если доступен)
-    let heliusStatus = '❌ Disabled';
-    if (helius) {
-      helius.onSwap = handleHeliusSignal;
-      
-      try {
-        await helius.connect();
-        heliusStatus = '✅ Connected';
-        log('✅ Helius WebSocket connected');
-      } catch (error) {
-        log(`❌ Helius WebSocket failed: ${error}`, 'ERROR');
-        heliusStatus = `❌ Error: ${error}`;
-      }
-    } else {
-      log('⚠️ Helius WebSocket disabled - no API key provided');
-    }
+    // if (process.env.HELIUS_API_KEY) { // This block is removed as per new_code
+    //   helius = new HeliusWebSocket(process.env.HELIUS_API_KEY, db, tg);
+    //   console.log('✅ Helius WebSocket initialized');
+    //   helius.onSwap = async (mint: string, swapData: any) => {
+    //     if (tokenAnalyzer.shouldMonitorToken(mint)) {
+    //       await handleHeliusSignal(mint, swapData);
+    //     } else {
+    //       log(`Swap for mint ${mint} ignored (not in top-2000)`);
+    //     }
+    //   };
+    //   helius.connect().then(() => log('✅ Helius WebSocket connected')).catch(e => log('❌ Helius connect error: ' + e, 'ERROR'));
+    // } else {
+    //   console.log('⚠️ Helius WebSocket disabled - no API key provided');
+    // }
     
     // Отправляем детальное уведомление о статусе запуска
-    const systemStatus = (tokensLoaded > 0 && coingeckoStatus.includes('✅') && heliusStatus.includes('✅')) ? '🟢 OPERATIONAL' : '🟡 PARTIAL';
+    const systemStatus = (tokensLoaded > 0 && coingeckoStatus.includes('✅') && (helius ? '✅ Connected' : '❌ Disabled')) ? '🟢 OPERATIONAL' : '🟡 PARTIAL';
     
     await tg.sendMessage(`🚀 **Hybrid Solana Signal Bot Started!**
 
@@ -325,7 +308,7 @@ async function initialize() {
 • Database: ✅ Connected
 • CoinGecko API: ${coingeckoStatus}
 • Jupiter API: ${jupiterStatus}
-• Helius WebSocket: ${heliusStatus}
+• Helius WebSocket: ${helius ? '✅ Connected' : '❌ Disabled'}
 • Token Loading: ${tokenStatus}
 
 📈 **Configuration:**
@@ -430,7 +413,7 @@ process.on('SIGINT', async () => {
 
 📊 **Final Stats:**
 • Uptime: ${Math.floor(process.uptime() / 60)} minutes
-• Monitored Tokens: ${tokenAnalyzer.getMonitoredTokens().length}
+• Monitored Tokens: ${monitoredTokens.size}
 • API Usage: CoinGecko ${apiUsageStats.coingecko.dailyUsage}/333
 
 🔌 **Disconnecting services...**`);
@@ -457,7 +440,7 @@ process.on('SIGTERM', async () => {
 
 📊 **Final Stats:**
 • Uptime: ${Math.floor(process.uptime() / 60)} minutes
-• Monitored Tokens: ${tokenAnalyzer.getMonitoredTokens().length}
+• Monitored Tokens: ${monitoredTokens.size}
 • API Usage: CoinGecko ${apiUsageStats.coingecko.dailyUsage}/333
 
 🔌 **Disconnecting services...**`);
