@@ -150,6 +150,16 @@ export class HeliusWebSocket {
       this.stats.messagesReceived++;
       this.stats.lastActivityTime = Date.now();
       log(`[WS RAW MESSAGE] ${message}`); // Логируем всё, что приходит
+      // Новое: логируем структуру JSON
+      try {
+        const parsed = JSON.parse(message);
+        log(`[WS RAW STRUCTURE] ${JSON.stringify(Object.keys(parsed))}`);
+        if (parsed.params && parsed.params.result && parsed.params.result.value && parsed.params.result.value.logs) {
+          log(`[WS RAW LOGS SAMPLE] ${JSON.stringify(parsed.params.result.value.logs.slice(0,3))}`);
+        }
+      } catch (e) {
+        log(`[WS RAW PARSE ERROR] ${e}`);
+      }
       const data = JSON.parse(message);
       
       if (data.method === 'logsNotification') {

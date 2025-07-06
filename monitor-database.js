@@ -15,9 +15,11 @@ class DatabaseMonitor {
 
     async connect() {
         try {
-            await this.client.connect();
-            this.isConnected = true;
-            console.log('✅ Подключен к базе данных');
+            if (!this.isConnected) {
+                await this.client.connect();
+                this.isConnected = true;
+                console.log('✅ Подключен к базе данных');
+            }
         } catch (error) {
             console.error('❌ Ошибка подключения:', error.message);
             throw error;
@@ -129,6 +131,13 @@ class DatabaseMonitor {
             // Переподключаемся если соединение закрыто
             if (!this.isConnected) {
                 try {
+                    // Создаем новый клиент для переподключения
+                    this.client = new Client({
+                        connectionString: DATABASE_URL,
+                        ssl: {
+                            rejectUnauthorized: false
+                        }
+                    });
                     await this.connect();
                 } catch (error) {
                     console.error('❌ Ошибка переподключения:', error.message);
