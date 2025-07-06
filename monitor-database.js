@@ -96,6 +96,12 @@ class DatabaseMonitor {
 
     async showStats() {
         try {
+            // Проверяем соединение перед запросами
+            if (!this.client || !this.isConnected) {
+                console.log('❌ Нет подключения к базе данных');
+                return;
+            }
+
             const poolsCount = await this.getPoolsCount();
             const ohlcvCount = await this.getOHLCVCount();
             const coinDataCount = await this.getCoinDataCount();
@@ -128,6 +134,7 @@ class DatabaseMonitor {
             console.error('❌ Ошибка при получении статистики:', error.message);
             // Помечаем соединение как закрытое при ошибке
             this.isConnected = false;
+            this.client = null;
         }
     }
 
