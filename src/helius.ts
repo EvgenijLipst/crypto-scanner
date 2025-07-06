@@ -152,7 +152,7 @@ export class HeliusWebSocket {
     try {
       this.stats.messagesReceived++;
       this.stats.lastActivityTime = Date.now();
-      
+      log(`[WS RAW MESSAGE] ${message}`); // Логируем всё, что приходит
       const data = JSON.parse(message);
       
       if (data.method === 'logsNotification') {
@@ -210,6 +210,7 @@ export class HeliusWebSocket {
   private async handleSwap(signature: string, logs: string[]): Promise<void> {
     try {
       const tx = await this.fetchTransaction(signature);
+      log(`[WS SWAP TX] ${JSON.stringify(tx)}`); // Логируем всю транзакцию свапа
       if (!tx) return;
       // Найти mint и объём свапа (пример: первый не-USDC/SOL mint)
       const usdcMint = 'EPjFWdd5AufqSSqeM2qA9G4KJ9b9wiG9vG7bG6wGw7bS';
