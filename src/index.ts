@@ -489,6 +489,17 @@ async function start() {
     const ohlcvIntervalMinutes = parseInt(process.env.OHLCV_FILL_INTERVAL_MINUTES || '1');
     ohlcvFiller.start(ohlcvIntervalMinutes);
     log(`📊 OHLCV Filler started with ${ohlcvIntervalMinutes} minute interval`);
+
+    // Автоматическая агрегация и очистка OHLCV (раз в сутки)
+    setInterval(async () => {
+      try {
+        await db.aggregateOhlcvTo1h(7); // агрегировать 1m в 1h для данных старше 7 дней
+        await db.cleanupOldOhlcv(30);   // удалить 1m свечи старше 30 дней
+        log('✅ OHLCV aggregation and cleanup complete!');
+      } catch (e) {
+        log('❌ Error in OHLCV aggregation/cleanup: ' + e, 'ERROR');
+      }
+    }, 24 * 60 * 60 * 1000); // раз в сутки
     
     log('🎯 Smart Signal Bot is running...');
     
