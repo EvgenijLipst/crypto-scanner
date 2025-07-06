@@ -248,3 +248,33 @@
 • Token loading: Preparing...
 
 📡 **Status:** Initializing services...
+[2025-07-06T23:29:39.880Z] [SENT] 🚀 **Simple Signal Bot Started!**
+
+📊 **Configuration:**
+• Monitoring: Top 2000 CoinGecko tokens
+• Analysis interval: 5 minutes
+• Batch size: 20 tokens
+• Token refresh: 12 hours
+
+🎯 **Signal Criteria:**
+• Volume spike: ≥2x
+• RSI: <45
+• Min liquidity: $5K
+• Need 2+ criteria met
+
+⏰ Started at: 7/7/2025, 1:29:39 AM
+[2025-07-06T23:29:47.859Z] [SENT] 🚀 **Simple Signal Bot Started!**
+
+📊 **Configuration:**
+• Monitoring: Top 2000 CoinGecko tokens
+• Analysis interval: 5 minutes
+• Batch size: 20 tokens
+• Token refresh: 12 hours
+
+🎯 **Signal Criteria:**
+• Volume spike: ≥2x
+• RSI: <45
+• Min liquidity: $5K
+• Need 2+ criteria met
+
+⏰ Started at: 7/7/2025, 1:29:47 AM

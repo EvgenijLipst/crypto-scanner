@@ -416,16 +416,32 @@ class TokenAnalyzer {
         const poolAgeOk = true; // TODO: добавить проверку возраста пула (first_seen_ts)
         const hasUsdcOrSol = true; // TODO: добавить проверку по tokenTransfers
         const avgVolOk = avgVol60m >= 2000;
-        // 10. Сигнальная логика
+        // 10. Сигнальная логика - СМЯГЧЕННЫЕ КРИТЕРИИ
         let isSignal = false;
         let reasons = [];
-        if (poolAgeOk && hasUsdcOrSol && avgVolOk &&
-            volumeSpike >= 3 && netFlow >= 2 && uniqueBuyers >= 5 &&
-            emaBull && rsi < 35 && (liquidityBoost || avgVol60m > 10000)) {
-            if (now - rolling.lastSignalTs > 30 * 60) {
+        
+        // Основные критерии (любой из них может сработать)
+        const volumeOk = volumeSpike >= 2; // снижено с 3 до 2
+        const rsiOk = rsi < 45; // увеличено с 35 до 45
+        const emaOk = emaBull;
+        const flowOk = netFlow >= 1.5; // снижено с 2 до 1.5
+        const buyersOk = uniqueBuyers >= 3; // снижено с 5 до 3
+        const volOk = avgVol60m >= 1000; // снижено с 2000 до 1000
+        
+        // Хотя бы 2 из 6 критериев должны выполняться
+        const criteriaMet = [volumeOk, rsiOk, emaOk, flowOk, buyersOk, volOk].filter(Boolean).length;
+        
+        if (criteriaMet >= 2 && poolAgeOk && hasUsdcOrSol) {
+            if (now - rolling.lastSignalTs > 15 * 60) { // снижено с 30 до 15 минут
                 isSignal = true;
                 rolling.lastSignalTs = now;
-                reasons.push('All criteria met - BUY SIGNAL');
+                reasons.push(`Signal criteria met: ${criteriaMet}/6 conditions`);
+                if (volumeOk) reasons.push(`Volume spike: ${volumeSpike.toFixed(2)}x`);
+                if (rsiOk) reasons.push(`RSI favorable: ${rsi.toFixed(1)}`);
+                if (emaOk) reasons.push('EMA bullish');
+                if (flowOk) reasons.push(`Net flow: ${netFlow.toFixed(2)}`);
+                if (buyersOk) reasons.push(`Unique buyers: ${uniqueBuyers}`);
+                if (volOk) reasons.push(`Volume: $${avgVol60m.toFixed(0)}`);
             }
         }
         if (rsi > 70 || netFlow < 1) {

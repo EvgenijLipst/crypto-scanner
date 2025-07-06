@@ -49,11 +49,11 @@ export interface TechnicalIndicators {
   bullishCross: boolean;
 }
 
-// Константы для фильтрации
-export const MIN_TOKEN_AGE_DAYS = 14;
-export const MIN_LIQUIDITY_USD = 10_000;
-export const MAX_FDV_USD = 5_000_000;
-export const MIN_VOLUME_SPIKE = 3;
-export const MAX_RSI_OVERSOLD = 35;
-export const MAX_PRICE_IMPACT_PERCENT = 3;
-export const MIN_HISTORY_CANDLES = 40; 
+// Константы для фильтрации - СМЯГЧЕННЫЕ КРИТЕРИИ
+export const MIN_TOKEN_AGE_DAYS = 7; // снижено с 14 до 7
+export const MIN_LIQUIDITY_USD = 5_000; // снижено с 10_000 до 5_000
+export const MAX_FDV_USD = 10_000_000; // увеличено с 5_000_000 до 10_000_000
+export const MIN_VOLUME_SPIKE = 2; // снижено с 3 до 2
+export const MAX_RSI_OVERSOLD = 45; // увеличено с 35 до 45
+export const MAX_PRICE_IMPACT_PERCENT = 5; // увеличено с 3 до 5
+export const MIN_HISTORY_CANDLES = 30; // снижено с 40 до 30 
