@@ -4,32 +4,42 @@ const DATABASE_URL = 'postgresql://postgres:dTtyTrvuMamPWfoukDRNAlUAvghvlODD@mai
 
 class DatabaseMonitor {
     constructor() {
-        this.client = new Client({
-            connectionString: DATABASE_URL,
-            ssl: {
-                rejectUnauthorized: false
-            }
-        });
+        this.client = null;
         this.isConnected = false;
     }
 
     async connect() {
         try {
-            if (!this.isConnected) {
-                await this.client.connect();
-                this.isConnected = true;
-                console.log('✅ Подключен к базе данных');
+            if (this.client && this.isConnected) {
+                // Уже подключены, ничего не делаем
+                return;
             }
+            if (this.client && !this.isConnected) {
+                // Был старый клиент, но не подключён — закрываем на всякий случай
+                try { await this.client.end(); } catch (e) {}
+                this.client = null;
+            }
+            this.client = new Client({
+                connectionString: DATABASE_URL,
+                ssl: { rejectUnauthorized: false }
+            });
+            await this.client.connect();
+            this.isConnected = true;
+            console.log('✅ Подключен к базе данных');
         } catch (error) {
+            this.isConnected = false;
             console.error('❌ Ошибка подключения:', error.message);
             throw error;
         }
     }
 
     async disconnect() {
-        if (this.isConnected) {
-            await this.client.end();
+        if (this.client && this.isConnected) {
+            try {
+                await this.client.end();
+            } catch (e) {}
             this.isConnected = false;
+            this.client = null;
             console.log('🔌 Отключен от базы данных');
         }
     }
@@ -125,19 +135,12 @@ class DatabaseMonitor {
         console.log(`🚀 Запуск мониторинга (обновление каждые ${intervalSeconds} секунд)`);
         console.log('Нажмите Ctrl+C для остановки\n');
 
+        await this.connect();
         await this.showStats();
 
         const interval = setInterval(async () => {
-            // Переподключаемся если соединение закрыто
             if (!this.isConnected) {
                 try {
-                    // Создаем новый клиент для переподключения
-                    this.client = new Client({
-                        connectionString: DATABASE_URL,
-                        ssl: {
-                            rejectUnauthorized: false
-                        }
-                    });
                     await this.connect();
                 } catch (error) {
                     console.error('❌ Ошибка переподключения:', error.message);
