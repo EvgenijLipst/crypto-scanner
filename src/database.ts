@@ -461,6 +461,78 @@ export class Database {
   }
 
   /**
+   * Получить последнюю известную цену токена
+   */
+  async getLastKnownPrice(mint: string): Promise<number | null> {
+    try {
+      const res = await this.pool.query(`
+        SELECT c FROM ohlcv 
+        WHERE mint = $1 
+        ORDER BY ts DESC 
+        LIMIT 1
+      `, [mint]);
+      
+      return res.rows.length > 0 ? res.rows[0].c : null;
+    } catch (error) {
+      log(`Error getting last known price for ${mint}: ${error}`, 'ERROR');
+      return null;
+    }
+  }
+
+  /**
+   * Проверить, есть ли свеча за указанный период
+   */
+  async hasCandleForPeriod(mint: string, timestamp: number): Promise<boolean> {
+    try {
+      const res = await this.pool.query(`
+        SELECT 1 FROM ohlcv 
+        WHERE mint = $1 AND ts = $2
+      `, [mint, timestamp]);
+      
+      return res.rows.length > 0;
+    } catch (error) {
+      log(`Error checking candle for period ${mint}: ${error}`, 'ERROR');
+      return false;
+    }
+  }
+
+  /**
+   * Создать пустую свечу (когда нет торговой активности)
+   */
+  async createEmptyCandle(mint: string, price: number, timestamp: number): Promise<void> {
+    try {
+      await this.pool.query(`
+        INSERT INTO ohlcv (mint, ts, o, h, l, c, v)
+        VALUES ($1, $2, $3, $3, $3, $3, 0)
+        ON CONFLICT (mint, ts) DO NOTHING
+      `, [mint, timestamp, price]);
+      
+      log(`📊 Created empty candle for ${mint} at ${timestamp} with price ${price}`);
+    } catch (error) {
+      log(`Error creating empty candle for ${mint}: ${error}`, 'ERROR');
+    }
+  }
+
+  /**
+   * Получить все токены из coin_data
+   */
+  async getAllTokensFromCoinData(network: string = 'Solana'): Promise<Array<{mint: string, symbol: string, coin_id: string}>> {
+    try {
+      const res = await this.pool.query(`
+        SELECT mint, symbol, coin_id 
+        FROM coin_data 
+        WHERE network = $1
+        ORDER BY timestamp DESC
+      `, [network]);
+      
+      return res.rows;
+    } catch (error) {
+      log(`Error getting tokens from coin_data: ${error}`, 'ERROR');
+      return [];
+    }
+  }
+
+  /**
    * Создать сигнал
    */
   async createSignal(

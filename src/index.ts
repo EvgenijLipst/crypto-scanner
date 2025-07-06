@@ -11,6 +11,7 @@ import { CoinGeckoAPI } from './coingecko';
 import { TokenAnalyzer, AnalysisConfig } from './token-analyzer';
 import { HeliusWebSocket } from './helius';
 import { DiagnosticsSystem } from './diagnostics';
+import { OHLCVFiller } from './fill-empty-ohlcv';
 import { log } from './utils';
 
 config();
@@ -63,6 +64,10 @@ console.log('✅ TokenAnalyzer created');
 // Diagnostics создаём после
 const diagnostics = new DiagnosticsSystem(db, tg);
 console.log('✅ Diagnostics system initialized');
+
+// OHLCV Filler для заполнения пустых свечей
+const ohlcvFiller = new OHLCVFiller(db, process.env.COINGECKO_API_KEY);
+console.log('✅ OHLCV Filler initialized');
 
 // Конфиг анализа (можно вынести в отдельный блок)
 // const analysisConfig: AnalysisConfig = {
@@ -480,6 +485,11 @@ async function start() {
       }, 10 * 60 * 1000);
     }
     
+    // Запускаем OHLCV Filler для заполнения пустых свечей
+    const ohlcvIntervalMinutes = parseInt(process.env.OHLCV_FILL_INTERVAL_MINUTES || '1');
+    ohlcvFiller.start(ohlcvIntervalMinutes);
+    log(`📊 OHLCV Filler started with ${ohlcvIntervalMinutes} minute interval`);
+    
     log('🎯 Smart Signal Bot is running...');
     
   } catch (error) {
@@ -513,6 +523,7 @@ process.on('SIGINT', async () => {
   if (helius) {
     await helius.disconnect();
   }
+  ohlcvFiller.stop();
   await db.close();
   process.exit(0);
 });
@@ -541,6 +552,7 @@ process.on('SIGTERM', async () => {
   if (helius) {
     await helius.disconnect();
   }
+  ohlcvFiller.stop();
   await db.close();
   process.exit(0);
 });
