@@ -130,20 +130,19 @@ export class HeliusWebSocket {
   private subscribeToLogs(): void {
     if (!this.ws) return;
 
+    // ВРЕМЕННО: подписка на все логи для диагностики событий создания пулов
     const subscription = {
       jsonrpc: '2.0',
       id: 1,
       method: 'logsSubscribe',
       params: [
-        {}, // подписка на все логи для диагностики
-        {
-          commitment: 'confirmed'
-        }
+        {}, // подписка на все логи
+        { commitment: 'confirmed' }
       ]
     };
 
     this.ws.send(JSON.stringify(subscription));
-    log('📡 Subscribed to ALL transaction logs (diagnostic mode)');
+    log('📡 [DIAG] Subscribed to ALL transaction logs (diagnostic mode)');
   }
 
   private handleMessage(message: string): void {
@@ -173,13 +172,17 @@ export class HeliusWebSocket {
       let isSwap = false;
       let isInit = false;
       for (const logLine of logs) {
-        if (logLine.includes('InitializePool') || logLine.includes('initialize')) isInit = true;
+        if (logLine.includes('InitializePool') || logLine.includes('initialize')) {
+          isInit = true;
+          log(`[WS POOL INIT LOG] Found pool init logLine: ${logLine} (signature: ${signature})`);
+        }
         if (logLine.toLowerCase().includes('swap')) isSwap = true;
       }
       
       log(`[WS LOG ANALYSIS] Signature: ${signature}, isInit: ${isInit}, isSwap: ${isSwap}`);
       
       if (isInit) {
+        log(`[WS POOL INIT] Calling handlePoolInit for signature: ${signature}`);
         await this.handlePoolInit(signature, logs);
         this.stats.poolEventsProcessed++;
       }
