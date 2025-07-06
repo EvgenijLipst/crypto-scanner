@@ -232,20 +232,17 @@ export class HeliusWebSocket {
         }
       }
       if (!targetMint || !priceUsd) return;
-      
       // Проверяем, нужно ли мониторить этот токен
       if (!this.shouldMonitorToken(targetMint)) {
         return; // Пропускаем токены не в мониторинге
       }
-      
       // Проверить возраст пула
       const pool = await this.database.getPool(targetMint);
       if (!pool || !passesAge(pool)) return;
-      // Записать OHLCV
+      // === Всегда обновляем OHLCV для monitoredTokens ===
       const ts = tx.timestamp || Math.floor(Date.now()/1000);
       await this.database.ingestSwap(targetMint, priceUsd, amount * priceUsd, ts);
-      log(`💱 Swap: ${targetMint} $${priceUsd.toFixed(6)} x${amount}`);
-      
+      log(`💱 Swap: ${targetMint} $${priceUsd.toFixed(6)} x${amount} (OHLCV updated)`);
       // Вызываем callback для обработки свапа
       if (this.onSwap) {
         this.onSwap(targetMint, {
@@ -254,7 +251,6 @@ export class HeliusWebSocket {
           timestamp: ts
         });
       }
-      
     } catch (error) {
       log(`Error in handleSwap: ${error}`, 'ERROR');
       this.stats.errorsEncountered++;

@@ -551,9 +551,14 @@ export class TokenAnalyzer {
     let isSignal = false;
     let reasons: string[] = [];
     if (
-      poolAgeOk && hasUsdcOrSol && avgVolOk &&
-      volumeSpike >= 3 && netFlow >= 2 && uniqueBuyers >= 5 &&
-      emaBull && rsi < 35 && (liquidityBoost || avgVol60m > 10000)
+      volumeSpike >= this.config.minVolumeSpike ||
+      uniqueBuyers >= this.config.minLiquidityUsd ||
+      netFlow > 0 ||
+      rsi <= this.config.maxRsiOversold ||
+      emaBull ||
+      liquidityBoost ||
+      avgVol60m >= this.config.minLiquidityUsd ||
+      vol5m >= this.config.minLiquidityUsd / 10
     ) {
       if (now - rolling.lastSignalTs > 30 * 60) {
         isSignal = true;
