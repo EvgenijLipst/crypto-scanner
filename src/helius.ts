@@ -62,9 +62,12 @@ export class HeliusWebSocket {
           }
         }, 30000); // каждые 30 секунд
       });
-
       this.ws.on('message', (data) => {
+        log(`[WS IN] ${data.toString()}`);
         this.handleMessage(data.toString());
+      });
+      this.ws.on('pong', () => {
+        log('[WS PONG] Received pong from Helius WebSocket');
       });
 
       this.ws.on('close', (code, reason) => {
