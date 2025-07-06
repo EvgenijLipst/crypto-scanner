@@ -45,7 +45,7 @@ export class HeliusWebSocket {
         this.ws.close();
       }
 
-      this.ws = new WebSocket(`wss://atlas-mainnet.helius-rpc.com/?api-key=${this.apiKey}`);
+      this.ws = new WebSocket(`wss://mainnet.helius-rpc.com/?api-key=${this.apiKey}`);
       
       this.ws.on('open', () => {
         log('✅ Helius WebSocket connected');
