@@ -131,15 +131,22 @@ class Database {
                     await client.query(`
             CREATE TABLE signals (
               id  SERIAL PRIMARY KEY,
-              mint TEXT,
-              signal_ts BIGINT,
-              ema_cross BOOLEAN,
-              vol_spike NUMERIC,
-              rsi       NUMERIC,
-              notified  BOOLEAN DEFAULT FALSE
+              mint TEXT NOT NULL,
+              symbol TEXT,
+              signal_ts BIGINT NOT NULL,
+              signal_datetime TIMESTAMP DEFAULT NOW(),
+              ema_cross BOOLEAN DEFAULT FALSE,
+              vol_spike NUMERIC DEFAULT 0,
+              rsi NUMERIC DEFAULT 0,
+              price_change NUMERIC DEFAULT 0,
+              volume_24h NUMERIC DEFAULT 0,
+              market_cap NUMERIC DEFAULT 0,
+              reasons TEXT,
+              notified BOOLEAN DEFAULT FALSE,
+              created_at TIMESTAMP DEFAULT NOW()
             );
           `);
-                    (0, utils_1.log)('Successfully recreated signals table with mint field');
+                    (0, utils_1.log)('Successfully recreated signals table with proper datetime fields');
                     // Создаем индексы
                     (0, utils_1.log)('Creating indexes...');
                     await client.query(`CREATE INDEX IF NOT EXISTS idx_pools_first_seen ON pools (first_seen_ts);`);
@@ -426,22 +433,26 @@ class Database {
     /**
      * Создать сигнал
      */
-    async createSignal(mint, emaCross, volSpike, rsi) {
+    async createSignal(mint, symbol, emaCross, volSpike, rsi, priceChange, volume24h, marketCap, reasons) {
         try {
-            (0, utils_1.log)(`🔍 Creating signal for mint: ${mint}`);
+            (0, utils_1.log)(`🔍 Creating signal for ${symbol} (${mint})`);
             const currentTimestamp = Math.floor(Date.now() / 1000);
             const sql = `
-        INSERT INTO signals(mint, signal_ts, ema_cross, vol_spike, rsi, notified)
-        VALUES($1, $2, $3, $4, $5, false)
+        INSERT INTO signals(
+          mint, symbol, signal_ts, signal_datetime, ema_cross, vol_spike, rsi, 
+          price_change, volume_24h, market_cap, reasons, notified, created_at
+        )
+        VALUES($1, $2, $3, NOW(), $4, $5, $6, $7, $8, $9, $10, false, NOW())
       `;
-            (0, utils_1.log)(`📋 SQL: ${sql}`);
-            (0, utils_1.log)(`📋 Params: [${mint}, ${currentTimestamp}, ${emaCross}, ${volSpike}, ${rsi}]`);
-            await this.pool.query(sql, [mint, currentTimestamp, emaCross, volSpike, rsi]);
-            (0, utils_1.log)(`✅ Successfully created signal for ${mint}`);
+            (0, utils_1.log)(`📋 Creating signal: ${symbol} - ${reasons}`);
+            await this.pool.query(sql, [
+                mint, symbol, currentTimestamp, emaCross, volSpike, rsi,
+                priceChange, volume24h, marketCap, reasons
+            ]);
+            (0, utils_1.log)(`✅ Successfully created signal for ${symbol}`);
         }
         catch (error) {
             (0, utils_1.log)(`❌ Error in createSignal: ${error}`, 'ERROR');
-            (0, utils_1.log)(`❌ Error stack: ${error instanceof Error ? error.stack : 'No stack'}`, 'ERROR');
             throw error;
         }
     }
