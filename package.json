@@ -4,10 +4,10 @@
   "description": "Advanced Solana Signal Bot with Helius WebSocket",
   "main": "start-signal-bot.js",
   "scripts": {
-    "start": "node start-signal-bot.js",
-    "dev": "npx ts-node src/index.ts",
-    "build": "npx tsc",
-    "test": "npx tsc --noEmit"
+    "start": "node simple-signal-bot.js",
+    "signal-bot": "node simple-signal-bot.js",
+    "old-bot": "node src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.2",
