@@ -172,11 +172,20 @@ export class HeliusWebSocket {
       let isSwap = false;
       let isInit = false;
       for (const logLine of logs) {
+        const lower = logLine.toLowerCase();
+        if (
+          lower.includes('pool') ||
+          lower.includes('create') ||
+          lower.includes('init') ||
+          lower.includes('pair')
+        ) {
+          log(`[WS POOL DIAG] Possible pool logLine: ${logLine} (signature: ${signature})`);
+        }
         if (logLine.includes('InitializePool') || logLine.includes('initialize')) {
           isInit = true;
           log(`[WS POOL INIT LOG] Found pool init logLine: ${logLine} (signature: ${signature})`);
         }
-        if (logLine.toLowerCase().includes('swap')) isSwap = true;
+        if (lower.includes('swap')) isSwap = true;
       }
       
       log(`[WS LOG ANALYSIS] Signature: ${signature}, isInit: ${isInit}, isSwap: ${isSwap}`);
