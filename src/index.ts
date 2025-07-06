@@ -41,8 +41,7 @@ const tg = new TelegramBot(process.env.TELEGRAM_TOKEN!, process.env.TELEGRAM_CHA
 const jupiter = new JupiterAPI();
 const coingecko = new CoinGeckoAPI(process.env.COINGECKO_API_KEY!);
 
-// monitoredTokens — потокобезопасный Set
-const monitoredTokens: Set<string> = new Set();
+// monitoredTokens теперь управляется через TokenAnalyzer и Helius WebSocket
 
 // HeliusWebSocket подключается сразу
 const helius = new HeliusWebSocket(process.env.HELIUS_API_KEY!, db, tg);
@@ -96,12 +95,85 @@ let apiUsageStats = {
 };
 
 /**
+ * Проверка свежих токенов в базе данных и обновление списка мониторинга
+ */
+async function checkAndUpdateTokens(): Promise<number> {
+  try {
+    console.log('🔄 === SMART TOKEN CHECK STARTED ===');
+    log('🔄 Checking for fresh tokens in database (12h cycle)...');
+    
+    // Проверяем, есть ли ≥1500 свежих токенов (не старше 24 часов)
+    const hasFreshTokens = await db.hasFreshTokens('Solana', 1500, 24);
+    
+    if (hasFreshTokens) {
+      console.log('✅ Found ≥1500 fresh tokens in database, using them for monitoring');
+      log('✅ Using fresh tokens from database (skipping CoinGecko - API credits saved)');
+      
+      // Загружаем токены из базы данных
+      const freshTokens = await db.getFreshTokensFromCoinData('Solana', 24);
+      
+      // Преобразуем в формат SolanaToken
+      const tokens = freshTokens
+        .filter(row => row.mint && !row.mint.includes('placeholder'))
+        .map(row => ({
+          coinId: row.coin_id,
+          mint: row.mint,
+          symbol: row.symbol || row.coin_id.toUpperCase(),
+          name: row.name || row.coin_id,
+          marketCap: row.market_cap || (row.price * 1000000),
+          fdv: row.fdv || (row.price * 1000000),
+          volume24h: row.volume,
+          priceUsd: row.price,
+          priceChange24h: 0,
+          age: 15,
+          lastUpdated: row.timestamp
+        }));
+      
+      // Обновляем список мониторинга через TokenAnalyzer
+      
+      // Обновляем TokenAnalyzer
+      tokenAnalyzer.updateMonitoredTokensFromDatabase(tokens);
+      
+      // Обновляем Helius WebSocket
+      helius.updateMonitoredTokens(tokens.map(t => t.mint));
+      
+      console.log(`✅ Database tokens loaded: ${tokens.length} tokens ready for monitoring`);
+      log(`✅ Database tokens loaded: ${tokens.length} tokens ready for monitoring (API credits saved)`);
+      
+      return tokens.length;
+      
+    } else {
+      console.log('❌ Not enough fresh tokens in database, fetching from CoinGecko...');
+      log('❌ Not enough fresh tokens in database, fetching from CoinGecko (fallback mode)...');
+      
+      // Запускаем полное обновление токенов через CoinGecko
+      await tokenRefresh();
+      const monitoredCount = tokenAnalyzer.getMonitoredTokens().length;
+      
+      // Обновляем Helius WebSocket
+      helius.updateMonitoredTokens(tokenAnalyzer.getMonitoredTokens());
+      
+      console.log(`✅ CoinGecko refresh complete: ${monitoredCount} tokens ready for monitoring`);
+      log(`✅ CoinGecko refresh complete: ${monitoredCount} tokens ready for monitoring`);
+      
+      return monitoredCount;
+    }
+    
+  } catch (error) {
+    console.error(`❌ Error in token check: ${error}`);
+    log(`❌ Error in token check: ${error}`, 'ERROR');
+    await tg.sendErrorMessage(`Token Check Error: ${error}`);
+    return 0;
+  }
+}
+
+/**
  * Обновление списка токенов каждые 48 часов (сначала база, потом CoinGecko)
  */
 async function tokenRefresh() {
   try {
     console.log('🔄 === TOKEN REFRESH STARTED ===');
-    log('🔄 Token refresh starting (48h cycle)...');
+    log('🔄 Token refresh starting (CoinGecko fallback)...');
     
     // Сначала очищаем старые данные из coin_data (старше 72 часов)
     console.log('🔄 Cleaning up old coin data...');
@@ -128,11 +200,15 @@ async function tokenRefresh() {
     // Увеличиваем счетчик только если реально использовали CoinGecko
     // (TokenAnalyzer сам решает - база или CoinGecko)
     
+    // Обновляем Helius WebSocket
+    helius.updateMonitoredTokens(tokenAnalyzer.getMonitoredTokens());
+    
     log(`✅ Token refresh complete: ${tokens.length} tokens ready for monitoring`);
     console.log(`✅ Token refresh complete: ${tokens.length} tokens ready for monitoring`);
     
     // Отправляем отчет
-    await sendTokenRefreshReport(tokens.length);
+    const heliusCount = helius.getMonitoredTokensCount();
+    await sendTokenRefreshReport(tokens.length, heliusCount);
     
   } catch (error) {
     console.error(`❌ Error in token refresh: ${error}`);
@@ -145,7 +221,7 @@ async function tokenRefresh() {
  * Обработка сигналов от Helius WebSocket
  */
 async function handleHeliusSignal(mint: string, swapData: any) {
-  if (!monitoredTokens.has(mint)) return; // фильтр
+  if (!helius.shouldMonitorToken(mint)) return; // фильтр через Helius
   try {
     // Анализируем активность токена
     const result = await tokenAnalyzer.analyzeTokenActivity(mint, swapData);
@@ -184,15 +260,16 @@ async function sendSignalNotification(signal: any) {
 }
 
 /**
- * Отчет об обновлении токенов (каждые 48 часов)
+ * Отчет об обновлении токенов (каждые 12 часов)
  */
-async function sendTokenRefreshReport(tokensCount: number) {
+async function sendTokenRefreshReport(tokensCount: number, heliusTokensCount: number) {
   try {
-    const message = `📊 **Token Refresh Report (48h cycle)**
+    const message = `📊 **Token Status Report (12h cycle)**
 
 🔄 **System Status:**
 • Monitored Tokens: ${tokensCount}
-• Analysis Mode: Hybrid (CoinGecko + Helius)
+• Helius Monitoring: ${heliusTokensCount} tokens
+• Analysis Mode: Database-first + Helius
 • Status: Active 🟢
 
 📈 **API Usage:**
@@ -208,8 +285,8 @@ async function sendTokenRefreshReport(tokensCount: number) {
 • Max Price Impact: ${analysisConfig.maxPriceImpactPercent}%
 • Test Amount: $${analysisConfig.priceImpactTestAmount}
 
-🎯 **Next token refresh in ~48 hours**
-💡 **Optimization:** Top-2000 tokens updated every 48h (more stable, saves API credits)`;
+🎯 **Next token check in ~12 hours**
+💡 **Smart Loading:** Database-first approach saves CoinGecko API credits`;
 
     await tg.sendMessage(message);
     
@@ -223,15 +300,16 @@ async function sendTokenRefreshReport(tokensCount: number) {
  */
 async function initialize() {
   try {
-    log('🚀 Initializing Hybrid Solana Signal Bot...');
+    log('🚀 Initializing Smart Solana Signal Bot...');
     
     // Отправляем уведомление о начале инициализации
-    await tg.sendMessage(`🚀 **Signal Bot Starting...**
+    await tg.sendMessage(`🚀 **Smart Signal Bot Starting...**
 
 ⚙️ **Initialization in progress...**
 • Database connection: Connecting...
 • API testing: Starting...
 • Token loading: Preparing...
+• Smart loading: Database-first strategy...
 
 📡 **Status:** Initializing services...`);
     
@@ -273,34 +351,36 @@ async function initialize() {
     let tokensLoaded = 0;
     let tokenStatus = '❌ Failed';
     try {
-      await tokenRefresh();
+      await checkAndUpdateTokens(); // Используем новую функцию для загрузки
       tokensLoaded = tokenAnalyzer.getMonitoredTokens().length;
+      
+      // Обновляем Helius WebSocket с загруженными токенами
+      helius.updateMonitoredTokens(tokenAnalyzer.getMonitoredTokens());
+      
       tokenStatus = tokensLoaded > 0 ? `✅ ${tokensLoaded} tokens` : '⚠️ No tokens';
     } catch (error) {
       log(`❌ Token refresh failed: ${error}`, 'ERROR');
       tokenStatus = `❌ Error: ${error}`;
     }
     
-    // Настройка и запуск Helius WebSocket (если доступен)
-    // if (process.env.HELIUS_API_KEY) { // This block is removed as per new_code
-    //   helius = new HeliusWebSocket(process.env.HELIUS_API_KEY, db, tg);
-    //   console.log('✅ Helius WebSocket initialized');
-    //   helius.onSwap = async (mint: string, swapData: any) => {
-    //     if (tokenAnalyzer.shouldMonitorToken(mint)) {
-    //       await handleHeliusSignal(mint, swapData);
-    //     } else {
-    //       log(`Swap for mint ${mint} ignored (not in top-2000)`);
-    //     }
-    //   };
-    //   helius.connect().then(() => log('✅ Helius WebSocket connected')).catch(e => log('❌ Helius connect error: ' + e, 'ERROR'));
-    // } else {
-    //   console.log('⚠️ Helius WebSocket disabled - no API key provided');
-    // }
+    // Настройка и запуск Helius WebSocket
+    helius.onSwap = async (mint: string, swapData: any) => {
+      await handleHeliusSignal(mint, swapData);
+    };
+    
+    // Подключаемся к Helius WebSocket
+    try {
+      await helius.connect();
+      log('✅ Helius WebSocket connected');
+    } catch (error) {
+      log(`❌ Helius WebSocket connection failed: ${error}`, 'ERROR');
+    }
     
     // Отправляем детальное уведомление о статусе запуска
-    const systemStatus = (tokensLoaded > 0 && coingeckoStatus.includes('✅') && (helius ? '✅ Connected' : '❌ Disabled')) ? '🟢 OPERATIONAL' : '🟡 PARTIAL';
+    const heliusStatus = helius.isConnectedToHelius() ? '✅ Connected' : '❌ Disconnected';
+    const systemStatus = (tokensLoaded > 0 && coingeckoStatus.includes('✅') && helius.isConnectedToHelius()) ? '🟢 OPERATIONAL' : '🟡 PARTIAL';
     
-    await tg.sendMessage(`🚀 **Hybrid Solana Signal Bot Started!**
+    await tg.sendMessage(`🚀 **Smart Solana Signal Bot Started!**
 
 📊 **System Status:** ${systemStatus}
 
@@ -308,29 +388,30 @@ async function initialize() {
 • Database: ✅ Connected
 • CoinGecko API: ${coingeckoStatus}
 • Jupiter API: ${jupiterStatus}
-• Helius WebSocket: ${helius ? '✅ Connected' : '❌ Disabled'}
+• Helius WebSocket: ${heliusStatus}
 • Token Loading: ${tokenStatus}
 
 📈 **Configuration:**
-• Analysis Mode: CoinGecko + Helius
-• Strategy: 48h token refresh + Real-time monitoring
+• Analysis Mode: Database-first + Helius
+• Strategy: 12h token check + Real-time monitoring
 • Monitoring: ${tokensLoaded} tokens
 
-💡 **API Optimization:**
-• CoinGecko: 48h refresh cycle (saves credits)
-• Helius: Real-time monitoring (uses available credits)
+💡 **Smart Token Loading:**
+• Database check: ≥1500 fresh tokens (24h) = skip CoinGecko
+• CoinGecko fallback: only when database insufficient
+• 12h refresh cycle: optimal balance
 
 ${tokensLoaded > 0 ? '🔍 **Ready for signal detection!**' : '⚠️ **Limited functionality - token loading issues**'}
 
 ⏰ Started at: ${new Date().toLocaleString()}`);
     
-    log('✅ Hybrid initialization complete');
+    log('✅ Smart initialization complete');
     
   } catch (error) {
     log(`❌ Initialization failed: ${error}`, 'ERROR');
     
     // Отправляем уведомление об ошибке инициализации
-    await tg.sendMessage(`🚨 **Signal Bot Initialization Failed!**
+    await tg.sendMessage(`🚨 **Smart Signal Bot Initialization Failed!**
 
 ❌ **Error:** ${error}
 
@@ -350,8 +431,14 @@ async function start() {
   try {
     await initialize();
     
-    // Планируем обновление токенов каждые 48 часов
-    setInterval(tokenRefresh, 48 * 60 * 60 * 1000);
+    // Планируем проверку и обновление токенов каждые 12 часов
+    setInterval(async () => {
+      try {
+        await checkAndUpdateTokens();
+      } catch (error) {
+        log(`Error in periodic token check: ${error}`, 'ERROR');
+      }
+    }, 12 * 60 * 60 * 1000); // 12 часов
     
     // Планируем очистку старых данных (каждые 24 часа)
     setInterval(async () => {
@@ -375,7 +462,8 @@ async function start() {
     setInterval(async () => {
       try {
         const monitoredCount = tokenAnalyzer.getMonitoredTokens().length;
-        await sendTokenRefreshReport(monitoredCount);
+        const heliusCount = helius.getMonitoredTokensCount();
+        await sendTokenRefreshReport(monitoredCount, heliusCount);
       } catch (error) {
         log(`Error in activity report: ${error}`, 'ERROR');
       }
@@ -392,7 +480,7 @@ async function start() {
       }, 10 * 60 * 1000);
     }
     
-    log('🎯 Hybrid Signal Bot is running...');
+    log('🎯 Smart Signal Bot is running...');
     
   } catch (error) {
     log(`❌ Failed to start: ${error}`, 'ERROR');
@@ -402,18 +490,19 @@ async function start() {
 
 // Обработка сигналов завершения
 process.on('SIGINT', async () => {
-  log('🛑 Shutting down Hybrid Signal Bot...');
+  log('🛑 Shutting down Smart Signal Bot...');
   
   // Отправляем уведомление об остановке
   try {
-    await tg.sendMessage(`🛑 **Signal Bot Shutting Down**
+    await tg.sendMessage(`🛑 **Smart Signal Bot Shutting Down**
 
 ⚠️ **Manual shutdown detected (SIGINT)**
 🔄 **Status:** Gracefully stopping all services...
 
 📊 **Final Stats:**
 • Uptime: ${Math.floor(process.uptime() / 60)} minutes
-• Monitored Tokens: ${monitoredTokens.size}
+• Monitored Tokens: ${tokenAnalyzer.getMonitoredTokens().length}
+• Helius Monitoring: ${helius.getMonitoredTokensCount()}
 • API Usage: CoinGecko ${apiUsageStats.coingecko.dailyUsage}/333
 
 🔌 **Disconnecting services...**`);
@@ -429,18 +518,19 @@ process.on('SIGINT', async () => {
 });
 
 process.on('SIGTERM', async () => {
-  log('🛑 Shutting down Hybrid Signal Bot...');
+  log('🛑 Shutting down Smart Signal Bot...');
   
   // Отправляем уведомление об остановке
   try {
-    await tg.sendMessage(`🛑 **Signal Bot Shutting Down**
+    await tg.sendMessage(`🛑 **Smart Signal Bot Shutting Down**
 
 ⚠️ **System shutdown detected (SIGTERM)**
 🔄 **Status:** Gracefully stopping all services...
 
 📊 **Final Stats:**
 • Uptime: ${Math.floor(process.uptime() / 60)} minutes
-• Monitored Tokens: ${monitoredTokens.size}
+• Monitored Tokens: ${tokenAnalyzer.getMonitoredTokens().length}
+• Helius Monitoring: ${helius.getMonitoredTokensCount()}
 • API Usage: CoinGecko ${apiUsageStats.coingecko.dailyUsage}/333
 
 🔌 **Disconnecting services...**`);

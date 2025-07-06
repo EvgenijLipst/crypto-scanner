@@ -19,6 +19,9 @@ export class HeliusWebSocket {
   // Callback для обработки свапов
   public onSwap: ((mint: string, swapData: any) => void) | null = null;
   
+  // Список токенов для мониторинга
+  private monitoredTokens: Set<string> = new Set();
+  
   // Статистика
   private stats = {
     messagesReceived: 0,
@@ -208,6 +211,12 @@ export class HeliusWebSocket {
         }
       }
       if (!targetMint || !priceUsd) return;
+      
+      // Проверяем, нужно ли мониторить этот токен
+      if (!this.shouldMonitorToken(targetMint)) {
+        return; // Пропускаем токены не в мониторинге
+      }
+      
       // Проверить возраст пула
       const pool = await this.database.getPool(targetMint);
       if (!pool || !passesAge(pool)) return;
@@ -268,6 +277,7 @@ export class HeliusWebSocket {
 • Pool Events: ${this.stats.poolEventsProcessed.toLocaleString()}
 • Swap Events: ${this.stats.swapEventsProcessed.toLocaleString()}
 • Errors: ${this.stats.errorsEncountered.toLocaleString()}
+• Monitored Tokens: ${this.monitoredTokens.size}
 
 🎯 **Performance:** ${this.stats.messagesReceived > 0 ? 'Active' : 'Waiting for activity'}`;
 
@@ -279,10 +289,38 @@ export class HeliusWebSocket {
   }
 
   /**
+   * Обновить список токенов для мониторинга
+   */
+  updateMonitoredTokens(tokens: string[]): void {
+    this.monitoredTokens.clear();
+    for (const mint of tokens) {
+      this.monitoredTokens.add(mint);
+    }
+    log(`Helius WebSocket: Updated monitored tokens list to ${this.monitoredTokens.size} tokens`);
+  }
+
+  /**
+   * Проверить, нужно ли мониторить этот токен
+   */
+  shouldMonitorToken(mint: string): boolean {
+    return this.monitoredTokens.has(mint);
+  }
+
+  /**
+   * Получить количество токенов в мониторинге
+   */
+  getMonitoredTokensCount(): number {
+    return this.monitoredTokens.size;
+  }
+
+  /**
    * Получить статистику
    */
   getStats() {
-    return { ...this.stats };
+    return { 
+      ...this.stats,
+      monitoredTokensCount: this.monitoredTokens.size
+    };
   }
 
   /**

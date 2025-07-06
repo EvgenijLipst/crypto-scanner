@@ -72,7 +72,7 @@ export class TokenAnalyzer {
   private lastAnalysisTime = 0;
 
   // Временный режим принудительного обновления
-  private forceRefreshMode = true; // ВКЛЮЧАЕМ ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ
+  private forceRefreshMode = false; // ОТКЛЮЧАЕМ ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ
 
   private rolling: Map<string, RollingMetrics> = new Map();
 
@@ -144,8 +144,8 @@ export class TokenAnalyzer {
 
       log('🔄 Token refresh: Checking database first...');
       
-      // Сначала проверяем базу данных - есть ли свежие токены (48 часов)
-      const hasFreshTokens = await this.database.hasFreshTokens('Solana', 1500, 48);
+      // Сначала проверяем базу данных - есть ли свежие токены (24 часа)
+      const hasFreshTokens = await this.database.hasFreshTokens('Solana', 1500, 24);
       
       if (hasFreshTokens) {
         log('✅ Found fresh tokens in database, using them instead of CoinGecko');
@@ -218,7 +218,7 @@ export class TokenAnalyzer {
    */
   private async loadTokensFromDatabase(): Promise<SolanaToken[]> {
     try {
-      const freshTokens = await this.database.getFreshTokensFromCoinData('Solana', 48);
+      const freshTokens = await this.database.getFreshTokensFromCoinData('Solana', 24);
       
       // Преобразуем данные из базы в формат SolanaToken
       // ВАЖНО: Фильтруем только токены с реальными mint адресами
@@ -375,6 +375,18 @@ export class TokenAnalyzer {
       this.ensureRolling(token.mint); // инициализируем rolling
     }
     log(`Updated monitoring list: ${this.monitoredTokens.size} tokens`);
+  }
+
+  /**
+   * Обновить список токенов для мониторинга токенами из базы данных
+   */
+  updateMonitoredTokensFromDatabase(tokens: SolanaToken[]): void {
+    this.monitoredTokens.clear();
+    for (const token of tokens) {
+      this.monitoredTokens.add(token.mint);
+      this.ensureRolling(token.mint); // инициализируем rolling
+    }
+    log(`Updated monitoring list from database: ${this.monitoredTokens.size} tokens`);
   }
 
   private ensureRolling(mint: string) {
