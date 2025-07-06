@@ -18,6 +18,7 @@ class TokenAnalyzer {
         this.lastAnalysisTime = 0;
         // Временный режим принудительного обновления
         this.forceRefreshMode = true; // ВКЛЮЧАЕМ ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ
+        this.rolling = new Map();
         this.coingecko = coingecko;
         this.jupiter = jupiter;
         this.database = database;
@@ -256,11 +257,27 @@ class TokenAnalyzer {
      */
     updateMonitoredTokens(tokens) {
         this.monitoredTokens.clear();
-        // Добавляем mint адреса в список мониторинга
         for (const token of tokens) {
             this.monitoredTokens.add(token.mint);
+            this.ensureRolling(token.mint); // инициализируем rolling
         }
         (0, utils_1.log)(`Updated monitoring list: ${this.monitoredTokens.size} tokens`);
+    }
+    ensureRolling(mint) {
+        if (!this.rolling.has(mint)) {
+            this.rolling.set(mint, {
+                candles: [],
+                lastCandleTs: 0,
+                buyers5m: new Set(),
+                buyVol5m: 0,
+                sellVol5m: 0,
+                swapHistory: [],
+                lastSignalTs: 0,
+                lastDepositTs: 0,
+                liquidityBoost: false
+            });
+        }
+        return this.rolling.get(mint);
     }
     /**
      * Проверить, нужно ли мониторить этот токен
@@ -294,11 +311,15 @@ class TokenAnalyzer {
                 isSignal: false,
                 reasons: [],
                 data: {
-                    age: token.age,
-                    marketCap: token.marketCap,
-                    fdv: token.fdv,
-                    volume24h: token.volume24h,
-                    priceUsd: token.priceUsd
+                    emaBull: false,
+                    rsi: 0,
+                    atr: 0,
+                    volumeSpike: 0,
+                    netFlow: 0,
+                    uniqueBuyers: 0,
+                    liquidityBoost: false,
+                    avgVol60m: 0,
+                    vol5m: 0
                 }
             };
             // 1. Технический анализ на основе данных из Helius
@@ -306,7 +327,7 @@ class TokenAnalyzer {
             result.passesTechnicalAnalysis = technicalResult.passes;
             result.data.volumeSpike = technicalResult.volumeSpike;
             result.data.rsi = technicalResult.rsi;
-            result.data.emaSignal = technicalResult.emaSignal;
+            result.data.emaBull = technicalResult.emaSignal;
             if (!technicalResult.passes) {
                 result.reasons.push(...technicalResult.reasons);
                 return result;
@@ -314,8 +335,6 @@ class TokenAnalyzer {
             // 2. Тест ликвидности через Jupiter (быстрый и дешевый)
             const liquidityResult = await this.performLiquidityTest(token);
             result.passesLiquidityTest = liquidityResult.passes;
-            result.data.priceImpact = liquidityResult.priceImpact;
-            result.data.liquidity = liquidityResult.liquidity;
             if (!liquidityResult.passes) {
                 result.reasons.push(...liquidityResult.reasons);
                 return result;
@@ -331,28 +350,109 @@ class TokenAnalyzer {
         }
     }
     /**
-     * Анализ активности токена (вызывается из Helius WebSocket)
+     * Основная функция: обработка свапа и анализ сигнала
      */
     async analyzeTokenActivity(mint, swapData) {
-        try {
-            // Проверяем, нужно ли мониторить этот токен
-            if (!this.shouldMonitorToken(mint)) {
-                return null;
-            }
-            (0, utils_1.log)(`🔍 Analyzing activity for monitored token: ${mint}`);
-            // Обновляем данные в базе из Helius
-            await this.database.ingestSwap(mint, swapData.priceUsd, swapData.volumeUsd, swapData.timestamp);
-            // Анализируем токен
-            const result = await this.analyzeTokenFromHelius(mint);
-            if (result && result.isSignal) {
-                (0, utils_1.log)(`🚀 SIGNAL DETECTED: ${result.symbol} (${mint})`);
-            }
-            return result;
-        }
-        catch (error) {
-            (0, utils_1.log)(`Error in token activity analysis: ${error}`, 'ERROR');
+        if (!this.shouldMonitorToken(mint))
             return null;
+        const rolling = this.ensureRolling(mint);
+        const now = Math.floor(Date.now() / 1000);
+        // 1. Обновляем минутную свечу
+        const minuteTs = Math.floor(swapData.timestamp / 60) * 60;
+        let candle = rolling.candles.length > 0 && rolling.lastCandleTs === minuteTs ? rolling.candles[rolling.candles.length - 1] : null;
+        if (!candle) {
+            candle = { mint, ts: minuteTs, o: swapData.priceUsd, h: swapData.priceUsd, l: swapData.priceUsd, c: swapData.priceUsd, v: 0 };
+            rolling.candles.push(candle);
+            rolling.lastCandleTs = minuteTs;
+            if (rolling.candles.length > 120)
+                rolling.candles.shift();
         }
+        candle.h = Math.max(candle.h, swapData.priceUsd);
+        candle.l = Math.min(candle.l, swapData.priceUsd);
+        candle.c = swapData.priceUsd;
+        candle.v += swapData.volumeUsd;
+        // 2. Обновляем swapHistory (последние 120 свапов)
+        rolling.swapHistory.push({ ts: swapData.timestamp, buyer: swapData.buyer || '', buy: swapData.buy || 0, sell: swapData.sell || 0, amountUsd: swapData.volumeUsd });
+        if (rolling.swapHistory.length > 120)
+            rolling.swapHistory.shift();
+        // 3. Iceberg: свапы < $50 не учитываем в объёме, но считаем для UniqueBuyers
+        if (swapData.volumeUsd >= 50) {
+            if (swapData.buy)
+                rolling.buyVol5m += swapData.volumeUsd;
+            if (swapData.sell)
+                rolling.sellVol5m += swapData.volumeUsd;
+        }
+        if (swapData.buyer)
+            rolling.buyers5m.add(swapData.buyer);
+        // 4. LP события
+        if (swapData.depositUsd && swapData.depositUsd > 5000) {
+            rolling.lastDepositTs = swapData.timestamp;
+            rolling.liquidityBoost = true;
+        }
+        // 5. Окна rolling (очистка старых)
+        const cutoff5m = now - 5 * 60;
+        rolling.buyers5m = new Set(rolling.swapHistory.filter(s => s.ts >= cutoff5m).map(s => s.buyer));
+        rolling.buyVol5m = rolling.swapHistory.filter(s => s.ts >= cutoff5m && s.buy).reduce((a, b) => a + b.amountUsd, 0);
+        rolling.sellVol5m = rolling.swapHistory.filter(s => s.ts >= cutoff5m && s.sell).reduce((a, b) => a + b.amountUsd, 0);
+        // 6. Технические индикаторы
+        const candles = rolling.candles;
+        const closes = candles.map(c => c.c);
+        const ema12 = this.calculateEMA(closes, 12);
+        const ema26 = this.calculateEMA(closes, 26);
+        const emaBull = ema12.length > 0 && ema26.length > 0 && ema12[ema12.length - 1] > ema26[ema26.length - 1];
+        const rsi = this.calculateRSI(closes, 14);
+        const atr = this.calculateATR(candles, 14);
+        // 7. Потоковые метрики
+        const vol60m = candles.slice(-60).reduce((a, c) => a + c.v, 0);
+        const avgVol60m = vol60m / Math.max(1, candles.slice(-60).length);
+        const vol5m = candles.slice(-5).reduce((a, c) => a + c.v, 0);
+        const avgVol30m = candles.slice(-30, -5).reduce((a, c) => a + c.v, 0) / 25;
+        const volumeSpike = avgVol30m > 0 ? vol5m / (avgVol30m * 5) : 0;
+        const netFlow = rolling.sellVol5m > 0 ? rolling.buyVol5m / rolling.sellVol5m : 0;
+        const uniqueBuyers = rolling.buyers5m.size;
+        // 8. LP boost
+        const liquidityBoost = rolling.liquidityBoost && (now - rolling.lastDepositTs < 10 * 60);
+        // 9. Фильтры допуска
+        const poolAgeOk = true; // TODO: добавить проверку возраста пула (first_seen_ts)
+        const hasUsdcOrSol = true; // TODO: добавить проверку по tokenTransfers
+        const avgVolOk = avgVol60m >= 2000;
+        // 10. Сигнальная логика
+        let isSignal = false;
+        let reasons = [];
+        if (poolAgeOk && hasUsdcOrSol && avgVolOk &&
+            volumeSpike >= 3 && netFlow >= 2 && uniqueBuyers >= 5 &&
+            emaBull && rsi < 35 && (liquidityBoost || avgVol60m > 10000)) {
+            if (now - rolling.lastSignalTs > 30 * 60) {
+                isSignal = true;
+                rolling.lastSignalTs = now;
+                reasons.push('All criteria met - BUY SIGNAL');
+            }
+        }
+        if (rsi > 70 || netFlow < 1) {
+            reasons.push('SELL/exit condition met');
+        }
+        // 11. Возвращаем результат
+        return {
+            mint,
+            symbol: '',
+            name: '',
+            passesBasicFilters: true,
+            passesTechnicalAnalysis: true,
+            passesLiquidityTest: true,
+            isSignal,
+            reasons,
+            data: {
+                emaBull,
+                rsi,
+                atr,
+                volumeSpike,
+                netFlow,
+                uniqueBuyers,
+                liquidityBoost,
+                avgVol60m,
+                vol5m
+            }
+        };
     }
     /**
      * Применить базовые фильтры (без дополнительных API запросов)
@@ -405,11 +505,15 @@ class TokenAnalyzer {
                     isSignal: false,
                     reasons: ['Analysis failed'],
                     data: {
-                        age: token.age,
-                        marketCap: token.marketCap,
-                        fdv: token.fdv,
-                        volume24h: token.volume24h,
-                        priceUsd: token.priceUsd
+                        emaBull: false,
+                        rsi: 0,
+                        atr: 0,
+                        volumeSpike: 0,
+                        netFlow: 0,
+                        uniqueBuyers: 0,
+                        liquidityBoost: false,
+                        avgVol60m: 0,
+                        vol5m: 0
                     }
                 });
             }
@@ -430,11 +534,15 @@ class TokenAnalyzer {
             isSignal: false,
             reasons: [],
             data: {
-                age: token.age,
-                marketCap: token.marketCap,
-                fdv: token.fdv,
-                volume24h: token.volume24h,
-                priceUsd: token.priceUsd
+                emaBull: false,
+                rsi: 0,
+                atr: 0,
+                volumeSpike: 0,
+                netFlow: 0,
+                uniqueBuyers: 0,
+                liquidityBoost: false,
+                avgVol60m: 0,
+                vol5m: 0
             }
         };
         // 1. Технический анализ
@@ -442,7 +550,7 @@ class TokenAnalyzer {
         result.passesTechnicalAnalysis = technicalResult.passes;
         result.data.volumeSpike = technicalResult.volumeSpike;
         result.data.rsi = technicalResult.rsi;
-        result.data.emaSignal = technicalResult.emaSignal;
+        result.data.emaBull = technicalResult.emaSignal;
         if (!technicalResult.passes) {
             result.reasons.push(...technicalResult.reasons);
             return result;
@@ -450,8 +558,6 @@ class TokenAnalyzer {
         // 2. Тест ликвидности и price impact
         const liquidityResult = await this.performLiquidityTest(token);
         result.passesLiquidityTest = liquidityResult.passes;
-        result.data.priceImpact = liquidityResult.priceImpact;
-        result.data.liquidity = liquidityResult.liquidity;
         if (!liquidityResult.passes) {
             result.reasons.push(...liquidityResult.reasons);
             return result;
@@ -613,6 +719,53 @@ class TokenAnalyzer {
     updateConfig(newConfig) {
         this.config = { ...this.config, ...newConfig };
         (0, utils_1.log)('Token analyzer config updated');
+    }
+    // ... реализовать calculateEMA, calculateRSI, calculateATR (можно взять из indicators.ts)
+    calculateEMA(prices, period) {
+        const ema = [];
+        let multiplier = 2 / (period + 1);
+        let currentEMA = prices[0];
+        ema.push(currentEMA);
+        for (let i = 1; i < prices.length; i++) {
+            currentEMA = prices[i] * multiplier + currentEMA * (1 - multiplier);
+            ema.push(currentEMA);
+        }
+        return ema;
+    }
+    calculateRSI(prices, period) {
+        let gains = 0;
+        let losses = 0;
+        let avgGain = 0;
+        let avgLoss = 0;
+        for (let i = 1; i <= period; i++) {
+            const diff = prices[i] - prices[i - 1];
+            if (diff > 0) {
+                gains += diff;
+            }
+            else {
+                losses -= diff;
+            }
+        }
+        avgGain = gains / period;
+        avgLoss = losses / period;
+        let rsi = 0;
+        if (avgLoss === 0) {
+            rsi = 100;
+        }
+        else {
+            rsi = 100 - (100 / (1 + avgGain / avgLoss));
+        }
+        return rsi;
+    }
+    calculateATR(candles, period) {
+        let tr = 0;
+        for (let i = 1; i < candles.length; i++) {
+            const high = candles[i].h;
+            const low = candles[i].l;
+            const prevClose = candles[i - 1].c;
+            tr = Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose));
+        }
+        return tr;
     }
 }
 exports.TokenAnalyzer = TokenAnalyzer;
