@@ -15,6 +15,7 @@ export class HeliusWebSocket {
   private reconnectDelay = 5000;
   private isConnected = false;
   private shouldReconnect = true;
+  private pingInterval: NodeJS.Timeout | null = null;
   
   // Callback для обработки свапов
   public onSwap: ((mint: string, swapData: any) => void) | null = null;
@@ -52,6 +53,14 @@ export class HeliusWebSocket {
         this.isConnected = true;
         this.reconnectAttempts = 0;
         this.subscribeToLogs();
+        // === Добавляем ручной ping ===
+        if (this.pingInterval) clearInterval(this.pingInterval);
+        this.pingInterval = setInterval(() => {
+          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.ping();
+            log('📡 Sent ping to Helius WebSocket');
+          }
+        }, 30000); // каждые 30 секунд
       });
 
       this.ws.on('message', (data) => {
@@ -61,7 +70,11 @@ export class HeliusWebSocket {
       this.ws.on('close', (code, reason) => {
         log(`❌ Helius WebSocket closed: ${code} ${reason}`);
         this.isConnected = false;
-        
+        // === Очищаем ping-интервал ===
+        if (this.pingInterval) {
+          clearInterval(this.pingInterval);
+          this.pingInterval = null;
+        }
         if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
           this.scheduleReconnect();
         }
@@ -87,6 +100,11 @@ export class HeliusWebSocket {
       this.ws = null;
     }
     
+    // === Очищаем ping-интервал ===
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
     this.isConnected = false;
     log('✅ Helius WebSocket disconnected');
   }
